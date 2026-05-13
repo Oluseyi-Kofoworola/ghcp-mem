@@ -8,7 +8,7 @@
 interface RedactionRule {
   name: string;
   pattern: RegExp;
-  replacement: string;
+  replacement: string | ((m: string) => string);
 }
 
 const RULES: RedactionRule[] = [
@@ -16,12 +16,22 @@ const RULES: RedactionRule[] = [
   // Bounded lookahead (max 120 chars, no newline) — the previous /(?=.*aws)/
   // pattern was unbounded and risked O(n²) scan / ReDoS on large event logs.
   { name: 'aws-secret', pattern: /\b[A-Za-z0-9/+=]{40}\b(?=[^\n]{0,120}aws)/gi, replacement: '[REDACTED:aws-secret]' },
-  { name: 'github-token', pattern: /\b(ghp|gho|ghu|ghs|ghr|github_pat)_[A-Za-z0-9_]{20,}\b/g, replacement: '[REDACTED:github-token]' },
-  { name: 'openai-key', pattern: /\bsk-[A-Za-z0-9]{20,}\b/g, replacement: '[REDACTED:openai-key]' },
+  // GitHub tokens — classic ghp_ and newer fine-grained github_pat_ formats
+  { name: 'github-token', pattern: /\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b/g, replacement: '[REDACTED:github-token]' },
+  { name: 'github-pat-fine', pattern: /\bgithub_pat_[A-Za-z0-9_]{82,}\b/g, replacement: '[REDACTED:github-token]' },
+  { name: 'npm-token', pattern: /\bnpm_[A-Za-z0-9]{36,}\b/g, replacement: '[REDACTED:npm-token]' },
+  // OpenAI — sk- is also used by Anthropic so order matters (anthropic matched first)
   { name: 'anthropic-key', pattern: /\bsk-ant-[A-Za-z0-9_-]{20,}\b/g, replacement: '[REDACTED:anthropic-key]' },
+  { name: 'openai-key', pattern: /\bsk-(?!ant-)[A-Za-z0-9]{20,}\b/g, replacement: '[REDACTED:openai-key]' },
+  // Stripe live keys
+  { name: 'stripe-key', pattern: /\b(?:sk|pk|rk)_live_[A-Za-z0-9]{24,}\b/g, replacement: '[REDACTED:stripe-key]' },
   { name: 'google-api', pattern: /\bAIza[0-9A-Za-z_-]{35}\b/g, replacement: '[REDACTED:google-api]' },
   { name: 'slack-token', pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g, replacement: '[REDACTED:slack-token]' },
   { name: 'jwt', pattern: /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, replacement: '[REDACTED:jwt]' },
+  // Bearer token in Authorization header (HTTP headers, curl -H, etc.)
+  { name: 'bearer-token', pattern: /\bBearer\s+([A-Za-z0-9\-._~+/]+=*){20,}/gi, replacement: 'Bearer [REDACTED:bearer-token]' },
+  // Database connection URLs with embedded credentials (postgres://, mysql://, mongodb://, etc.)
+  { name: 'db-url-password', pattern: /\b(?:postgres|postgresql|mysql|mongodb(?:\+srv)?|redis|amqp|amqps):\/\/[^:@\s]{1,64}:[^@\s]{4,}@/gi, replacement: (m: string) => m.replace(/:([^@\s]{4,})@/, ':[REDACTED:db-password]@') },
   { name: 'private-key-block', pattern: /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, replacement: '[REDACTED:private-key-block]' },
 
   // ── Azure-specific rules ───────────────────────────────────
@@ -84,7 +94,9 @@ export function redact(input: string, opts: RedactOptions): RedactionResult {
   if (opts.redactSecrets) {
     for (const rule of RULES) {
       const before = text;
-      text = text.replace(rule.pattern, rule.replacement);
+      text = typeof rule.replacement === 'function'
+        ? text.replace(rule.pattern, rule.replacement as (m: string) => string)
+        : text.replace(rule.pattern, rule.replacement);
       if (text !== before) {
         count++;
         categories.add(rule.name);
@@ -98,5 +110,8 @@ export function redact(input: string, opts: RedactOptions): RedactionResult {
 /** Quick check whether a string contains any obvious secret. */
 export function looksSensitive(input: string): boolean {
   if (!input) return false;
-  return RULES.some(r => r.pattern.test(input));
+  // Re-create each regex to avoid lastIndex state leaking between calls on
+  // rules that use the /g flag — a subtle JS gotcha that caused false negatives
+  // when looksSensitive was called multiple times in the same JS tick.
+  return RULES.some(r => new RegExp(r.pattern.source, r.pattern.flags).test(input));
 }

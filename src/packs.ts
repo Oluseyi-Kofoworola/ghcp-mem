@@ -77,6 +77,17 @@ export function parsePack(json: string): MemoryPack {
   if (parsed.schemaVersion > PACK_SCHEMA_VERSION) {
     throw new Error(`Pack schema v${parsed.schemaVersion} is newer than supported v${PACK_SCHEMA_VERSION}.`);
   }
+  // Validate pack name — prevent path traversal if the name is ever used as a filename/tag component.
+  if (!/^[a-z0-9._-]{1,64}$/i.test(parsed.name.trim())) {
+    throw new Error('Pack name contains disallowed characters. Use letters, digits, ., _ or -');
+  }
+  // Validate that every session has a UUID-shaped ID to prevent injection.
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  for (const s of parsed.sessions as Array<{ id?: unknown }>) {
+    if (typeof s.id !== 'string' || !uuidRe.test(s.id)) {
+      throw new Error(`Pack contains a session with an invalid ID: "${String(s.id).substring(0, 40)}"`);
+    }
+  }
   return parsed as MemoryPack;
 }
 

@@ -171,10 +171,19 @@ export class ContextStore implements vscode.Disposable {
     const wsId = vscode.workspace.workspaceFolders?.[0]?.uri.toString();
 
     // Candidate set via inverted index (intersection when query has terms)
+    // A term with zero index hits means no session matches that term — the
+    // intersection must be empty, so we short-circuit immediately rather than
+    // falling back to all sessions (which was the old bug).
     let candidateIds: Set<string> | null = null;
+    let hadAnyTerm = false;
     for (const term of terms) {
+      hadAnyTerm = true;
       const hits = this.index.get(term);
-      if (!hits) continue;
+      if (!hits || hits.size === 0) {
+        // At least one required term matched nothing — intersection is empty.
+        candidateIds = new Set();
+        break;
+      }
       if (candidateIds === null) {
         candidateIds = new Set(hits);
       } else {
@@ -184,9 +193,9 @@ export class ContextStore implements vscode.Disposable {
       }
     }
 
-    let candidates = candidateIds
+    let candidates = (candidateIds !== null)
       ? this.db.sessions.filter(s => candidateIds!.has(s.id))
-      : [...this.db.sessions];
+      : hadAnyTerm ? [] : [...this.db.sessions];
 
     // Filters
     if (filters.type) candidates = candidates.filter(s => s.observationType === filters.type);
@@ -305,9 +314,12 @@ export class ContextStore implements vscode.Disposable {
       this.index.clear();
     }
     const existingIds = new Set(this.db.sessions.map(s => s.id));
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let imported = 0;
     const r = (txt: string) => redact(txt, { redactSecrets: true, honorPrivateTags: true }).text;
     for (const s of parsed.sessions) {
+      // Skip sessions with missing or malformed IDs to prevent injection.
+      if (typeof s.id !== 'string' || !uuidRe.test(s.id)) continue;
       if (existingIds.has(s.id)) continue;
       // Re-run redaction on import to protect against unredacted third-party data.
       const sanitized: CompressedSession = {
@@ -457,10 +469,14 @@ export class ContextStore implements vscode.Disposable {
       const path = require('path') as typeof import('path');
       const dir = path.join(os.homedir(), '.ghcp-mem');
       await fs.mkdir(dir, { recursive: true });
+      // Restrict directory to owner-only on creation (best-effort on non-POSIX).
+      try { await fs.chmod(dir, 0o700); } catch { /* ignore on Windows */ }
       const finalPath = path.join(dir, 'sessions.json');
       const tmpPath = `${finalPath}.${process.pid}.tmp`;
-      await fs.writeFile(tmpPath, JSON.stringify(this.db), 'utf8');
+      await fs.writeFile(tmpPath, JSON.stringify(this.db), { encoding: 'utf8', mode: 0o600 });
       await fs.rename(tmpPath, finalPath);
+      // Ensure permissions if the file already existed with wrong mode.
+      try { await fs.chmod(finalPath, 0o600); } catch { /* ignore on Windows */ }
     } catch {
       // ignore
     }
@@ -521,7 +537,16 @@ export class ContextStore implements vscode.Disposable {
     if (!parsed || !Array.isArray(parsed.sessions)) {
       throw new Error('Invalid backup file');
     }
-    this.db = { version: DB_VERSION, sessions: parsed.sessions, lastUpdated: Date.now() };
+    // Re-run redaction on restore — consistent with importFromJson and importPack.
+    const r = (txt: string) => redact(txt, { redactSecrets: true, honorPrivateTags: true }).text;
+    const sanitized = parsed.sessions.map((s): CompressedSession => ({
+      ...s,
+      summary: r(s.summary),
+      decisions: (s.decisions ?? []).map(r),
+      problemsSolved: (s.problemsSolved ?? []).map(r),
+      keyTopics: (s.keyTopics ?? []).map(r),
+    }));
+    this.db = { version: DB_VERSION, sessions: sanitized, lastUpdated: Date.now() };
     await this.rebuildIndexAsync();
     await this.globalState.update(DB_KEY, this.db);
     this.onChangeEmitter.fire();

@@ -357,8 +357,10 @@ export class SessionCapture implements vscode.Disposable {
 
   private pushEvent(type: SessionEvent['type'], data: SessionEvent['data']): void {
     this.events.push({ timestamp: Date.now(), type, data });
+    // splice(0, n) removes in-place — avoids allocating a second array copy
+    // that this.events.slice(-3000) would create on every overflow.
     if (this.events.length > 5000) {
-      this.events = this.events.slice(-3000);
+      this.events.splice(0, this.events.length - 3000);
     }
   }
 

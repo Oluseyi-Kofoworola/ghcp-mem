@@ -190,7 +190,7 @@ test('Pipeline — import redacts secrets in incoming sessions', async () => {
   const maliciousExport = JSON.stringify({
     version: 2,
     sessions: [{
-      id: 'mal-1',
+      id: 'a1b2c3d4-0000-0000-0000-000000000001',
       workspaceId: 'file:///other',
       workspaceName: 'other',
       startTime: Date.now() - 1000,
@@ -213,4 +213,29 @@ test('Pipeline — import redacts secrets in incoming sessions', async () => {
   assert.equal(sessions.length, 1);
   assert.ok(!sessions[0].summary.includes('AKIAIOSFODNN7EXAMPLE'), 'AWS key must be redacted on import');
   assert.ok(!sessions[0].decisions[0].includes('SuperSecret123'), 'Password must be redacted on import');
+});
+
+test('Pipeline — import skips sessions with invalid IDs', async () => {
+  const mem = new InMemoryMemento() as any;
+  const store = new ContextStore(mem);
+
+  const badExport = JSON.stringify({
+    version: 2,
+    sessions: [{
+      id: 'not-a-uuid',
+      workspaceId: 'file:///other',
+      workspaceName: 'other',
+      startTime: Date.now() - 1000,
+      endTime: Date.now(),
+      summary: 'Session with malformed ID.',
+      observationType: 'chore',
+      keyFiles: [], keyTopics: [], decisions: [], problemsSolved: [],
+      rawEventCount: 1, userTags: [], redactionCount: 0,
+    }],
+    lastUpdated: Date.now(),
+  });
+
+  const result = await store.importFromJson(badExport, true);
+  assert.equal(result.imported, 0, 'Session with invalid ID must be skipped');
+  assert.equal(store.getAllSessions().length, 0);
 });

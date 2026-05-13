@@ -32,6 +32,11 @@ export class ContextCompressor {
     const workspaceName = workspaceFolder?.name ?? 'unknown';
     const workspaceId = workspaceFolder?.uri.toString() ?? 'unknown';
     const eventLog = this.buildEventLog(events);
+    // Final redaction pass on the event log before it reaches the LM.
+    // buildEventLog already redacts individual snippets/commands at capture
+    // time, but this catches anything assembled during log formatting
+    // (e.g. file paths containing tokens, diagnostic messages with URLs, etc.)
+    const safeEventLog = redact(eventLog, { redactSecrets: true, honorPrivateTags: true }).text;
 
     // Rule-based pre-classification — stable, cheap, runs before the LM.
     const ruleType = classifyByRules(events, azureSubsystems);
@@ -60,7 +65,7 @@ Rules:
 - summary must be concrete and reference actual file names or topics${azureHint}
 
 SESSION LOG:
-${eventLog}`;
+${safeEventLog}`;
 
     try {
       // Prefer a cheap model first \u2014 compression is a summarization task and

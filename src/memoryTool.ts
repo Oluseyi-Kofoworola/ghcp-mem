@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { ContextStore, SearchFilters } from './contextStore';
 import { ObservationType, computeContentHash, CompressedSession } from './types';
+import { redact } from './redactor';
 
 /**
  * Language Model Tool — lets Copilot *agent mode* invoke GHCP-MEM search
@@ -105,13 +106,16 @@ export class MemoryStoreTool implements vscode.LanguageModelTool<StoreToolInput>
       ]);
     }
 
+    // Redact secrets from all user-provided text before persisting.
+    const redactStr = (s: string) => redact(s, { redactSecrets: true, honorPrivateTags: true }).text;
+
     const ws = vscode.workspace.workspaceFolders?.[0];
     const now = Date.now();
-    const summary = input.summary.trim();
-    const keyFiles = (input.keyFiles ?? []).slice(0, 10);
-    const keyTopics = (input.keyTopics ?? []).slice(0, 10);
-    const decisions = (input.decisions ?? []).slice(0, 10);
-    const problemsSolved = (input.problemsSolved ?? []).slice(0, 10);
+    const summary = redactStr(input.summary.trim());
+    const keyFiles = (input.keyFiles ?? []).slice(0, 10).map(redactStr);
+    const keyTopics = (input.keyTopics ?? []).slice(0, 10).map(redactStr);
+    const decisions = (input.decisions ?? []).slice(0, 10).map(redactStr);
+    const problemsSolved = (input.problemsSolved ?? []).slice(0, 10).map(redactStr);
 
     const session: CompressedSession = {
       id: crypto.randomUUID(),
