@@ -1,0 +1,13 @@
+out/
+out-test/
+node_modules/
+*.vsix
+.vscode-test/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# GHCP-MEM auto-injected per-user context (regenerated on every persist)
+.github/instructions/session-memory.instructions.md

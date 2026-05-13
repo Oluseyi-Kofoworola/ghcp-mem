@@ -1,0 +1,180 @@
+{
+  "name": "ghcp-mem",
+  "displayName": "GHCP-MEM",
+  "description": "Persistent session memory for GitHub Copilot. Captures, compresses, and injects coding session context with built-in secret redaction and progressive disclosure.",
+  "version": "1.0.0",
+  "publisher": "OluseyiKofoworola",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Oluseyi-Kofoworola/ghcp-mem.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Oluseyi-Kofoworola/ghcp-mem/issues"
+  },
+  "homepage": "https://github.com/Oluseyi-Kofoworola/ghcp-mem#readme",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "bin": {
+    "ghcp-mem-mcp": "./out/mcpServer.js"
+  },
+  "contributes": {
+    "commands": [
+      { "command": "ghcpMem.captureSnapshot", "title": "GHCP-MEM: Capture Session Snapshot Now" },
+      { "command": "ghcpMem.showContext", "title": "GHCP-MEM: Show Stored Context" },
+      { "command": "ghcpMem.clearMemory", "title": "GHCP-MEM: Clear All Stored Context" },
+      { "command": "ghcpMem.compressNow", "title": "GHCP-MEM: Compress Current Session" },
+      { "command": "ghcpMem.exportMemory", "title": "GHCP-MEM: Export Memory to JSON..." },
+      { "command": "ghcpMem.importMemory", "title": "GHCP-MEM: Import Memory from JSON..." },
+      { "command": "ghcpMem.deleteSession", "title": "GHCP-MEM: Delete Session", "icon": "$(trash)" },
+      { "command": "ghcpMem.tagSession", "title": "GHCP-MEM: Tag Session...", "icon": "$(tag)" },
+      { "command": "ghcpMem.openSession", "title": "GHCP-MEM: Open Session Detail", "icon": "$(eye)" },
+      { "command": "ghcpMem.refreshView", "title": "GHCP-MEM: Refresh", "icon": "$(refresh)" },
+      { "command": "ghcpMem.restoreBackup", "title": "GHCP-MEM: Restore From Backup..." },
+      { "command": "ghcpMem.injectContextIntoChat", "title": "GHCP-MEM: Inject Relevant Context Into Copilot Chat..." },
+      { "command": "ghcpMem.captureAzureContext", "title": "GHCP-MEM: Capture Azure Context Snapshot..." },
+      { "command": "ghcpMem.seedAzureDemo", "title": "GHCP-MEM: Seed Azure Demo Sessions" },
+      { "command": "ghcpMem.showHealth", "title": "GHCP-MEM: Show Memory Health Score" },
+      { "command": "ghcpMem.exportPack", "title": "GHCP-MEM: Export Memory Pack..." },
+      { "command": "ghcpMem.importPack", "title": "GHCP-MEM: Import Memory Pack..." },
+      { "command": "ghcpMem.uninstallPack", "title": "GHCP-MEM: Uninstall Memory Pack..." },
+      { "command": "ghcpMem.showMcpInfo", "title": "GHCP-MEM: Show External MCP Client Config" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "ghcpMem", "title": "GHCP-MEM", "icon": "$(history)" }
+      ]
+    },
+    "views": {
+      "ghcpMem": [
+        { "id": "ghcpMem.sessionsView", "name": "Sessions", "icon": "$(history)" }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        { "command": "ghcpMem.refreshView", "when": "view == ghcpMem.sessionsView", "group": "navigation" },
+        { "command": "ghcpMem.captureSnapshot", "when": "view == ghcpMem.sessionsView", "group": "navigation" }
+      ],
+      "view/item/context": [
+        { "command": "ghcpMem.tagSession", "when": "view == ghcpMem.sessionsView && viewItem == session", "group": "inline@1" },
+        { "command": "ghcpMem.deleteSession", "when": "view == ghcpMem.sessionsView && viewItem == session", "group": "inline@2" }
+      ]
+    },
+    "chatParticipants": [
+      {
+        "id": "ghcp-mem",
+        "name": "mem",
+        "fullName": "Session Memory",
+        "description": "Query persistent coding session memory with progressive disclosure",
+        "isSticky": true,
+        "commands": [
+          { "name": "health", "description": "Show memory health score and notes" },
+          { "name": "search", "description": "Search past sessions for a keyword/query" },
+          { "name": "timeline", "description": "Show chronological sessions around a date/query" },
+          { "name": "detail", "description": "Get full detail of a session by ID prefix" },
+          { "name": "recent", "description": "Show the most recent sessions" },
+          { "name": "azure", "description": "Show Azure-tagged sessions grouped by subsystem" },
+          { "name": "status", "description": "Show memory store stats" }
+        ]
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "ghcpMem_search",
+        "displayName": "Search Session Memory",
+        "modelDescription": "Search the user's persistent GHCP-MEM coding session memory for past decisions, problems solved, files touched, and topics. Use this BEFORE asking the user for repo context that might already be known. Returns a compact list of matching sessions with IDs, summaries, files, and decisions.",
+        "toolReferenceName": "ghcpMemSearch",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(history)",
+        "tags": ["memory", "context", "history"],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string", "description": "Keywords to search for." },
+            "type": { "type": "string", "enum": ["feature", "bugfix", "refactor", "docs", "test", "chore", "research", "config", "security", "deployment", "infra", "unknown"], "description": "Optional observation type filter." },
+            "sinceDays": { "type": "number", "description": "Only return sessions from the last N days." },
+            "workspaceOnly": { "type": "boolean", "description": "Limit results to the current workspace (default true)." },
+            "tag": { "type": "string", "description": "Filter by user-applied tag." },
+            "limit": { "type": "number", "description": "Max results (1-25, default 5)." }
+          },
+          "required": ["query"]
+        }
+      },
+      {
+        "name": "ghcpMem_store",
+        "displayName": "Save To Session Memory",
+        "modelDescription": "Persist a short, self-contained note into GHCP-MEM so it will be recalled in future sessions. Use when the user states a durable fact, decision, or preference the assistant should remember. Do NOT use for ephemeral chat context.",
+        "toolReferenceName": "ghcpMemStore",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(save)",
+        "tags": ["memory", "note", "persist"],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "summary": { "type": "string", "description": "2-4 sentence summary of what should be remembered." },
+            "observationType": { "type": "string", "enum": ["feature", "bugfix", "refactor", "docs", "test", "chore", "research", "config", "security", "deployment", "infra", "unknown"], "description": "Category of the note (default research)." },
+            "keyTopics": { "type": "array", "items": { "type": "string" }, "description": "Up to 10 topic keywords." },
+            "keyFiles": { "type": "array", "items": { "type": "string" }, "description": "Up to 10 relevant file paths." },
+            "decisions": { "type": "array", "items": { "type": "string" }, "description": "Architectural or design decisions." },
+            "problemsSolved": { "type": "array", "items": { "type": "string" }, "description": "Problems resolved." },
+            "tags": { "type": "array", "items": { "type": "string" }, "description": "User-facing tags." }
+          },
+          "required": ["summary"]
+        }
+      }
+    ],
+    "configuration": {
+      "title": "GHCP-MEM",
+      "properties": {
+        "ghcpMem.enabled": { "type": "boolean", "default": true, "description": "Enable automatic session capture" },
+        "ghcpMem.compressionIntervalMinutes": { "type": "number", "default": 15, "description": "How often to compress captured events (minutes)" },
+        "ghcpMem.maxStoredSessions": { "type": "number", "default": 50, "description": "Maximum number of compressed sessions to retain" },
+        "ghcpMem.retentionDays": { "type": "number", "default": 90, "description": "Delete sessions older than this many days (0 = disabled)" },
+        "ghcpMem.captureFileEdits": { "type": "boolean", "default": true, "description": "Capture file edit events" },
+        "ghcpMem.captureTerminalCommands": { "type": "boolean", "default": true, "description": "Capture terminal activity" },
+        "ghcpMem.captureDiagnostics": { "type": "boolean", "default": true, "description": "Capture error/warning diagnostics changes" },
+        "ghcpMem.captureGitOps": { "type": "boolean", "default": true, "description": "Capture git operations" },
+        "ghcpMem.contextRetrievalCount": { "type": "number", "default": 5, "description": "Number of relevant past sessions to inject" },
+        "ghcpMem.redactSecrets": { "type": "boolean", "default": true, "description": "Scan and redact secrets/PII before storing" },
+        "ghcpMem.honorPrivateTags": { "type": "boolean", "default": true, "description": "Exclude content wrapped in <private>...</private> markers" },
+        "ghcpMem.excludeGlobs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["**/.env*", "**/*.pem", "**/*.key", "**/secrets/**", "**/node_modules/**"],
+          "description": "Glob patterns whose file events will be skipped"
+        },
+        "ghcpMem.autoInjectStartupContext": { "type": "boolean", "default": true, "description": "Write .github/instructions/session-memory.instructions.md for auto-injection" },
+        "ghcpMem.autosave.enabled": { "type": "boolean", "default": true, "description": "Enable context-pressure autosave (flush based on event count + wall clock)" },
+        "ghcpMem.autosave.eventThreshold": { "type": "number", "default": 40, "description": "Trigger autosave once this many captured events are buffered" },
+        "ghcpMem.autosave.minutesThreshold": { "type": "number", "default": 20, "description": "Trigger autosave after this many minutes since the last flush (with any pending events)" }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "tsc -p ./tsconfig.test.json && node scripts/setup-test-env.js && node --test \"out-test/src/test/*.test.js\"",
+    "package": "vsce package --out ghcp-mem.vsix",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.93.0",
+    "@vscode/vsce": "^2.24.0",
+    "typescript": "^5.3.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0"
+  }
+}
