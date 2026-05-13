@@ -1,9 +1,6 @@
-<div align="center">
-
 # 🧠 GHCP-MEM
 
-### Persistent memory for GitHub Copilot.
-### Built for VS Code, the enterprise, and Azure.
+### Persistent memory for GitHub Copilot. Built for VS Code, the enterprise, and Azure.
 
 **Zero dependencies · Zero network ports · Native MCP · Secret-redacted by default**
 
@@ -12,15 +9,13 @@
 [![MCP](https://img.shields.io/badge/MCP-2024--11--05-7e3aed?style=for-the-badge)](https://modelcontextprotocol.io/)
 [![Azure-aware](https://img.shields.io/badge/Azure-aware-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)](#%EF%B8%8F-azure--enterprise)
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.6-22c55e?style=flat-square)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-93%20passing-22c55e?style=flat-square)](src/test)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](https://github.com/ITcredibl/ghcp-mem/blob/main/LICENSE)
+[![Version](https://img.shields.io/badge/version-1.1.7-22c55e?style=flat-square)](https://github.com/ITcredibl/ghcp-mem/blob/main/CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-94%20passing-22c55e?style=flat-square)](https://github.com/ITcredibl/ghcp-mem/tree/main/src/test)
 [![Native deps](https://img.shields.io/badge/native_deps-0-22c55e?style=flat-square)](#-why-it-matters)
 [![Network ports](https://img.shields.io/badge/network_ports-0-22c55e?style=flat-square)](#-privacy--security)
-[![Redaction rules](https://img.shields.io/badge/redaction%20rules-21-22c55e?style=flat-square)](#-privacy--security)
+[![Redaction rules](https://img.shields.io/badge/redaction_rules-24-22c55e?style=flat-square)](#-privacy--security)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
-
-</div>
 
 ---
 
@@ -28,7 +23,7 @@
 
 **GHCP-MEM gives GitHub Copilot a persistent memory** across every session, file, and project — without spinning up a single sidecar, port, or native binary.
 
-It captures what you actually do (edits, diagnostics, git, debug, tasks, terminal), compresses each session into a structured summary via the Copilot Language Model, scrubs secrets in a 21-rule dual-pass scanner, and quietly re-injects relevant prior context whenever you start a new conversation.
+It captures what you actually do (edits, diagnostics, git, debug, tasks, terminal), compresses each session into a structured summary via the Copilot Language Model, scrubs secrets in a 24-rule dual-pass scanner, and quietly re-injects relevant prior context whenever you start a new conversation.
 
 ---
 
@@ -36,171 +31,39 @@ It captures what you actually do (edits, diagnostics, git, debug, tasks, termina
 
 Most "AI memory" tools were built for a single chat client and a single laptop. GHCP-MEM was built for **engineers who ship to production from VS Code** — often inside an enterprise, often on Azure, often on a machine with no admin rights, no Bun, no Python, and no open ports allowed.
 
-<table>
-<tr>
-<td width="33%" align="center" valign="top">
-
 ### 🪶 Zero dependencies
+
 No Bun. No uv. No Python. No SQLite binary. No WASM. No Chroma. No model downloads.
 
 **Pure TypeScript on the VS Code API.**
 
-</td>
-<td width="33%" align="center" valign="top">
-
 ### 🔌 Zero network ports
+
 Nothing listens. Nothing phones home. No `:37777`. No `localhost` HTTP worker.
 
 **Air-gap friendly. Audit-friendly.**
 
-</td>
-<td width="33%" align="center" valign="top">
-
 ### 🤖 Native MCP + Copilot
+
 Bundled stdio MCP server, `@mem` chat participant, and `#ghcpMemSearch` / `#ghcpMemStore` agent-mode tools.
 
 **Speaks Copilot's protocol natively.**
-
-</td>
-</tr>
-</table>
 
 ---
 
 ## 📐 How it works
 
-```mermaid
-flowchart TB
-    subgraph SRC["🖥️ Your Coding Session"]
-        direction LR
-        E1["File edits"]
-        E2["Diagnostics"]
-        E3["Git ops"]
-        E4["Debug"]
-        E5["Tasks"]
-        E6["Terminal"]
-    end
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ITcredibl/ghcp-mem/main/images/diagrams/pipeline.png" alt="GHCP-MEM capture pipeline: events → redactor → compressor → classifier → store → MCP / chat / agent tools" width="900">
+</p>
 
-    SRC -->|debounced · glob-filtered| CAP[/"📥 Session Capture"/]
-    CAP --> RED["🔒 Secret Redactor<br/><sub>21 rules + private tags</sub>"]
-    RED --> COMP["🤖 AI Compressor<br/><sub>vscode.lm · gpt-4o-mini</sub>"]
-    COMP --> CLASS{{"Auto-classify<br/>feature · bugfix · infra · …"}}
-    CLASS --> STORE[("💾 Context Store<br/>globalState + inverted index")]
-    STORE --> BAK["🔄 Rolling backups (5)"]
-    STORE --> MIRROR["🪞 ~/.ghcp-mem/<br/>sessions.json"]
-
-    STORE -.->|RRF + recency decay| RETRIEVE[/"🔍 Hybrid Retrieval"/]
-    RETRIEVE --> A["💬 @mem chat<br/>/search · /timeline · /detail"]
-    RETRIEVE --> B["📝 .github/instructions/<br/>auto-injected into Copilot"]
-    RETRIEVE --> C["🤝 Agent-mode tools<br/>#ghcpMemSearch · #ghcpMemStore"]
-    MIRROR --> D["🔌 MCP stdio server<br/>Cursor · Cline · Claude Desktop"]
-
-    classDef src fill:#1e293b,stroke:#475569,color:#f1f5f9
-    classDef proc fill:#7c3aed,stroke:#5b21b6,color:#fff
-    classDef store fill:#0ea5e9,stroke:#0369a1,color:#fff
-    classDef out fill:#22c55e,stroke:#15803d,color:#fff
-    class SRC,E1,E2,E3,E4,E5,E6 src
-    class CAP,RED,COMP,CLASS,RETRIEVE proc
-    class STORE,BAK,MIRROR store
-    class A,B,C,D out
-```
-
----
-
-## 🚀 Install
-
-> [!TIP]
-> One file, offline, no admin rights, no network calls. Drop the `.vsix` on the machine and you're done.
-
-```powershell
-git clone https://github.com/ITcredibl/ghcp-mem.git
-cd ghcp-mem
-code --install-extension ghcp-mem-1.1.6.vsix
-```
-
-Reload VS Code. You should see `$(history) MEM ●●○○○ 0` in the status bar.
-
-<details>
-<summary><b>📦 Build from source</b></summary>
-
-```powershell
-git clone https://github.com/ITcredibl/ghcp-mem.git
-cd ghcp-mem
-
-npm install          # install dev deps (no runtime native modules)
-npm run compile      # tsc → out/
-npm test             # 94 cases, ~3 s
-npx @vscode/vsce package
-code --install-extension ghcp-mem-1.1.6.vsix
-```
-
-`npm run watch` keeps the TypeScript compiler running for the F5 dev loop.
-
-</details>
-
-### Prerequisites
-
-| Requirement | Version | Required? | Why |
-|---|---|---|---|
-| 🟢 **VS Code** | **≥ 1.93.0** | ✅ Yes | Shell-integration terminal API. |
-| 🤖 **GitHub Copilot** | latest | 🟡 Recommended | Powers compression + `@mem` chat. Capture, search, MCP all still work without it. |
-| 🟢 **Node.js** | ≥ 20.0 | 🟡 Build-time only | Not required at runtime. |
-| ☁️ **Azure CLI (`az`)** | any | ⚪ Optional | Only for `Capture Azure Context Snapshot`. |
-
----
-
-## 🧭 Five-minute tour
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor You as 👩‍💻 You
-    participant VSC as 💻 VS Code
-    participant MEM as 🧠 GHCP-MEM
-    participant LM as 🤖 Copilot LM
-    participant CHAT as 💬 Copilot Chat
-
-    You->>VSC: edit files, hit errors, run builds
-    VSC->>MEM: emit events (debounced)
-    MEM->>MEM: redact + buffer
-    Note over MEM: at threshold (40 events / 20 min)
-    MEM->>LM: compress events → structured summary
-    LM-->>MEM: { summary, type, decisions, files }
-    MEM->>MEM: SHA-256 dedup · persist · backup
-    MEM->>VSC: write .github/instructions/session-memory.instructions.md
-    You->>CHAT: "@mem /search managed identity since:30d"
-    CHAT->>MEM: RRF query (keyword + recency + embeddings)
-    MEM-->>CHAT: top-K compressed sessions
-    CHAT-->>You: 💡 answer grounded in your history
-```
-
-| # | Action | Result |
-|---|---|---|
-| 1 | **Open your project** in VS Code | Edits, diagnostics, git, debug, tasks, terminal all stream into the capture buffer. |
-| 2 | **Autosave fires** on event-count (40) or wall-clock (20 min) | Or force one: `GHCP-MEM: Capture Session Snapshot Now`. |
-| 3 | **Copilot sees prior context automatically** | A short brief is written to `.github/instructions/session-memory.instructions.md` and Copilot picks it up. |
-| 4 | **Query history in Chat** | `@mem /search`, `/timeline`, `/detail`, `/azure`, `/health`. |
-| 5 | **Agent-mode tools** | `#ghcpMemSearch` and `#ghcpMemStore` register automatically. |
-| 6 | **Other AI clients** (Cursor / Cline / Windsurf / Claude Desktop) | Run `GHCP-MEM: Show External MCP Client Config` for copy-paste `mcp.json` snippets. |
-| 7 | **Share memory with your team** | Export/import `.ghcpmem-pack.json` packs. |
-
-> [!IMPORTANT]
-> The auto-injected brief is **per-user** memory. Add it to `.gitignore` if you don't want it committed:
-> ```gitignore
-> # GHCP-MEM auto-injected context
-> .github/instructions/session-memory.instructions.md
-> ```
+> _Mermaid source: [docs/diagrams/pipeline.mmd](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/diagrams/pipeline.mmd) · regenerate with `npm run render:diagrams`._
 
 ---
 
 ## 🏢 Enterprise & Azure
 
-> [!NOTE]
-> GHCP-MEM is the only memory layer in this category designed from day one for **enterprise developer machines** and **Azure-shop workflows**. The defaults are conservative; the surface is small; the data never leaves the box.
-
-<table>
-<tr>
-<td width="50%" valign="top">
+> **Note:** GHCP-MEM is the only memory layer in this category designed from day one for **enterprise developer machines** and **Azure-shop workflows**. The defaults are conservative; the surface is small; the data never leaves the box.
 
 ### 🔒 Built for locked-down machines
 
@@ -213,9 +76,6 @@ sequenceDiagram
 - **All storage is per-user.** Lives in VS Code `globalState` + `~/.ghcp-mem/sessions.json`.
 - **MIT licensed.** No copyleft, no per-seat fees, no commercial restrictions.
 
-</td>
-<td width="50%" valign="top">
-
 ### ☁️ Built for Azure shops
 
 - **12-subsystem classifier** auto-tags every edit and terminal command: `iac-bicep`, `iac-terraform`, `iac-arm`, `azd`, `functions`, `appservice`, `aks`, `containerapps`, `storage`, `keyvault`, `openai`, `az-cli`.
@@ -225,19 +85,12 @@ sequenceDiagram
 - **8 Azure-specific redaction rules** (storage / Service Bus / Cosmos / SQL connection strings, SAS tokens, 88-char storage keys, SP secrets, subscription/tenant GUIDs).
 - **Graceful degrade** — no `az` installed or not signed in? Records an informational note, never errors.
 
-</td>
-</tr>
-</table>
-
 ---
 
 ## ⭐ Features
 
-<table>
-<tr>
-<td width="50%" valign="top">
-
 ### 📥 Automatic Capture
+
 - File edits, creates, deletes, renames, opens, closes
 - Diagnostics transitions (errors ↔ clean)
 - Git state changes
@@ -246,49 +99,27 @@ sequenceDiagram
 - Terminal commands (VS Code 1.93+ shell integration)
 - All events debounced and rate-limited
 
-</td>
-<td width="50%" valign="top">
-
 ### 🏷️ Observation Typing
+
 Auto-classified into 12 types:
 
 `feature` · `bugfix` · `refactor` · `docs` · `test` · `chore` · `research` · `config` · `security` · `deployment` · `infra` · `unknown`
 
 `deployment` / `infra` inferred from Azure signals (`azd` / `az` cmds, `.bicep` / `.tf` edits).
 
-</td>
-</tr>
-<tr>
-<td width="50%" valign="top">
+### 🔒 Secret Redaction — 24 rules, dual-pass
 
-### 🔒 Secret Redaction — 21 rules, dual-pass
-
-**13 generic:** AWS · GitHub PATs · OpenAI · Anthropic · Google · Slack · JWT · PEM · `password=` · `api_key=` · emails · IPv4 · credit cards
+**16 generic:** AWS access key + secret · GitHub PATs (classic + fine-grained) · npm tokens · OpenAI · Anthropic · Stripe live keys · Google API · Slack · JWT · Bearer tokens · DB connection URL passwords · PEM private key blocks · `password=` assignments · emails · IPv4 · credit cards
 
 **8 Azure-specific:** Storage / Service Bus / Cosmos / SQL connection strings · SAS tokens · 88-char storage keys · SP secrets · subscription/tenant GUIDs
 
 Plus `<private>...</private>` user-tagged blocks.
 
-</td>
-<td width="50%" valign="top">
-
 ### 🔍 Hybrid Retrieval — RRF K=60
 
-```mermaid
-flowchart LR
-    Q["Query"] --> KW["Keyword<br/>tags 6× · summary 3× · files 2×"]
-    Q --> REC["Recency<br/>7-day half-life decay"]
-    Q --> EMB["Embeddings<br/>(feature-detected)"]
-    KW --> RRF{"RRF fusion<br/>K=60"}
-    REC --> RRF
-    EMB --> RRF
-    RRF --> JAC["Jaccard 0.9<br/>dedup"]
-    JAC --> RES["Top-K results"]
-```
-
-</td>
-</tr>
-</table>
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ITcredibl/ghcp-mem/main/images/diagrams/retrieval.png" alt="Hybrid retrieval: keyword + recency + embeddings fused via Reciprocal Rank Fusion (K=60), then Jaccard dedup" width="800">
+</p>
 
 ### 🌳 Progressive Disclosure (token-efficient)
 
@@ -379,84 +210,69 @@ Copilot's **agent mode** can call these tools automatically — no MCP server re
 
 ---
 
+## 🔌 External MCP Clients (Cursor, Cline, Windsurf, Claude Desktop)
+
+GHCP-MEM mirrors its memory to `~/.ghcp-mem/sessions.json`. Any MCP-compatible client can read it via the bundled stdio server.
+
+**`mcp.json` / `claude_desktop_config.json`:**
+
+```json
+{
+  "mcpServers": {
+    "ghcp-mem": {
+      "command": "node",
+      "args": ["/path/to/extension/out/mcpServer.js"]
+    }
+  }
+}
+```
+
+Use `GHCP-MEM: Show External MCP Client Config` to get the exact resolved path.
+
+**MCP tools exposed:**
+
+- `ghcpMem_search(query, type?, sinceDays?, tag?, workspaceName?, limit?)` — RRF-fused keyword + recency search
+- `ghcpMem_recent(limit?, workspaceName?)` — most recent sessions
+- `ghcpMem_timeline(days?, limit?)` — chronological within a window
+- `ghcpMem_get(id)` — full detail by ID or prefix
+
+**Install VSIX:**
+
+```bash
+code --install-extension ghcp-mem-1.1.7.vsix
+```
+
+---
+
 ## 🏛️ Architecture
 
-```mermaid
-flowchart TD
-    EXT["extension.ts<br/>lifecycle + commands"]
-    TYPES["types.ts<br/>config · globs · types"]
-    CAP["sessionCapture.ts<br/>VS Code event hooks"]
-    RED["redactor.ts<br/>21-rule scanner"]
-    AZD["azureDetect.ts<br/>12-subsystem classifier"]
-    AZC["azureContext.ts<br/>az CLI wrapper"]
-    RC["ruleClassifier.ts<br/>pre-LM type rules"]
-    COMP["contextCompressor.ts<br/>vscode.lm summariser"]
-    EMB["embeddings.ts<br/>vector helper"]
-    STORE["contextStore.ts<br/>DB · index · retention"]
-    HEALTH["health.ts<br/>0–100 score"]
-    PACKS["packs.ts<br/>import/export packs"]
-    AUTO["autosave.ts<br/>pressure trigger"]
-    PROV["contextProvider.ts<br/>@mem chat participant"]
-    VIEW["sessionsView.ts<br/>tree view"]
-    TOOL["memoryTool.ts<br/>agent-mode tools"]
-    MCP["mcpServer.ts<br/>stdio JSON-RPC"]
-
-    EXT --> CAP
-    EXT --> PROV
-    EXT --> VIEW
-    EXT --> TOOL
-    EXT --> PACKS
-    EXT --> HEALTH
-    EXT --> AUTO
-    CAP --> RED
-    RED --> COMP
-    COMP --> STORE
-    CAP --> AZD
-    AZD --> COMP
-    AZC -.optional.-> COMP
-    RC --> COMP
-    COMP --> EMB
-    EMB --> STORE
-    STORE --> HEALTH
-    STORE --> PROV
-    STORE --> VIEW
-    STORE --> PACKS
-    STORE --> TOOL
-    STORE -.mirror.-> MCP
-
-    classDef core fill:#7c3aed,stroke:#5b21b6,color:#fff
-    classDef io fill:#0ea5e9,stroke:#0369a1,color:#fff
-    classDef ui fill:#22c55e,stroke:#15803d,color:#fff
-    classDef az fill:#0078D4,stroke:#005a9e,color:#fff
-    class CAP,COMP,STORE,EMB,RC core
-    class RED,MCP io
-    class PROV,VIEW,TOOL,HEALTH,PACKS,AUTO ui
-    class AZD,AZC az
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ITcredibl/ghcp-mem/main/images/diagrams/architecture.png" alt="GHCP-MEM module architecture — extension.ts orchestrates capture, redactor, compressor, store, MCP, chat, tree view, and agent tools" width="900">
+</p>
 
 <details>
 <summary><b>📁 Module-by-module breakdown</b></summary>
 
 | Module | Responsibility |
 |---|---|
-| [src/types.ts](src/types.ts) | Event types, observation types, config reader, glob matcher, `AzureContextMeta` |
-| [src/redactor.ts](src/redactor.ts) | Secret/PII scanner (incl. 8 Azure rules), `<private>` tag stripper |
-| [src/azureDetect.ts](src/azureDetect.ts) | 12-subsystem classifier for file paths, terminal commands, and content |
-| [src/azureContext.ts](src/azureContext.ts) | `az` CLI wrapper (5-min cache, graceful fallback) — **fully tested** |
-| [src/sessionCapture.ts](src/sessionCapture.ts) | VS Code event hooks with debounce + exclude + redact + Azure tagging |
-| [src/contextCompressor.ts](src/contextCompressor.ts) | `vscode.lm` calls, rule-based fallback, observation-type classification, Azure context — **fully tested** |
-| [src/contextStore.ts](src/contextStore.ts) | Persistent DB, inverted index (async chunked rebuild), serial sync queue, retention, redact-on-import, rolling backups |
-| [src/embeddings.ts](src/embeddings.ts) | Feature-detected `vscode.lm.computeEmbeddings` helper |
-| [src/ruleClassifier.ts](src/ruleClassifier.ts) | Pre-LM observation typing |
-| [src/autosave.ts](src/autosave.ts) | Context-pressure autosave trigger |
-| [src/health.ts](src/health.ts) | 0–100 health score with configurable alert threshold |
-| [src/packs.ts](src/packs.ts) | Build / import (with redaction) / uninstall `.ghcpmem-pack.json` |
-| [src/contextProvider.ts](src/contextProvider.ts) | `@mem` chat participant with layered slash commands |
-| [src/sessionsView.ts](src/sessionsView.ts) | Activity bar tree view |
-| [src/memoryTool.ts](src/memoryTool.ts) | Agent-mode `ghcpMem_search` + `ghcpMem_store` tools |
-| [src/mcpServer.ts](src/mcpServer.ts) | Stand-alone stdio JSON-RPC server with workspace-scoped filtering |
-| [src/extension.ts](src/extension.ts) | Lifecycle, 17 commands, gitignore guard, health alert, top-level imports |
-| [src/test/integration.test.ts](src/test/integration.test.ts) | End-to-end pipeline tests (compress → store → search → dedup → retention → import-redaction) |
+| [src/types.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/types.ts) | Event types, observation types, config reader, glob matcher, `AzureContextMeta` |
+| [src/redactor.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/redactor.ts) | 24-rule secret/PII scanner (incl. 8 Azure rules), `<private>` tag stripper |
+| [src/azureDetect.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/azureDetect.ts) | 12-subsystem classifier for file paths, terminal commands, and content |
+| [src/azureContext.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/azureContext.ts) | `az` CLI wrapper (5-min cache, graceful fallback) — **fully tested** |
+| [src/sessionCapture.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/sessionCapture.ts) | VS Code event hooks with debounce + exclude + redact + Azure tagging |
+| [src/contextCompressor.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/contextCompressor.ts) | `vscode.lm` calls, rule-based fallback, observation-type classification, Azure context — **fully tested** |
+| [src/contextStore.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/contextStore.ts) | Persistent DB, inverted index (async chunked rebuild), serial sync queue, retention, redact-on-import, rolling backups |
+| [src/embeddings.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/embeddings.ts) | Feature-detected `vscode.lm.computeEmbeddings` helper |
+| [src/ruleClassifier.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/ruleClassifier.ts) | Pre-LM observation typing |
+| [src/autosave.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/autosave.ts) | Context-pressure autosave trigger |
+| [src/health.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/health.ts) | 0–100 health score with configurable alert threshold |
+| [src/packs.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/packs.ts) | Build / import (with redaction) / uninstall `.ghcpmem-pack.json` |
+| [src/contextProvider.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/contextProvider.ts) | `@mem` chat participant with layered slash commands |
+| [src/sessionsView.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/sessionsView.ts) | Activity bar tree view |
+| [src/memoryTool.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/memoryTool.ts) | Agent-mode `ghcpMem_search` + `ghcpMem_store` tools |
+| [src/mcpServer.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/mcpServer.ts) | Stand-alone stdio JSON-RPC server with workspace-scoped filtering |
+| [src/extension.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/extension.ts) | Lifecycle, 17 commands, gitignore guard, health alert, top-level imports |
+| [src/test/integration.test.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/test/integration.test.ts) | End-to-end pipeline tests (compress → store → search → dedup → retention → import-redaction) |
 
 </details>
 
@@ -464,12 +280,11 @@ flowchart TD
 
 ## 🔐 Privacy & Security
 
-> [!IMPORTANT]
-> **All data stays on your machine.** GHCP-MEM never opens a network port, never phones home, and never ships data to a third party.
+> **Important:** All data stays on your machine. GHCP-MEM never opens a network port, never phones home, and never ships data to a third party.
 
 - 🏠 **Storage:** VS Code `globalState` + atomic mirror to `~/.ghcp-mem/sessions.json`
 - 🤖 **LM traffic:** your existing Copilot subscription only
-- 🔒 **Redaction:** 21 rules, dual-pass (capture + LM output) plus redact-on-import for third-party packs
+- 🔒 **Redaction:** 24 rules, dual-pass (capture + LM output) plus redact-on-import for third-party packs
 - 📁 **Workspace artifact:** only `.github/instructions/session-memory.instructions.md` — **auto-added to `.gitignore`** on first write
 - 🛡️ **Attack surface:** VS Code extension host only — no subprocesses, no HTTP servers, no native modules
 
@@ -488,7 +303,7 @@ flowchart TD
 | `~/.ghcp-mem/sessions.json` doesn't exist | Created on first successful persist — trigger one via `Capture Session Snapshot Now`. |
 | MCP client can't see any tools | Bundled server is at `<extension-install-dir>/out/mcpServer.js`. Use `Show External MCP Client Config` to get the resolved path. |
 | Terminal commands aren't captured | Requires VS Code shell integration. Enable `terminal.integrated.shellIntegration.enabled` + a supported shell. |
-| Tests fail with `Cannot find module 'vscode'` | Run `npm install` first, then `npm test`. Mock is wired by [scripts/setup-test-env.js](scripts/setup-test-env.js). |
+| Tests fail with `Cannot find module 'vscode'` | Run `npm install` first, then `npm test`. Mock is wired by [scripts/setup-test-env.js](https://github.com/ITcredibl/ghcp-mem/blob/main/scripts/setup-test-env.js). |
 | Want to wipe everything | `Clear All Stored Context` + delete `~/.ghcp-mem/`. Backups stay in extension global storage under `backups/`. |
 
 </details>
@@ -497,16 +312,12 @@ flowchart TD
 
 ## 📜 License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](https://github.com/ITcredibl/ghcp-mem/blob/main/LICENSE).
 
 ---
 
-<div align="center">
-
 ### Built for the GitHub Copilot ecosystem
 
-[Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](docs/DEMO.md) · [Compare against other memory tools](docs/COMPARISON.md)
+[Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/DEMO.md) · [Compare against other memory tools](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/COMPARISON.md)
 
-<sub>**v1.1.6** · 94 passing tests · zero native deps · zero ports · 24-rule redaction</sub>
-
-</div>
+<sub>**v1.1.7** · 94 passing tests · zero native deps · zero ports · 24-rule redaction</sub>

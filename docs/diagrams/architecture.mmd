@@ -1,0 +1,50 @@
+flowchart TD
+    EXT["extension.ts<br/>lifecycle + commands"]
+    TYPES["types.ts<br/>config · globs · types"]
+    CAP["sessionCapture.ts<br/>VS Code event hooks"]
+    RED["redactor.ts<br/>24-rule scanner"]
+    AZD["azureDetect.ts<br/>12-subsystem classifier"]
+    AZC["azureContext.ts<br/>az CLI wrapper"]
+    RC["ruleClassifier.ts<br/>pre-LM type rules"]
+    COMP["contextCompressor.ts<br/>vscode.lm summariser"]
+    EMB["embeddings.ts<br/>vector helper"]
+    STORE["contextStore.ts<br/>DB · index · retention"]
+    HEALTH["health.ts<br/>0–100 score"]
+    PACKS["packs.ts<br/>import/export packs"]
+    AUTO["autosave.ts<br/>pressure trigger"]
+    PROV["contextProvider.ts<br/>@mem chat participant"]
+    VIEW["sessionsView.ts<br/>tree view"]
+    TOOL["memoryTool.ts<br/>agent-mode tools"]
+    MCP["mcpServer.ts<br/>stdio JSON-RPC"]
+
+    EXT --> CAP
+    EXT --> PROV
+    EXT --> VIEW
+    EXT --> TOOL
+    EXT --> PACKS
+    EXT --> HEALTH
+    EXT --> AUTO
+    CAP --> RED
+    RED --> COMP
+    COMP --> STORE
+    CAP --> AZD
+    AZD --> COMP
+    AZC -.optional.-> COMP
+    RC --> COMP
+    COMP --> EMB
+    EMB --> STORE
+    STORE --> HEALTH
+    STORE --> PROV
+    STORE --> VIEW
+    STORE --> PACKS
+    STORE --> TOOL
+    STORE -.mirror.-> MCP
+
+    classDef core fill:#7c3aed,stroke:#5b21b6,color:#fff
+    classDef io fill:#0ea5e9,stroke:#0369a1,color:#fff
+    classDef ui fill:#22c55e,stroke:#15803d,color:#fff
+    classDef az fill:#0078D4,stroke:#005a9e,color:#fff
+    class CAP,COMP,STORE,EMB,RC core
+    class RED,MCP io
+    class PROV,VIEW,TOOL,HEALTH,PACKS,AUTO ui
+    class AZD,AZC az

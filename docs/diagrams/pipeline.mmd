@@ -1,0 +1,21 @@
+flowchart TB
+    subgraph SRC["🖥️ Your Coding Session"]
+        direction LR
+        E1["File edits"]
+        E2["Diagnostics"]
+        E3["Git ops"]
+        E4["Debug"]
+        E5["Tasks"]
+        E6["Terminal"]
+    end
+
+    SRC -->|debounced · glob-filtered| CAP["🖱️ Session Capture"]
+    CAP --> RED["🔴 Secret Redactor<br/>24 rules + private tags"]
+    RED --> COMP["🤖 AI Compressor<br/>vscode.lm · gpt-4o-mini"]
+    COMP --> CLASS{"Auto-classify<br/>feature · bugfix · infra · …"}
+    CLASS --> STORE["🗄️ Context Store<br/>globalState + inverted index"]
+    STORE --> BAK["🔁 Rolling backups (5)"]
+    STORE --> MIRROR["🪞 ~/.ghcp-mem/sessions.json"]
+    MIRROR --> MCP["🔌 MCP stdio server<br/>Cursor · Cline · Windsurf"]
+    STORE --> PROV["💬 @mem Chat Participant"]
+    STORE --> TOOL["🛠️ #ghcpMemSearch · #ghcpMemStore"]

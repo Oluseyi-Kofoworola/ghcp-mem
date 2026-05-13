@@ -14,3 +14,7 @@ docs/**
 node_modules/**
 *.vsix
 .github/**
+.eslintrc.json
+demo/**
+images/diagrams/**
+README.md.bak

@@ -1,0 +1,9 @@
+flowchart LR
+    Q["Query"] --> KW["Keyword<br/>tags 6× · summary 3× · files 2×"]
+    Q --> REC["Recency<br/>7-day half-life decay"]
+    Q --> EMB["Embeddings<br/>(feature-detected)"]
+    KW --> RRF{"RRF fusion<br/>K=60"}
+    REC --> RRF
+    EMB --> RRF
+    RRF --> JAC["Jaccard 0.9<br/>dedup"]
+    JAC --> RES["Top-K results"]
