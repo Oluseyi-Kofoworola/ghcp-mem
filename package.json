@@ -2,18 +2,18 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "Persistent session memory for GitHub Copilot. Captures, compresses, and injects coding session context with built-in secret redaction and progressive disclosure.",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Oluseyi-Kofoworola/ghcp-mem.git"
+    "url": "https://github.com/ITcredibl/ghcp-mem.git"
   },
   "bugs": {
-    "url": "https://github.com/Oluseyi-Kofoworola/ghcp-mem/issues"
+    "url": "https://github.com/ITcredibl/ghcp-mem/issues"
   },
-  "homepage": "https://github.com/Oluseyi-Kofoworola/ghcp-mem#readme",
+  "homepage": "https://github.com/ITcredibl/ghcp-mem#readme",
   "engines": {
     "vscode": "^1.93.0"
   },
