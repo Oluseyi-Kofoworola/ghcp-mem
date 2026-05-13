@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import * as crypto from 'crypto';
+import * as os from 'os';
+import * as path from 'path';
 import { SessionCapture } from './sessionCapture';
 import { ContextCompressor } from './contextCompressor';
 import { ContextStore } from './contextStore';
@@ -261,7 +264,6 @@ export function activate(context: vscode.ExtensionContext) {
             return;
           }
           const meta: AzureContextMeta = { ...ctx, subsystems: ['cli'] };
-          const crypto2 = require('crypto') as typeof import('crypto');
           const summaryParts = [
             `Manual Azure context snapshot.`,
             `Subscription: ${ctx.subscriptionName ?? ctx.subscriptionId ?? 'unknown'}.`,
@@ -270,7 +272,7 @@ export function activate(context: vscode.ExtensionContext) {
           if (ctx.resourceIds?.length) summaryParts.push(`${ctx.resourceIds.length} resource(s) inventoried.`);
           const wsF = vscode.workspace.workspaceFolders?.[0];
           const session: CompressedSession = {
-            id: crypto2.randomUUID(),
+            id: crypto.randomUUID(),
             workspaceId: wsF?.uri.toString() ?? 'unknown',
             workspaceName: wsF?.name ?? 'unknown',
             startTime: Date.now(),
@@ -387,8 +389,6 @@ export function activate(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand('ghcpMem.showMcpInfo', async () => {
-      const os = require('os') as typeof import('os');
-      const path = require('path') as typeof import('path');
       const storePath = path.join(os.homedir(), '.ghcp-mem', 'sessions.json');
       // Locate the installed mcpServer.js (relative to this extension's out/).
       const extUri = vscode.extensions.getExtension('ghcp-plugin.ghcp-mem')?.extensionUri;
@@ -478,6 +478,20 @@ export function activate(context: vscode.ExtensionContext) {
 
   const stats = store.getStats();
   console.log(`[GHCP-MEM] Active. ${stats.workspaceSessions} workspace session(s) available.`);
+
+  // Health threshold notification — warn when score falls below 30.
+  const health = computeHealth(store.getAllSessions());
+  const healthThreshold = vscode.workspace.getConfiguration('ghcpMem').get<number>('healthAlertThreshold', 30);
+  if (health.score < healthThreshold && stats.totalSessions > 0) {
+    vscode.window.showWarningMessage(
+      `GHCP-MEM: Memory health is low (${health.score}/100). Run "GHCP-MEM: Show Memory Health Score" for details.`,
+      'Show Health'
+    ).then(action => {
+      if (action === 'Show Health') {
+        vscode.commands.executeCommand('ghcpMem.showHealth');
+      }
+    });
+  }
 }
 
 export function deactivate() {}
@@ -563,8 +577,31 @@ ${contextText}
   try {
     await vscode.workspace.fs.createDirectory(dir);
     await vscode.workspace.fs.writeFile(file, Buffer.from(content, 'utf-8'));
+    // Ensure the auto-generated file is git-ignored so it is never committed.
+    await ensureGitIgnored(ws.uri, '.github/instructions/session-memory.instructions.md');
   } catch (err) {
     console.warn('[GHCP-MEM] Could not write startup context:', err);
+  }
+}
+
+/** Append `entry` to the workspace .gitignore if it isn't already listed. */
+async function ensureGitIgnored(wsRoot: vscode.Uri, entry: string): Promise<void> {
+  try {
+    const gitignoreUri = vscode.Uri.joinPath(wsRoot, '.gitignore');
+    let existing = '';
+    try {
+      existing = Buffer.from(await vscode.workspace.fs.readFile(gitignoreUri)).toString('utf-8');
+    } catch {
+      // File doesn't exist yet — we'll create it.
+    }
+    const lines = existing.split('\n').map(l => l.trim());
+    if (lines.includes(entry)) return;
+    const updated = existing.endsWith('\n') || existing === ''
+      ? existing + entry + '\n'
+      : existing + '\n' + entry + '\n';
+    await vscode.workspace.fs.writeFile(gitignoreUri, Buffer.from(updated, 'utf-8'));
+  } catch {
+    // Non-fatal — ignore FS errors in restricted sandboxes.
   }
 }
 
@@ -617,7 +654,6 @@ function formatSessionDetail(s: CompressedSession): string {
 }
 
 function buildAzureDemoSessions(): CompressedSession[] {
-  const crypto2 = require('crypto') as typeof import('crypto');
   const ws = vscode.workspace.workspaceFolders?.[0];
   const workspaceId = ws?.uri.toString() ?? 'demo-workspace';
   const workspaceName = ws?.name ?? 'demo';
@@ -634,7 +670,7 @@ function buildAzureDemoSessions(): CompressedSession[] {
     subsystems: string[],
     extraTags: string[] = []
   ): CompressedSession => ({
-    id: crypto2.randomUUID(),
+    id: crypto.randomUUID(),
     workspaceId,
     workspaceName,
     startTime: now - offset - 15 * 60000,

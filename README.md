@@ -13,7 +13,8 @@
 [![Azure-aware](https://img.shields.io/badge/Azure-aware-0078D4?style=for-the-badge&logo=microsoftazure&logoColor=white)](#%EF%B8%8F-azure--enterprise)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e?style=flat-square)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-76%20passing-22c55e?style=flat-square)](src/test)
+[![Version](https://img.shields.io/badge/version-1.1.0-22c55e?style=flat-square)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-93%20passing-22c55e?style=flat-square)](src/test)
 [![Native deps](https://img.shields.io/badge/native_deps-0-22c55e?style=flat-square)](#-why-it-matters)
 [![Network ports](https://img.shields.io/badge/network_ports-0-22c55e?style=flat-square)](#-privacy--security)
 [![Redaction rules](https://img.shields.io/badge/redaction%20rules-21-22c55e?style=flat-square)](#-privacy--security)
@@ -114,7 +115,7 @@ flowchart TB
 ```powershell
 git clone https://github.com/Oluseyi-Kofoworola/ghcp-mem.git
 cd ghcp-mem
-code --install-extension ghcp-mem-1.0.0.vsix
+code --install-extension ghcp-mem-1.1.0.vsix
 ```
 
 Reload VS Code. You should see `$(history) MEM ●●○○○ 0` in the status bar.
@@ -128,9 +129,9 @@ cd ghcp-mem
 
 npm install          # install dev deps (no runtime native modules)
 npm run compile      # tsc → out/
-npm test             # 76 cases, ~3 s
+npm test             # 93 cases, ~3 s
 npx @vscode/vsce package
-code --install-extension ghcp-mem-1.0.0.vsix
+code --install-extension ghcp-mem-1.1.0.vsix
 ```
 
 `npm run watch` keeps the TypeScript compiler running for the F5 dev loop.
@@ -358,7 +359,7 @@ Copilot's **agent mode** can call these tools automatically — no MCP server re
 ## ⚙️ Settings
 
 <details>
-<summary><b>🎚️ 10 configurable knobs</b></summary>
+<summary><b>🎚️ 11 configurable knobs</b></summary>
 
 | Key | Default | Description |
 |---|---|---|
@@ -370,7 +371,8 @@ Copilot's **agent mode** can call these tools automatically — no MCP server re
 | `ghcpMem.redactSecrets` | `true` | Secret/PII scanning |
 | `ghcpMem.honorPrivateTags` | `true` | Strip `<private>...</private>` content |
 | `ghcpMem.excludeGlobs` | `[".env*", "*.pem", "*.key", "secrets/**", "node_modules/**"]` | Skip these paths |
-| `ghcpMem.autoInjectStartupContext` | `true` | Write `.github/instructions/*.md` |
+| `ghcpMem.autoInjectStartupContext` | `true` | Write `.github/instructions/*.md` (auto-gitignored) |
+| `ghcpMem.healthAlertThreshold` | `30` | Warn at startup when memory health score falls below this value (`0` = off) |
 | `ghcpMem.captureFileEdits` / `captureDiagnostics` / `captureTerminalCommands` / `captureGitOps` | `true` | Per-signal toggles |
 
 </details>
@@ -440,20 +442,21 @@ flowchart TD
 | [src/types.ts](src/types.ts) | Event types, observation types, config reader, glob matcher, `AzureContextMeta` |
 | [src/redactor.ts](src/redactor.ts) | Secret/PII scanner (incl. 8 Azure rules), `<private>` tag stripper |
 | [src/azureDetect.ts](src/azureDetect.ts) | 12-subsystem classifier for file paths, terminal commands, and content |
-| [src/azureContext.ts](src/azureContext.ts) | `az` CLI wrapper (5-min cache, graceful fallback) |
+| [src/azureContext.ts](src/azureContext.ts) | `az` CLI wrapper (5-min cache, graceful fallback) — **fully tested** |
 | [src/sessionCapture.ts](src/sessionCapture.ts) | VS Code event hooks with debounce + exclude + redact + Azure tagging |
-| [src/contextCompressor.ts](src/contextCompressor.ts) | `vscode.lm` calls, observation-type classification, attaches Azure context |
-| [src/contextStore.ts](src/contextStore.ts) | Persistent DB, inverted index, retention, export/import, atomic write, rolling backups |
+| [src/contextCompressor.ts](src/contextCompressor.ts) | `vscode.lm` calls, rule-based fallback, observation-type classification, Azure context — **fully tested** |
+| [src/contextStore.ts](src/contextStore.ts) | Persistent DB, inverted index (async chunked rebuild), serial sync queue, retention, redact-on-import, rolling backups |
 | [src/embeddings.ts](src/embeddings.ts) | Feature-detected `vscode.lm.computeEmbeddings` helper |
 | [src/ruleClassifier.ts](src/ruleClassifier.ts) | Pre-LM observation typing |
 | [src/autosave.ts](src/autosave.ts) | Context-pressure autosave trigger |
-| [src/health.ts](src/health.ts) | 0–100 health score |
-| [src/packs.ts](src/packs.ts) | Build / import / uninstall `.ghcpmem-pack.json` |
+| [src/health.ts](src/health.ts) | 0–100 health score with configurable alert threshold |
+| [src/packs.ts](src/packs.ts) | Build / import (with redaction) / uninstall `.ghcpmem-pack.json` |
 | [src/contextProvider.ts](src/contextProvider.ts) | `@mem` chat participant with layered slash commands |
 | [src/sessionsView.ts](src/sessionsView.ts) | Activity bar tree view |
 | [src/memoryTool.ts](src/memoryTool.ts) | Agent-mode `ghcpMem_search` + `ghcpMem_store` tools |
-| [src/mcpServer.ts](src/mcpServer.ts) | Stand-alone stdio JSON-RPC server for Cursor/Cline/Windsurf/Claude |
-| [src/extension.ts](src/extension.ts) | Lifecycle, all 17 commands, wiring |
+| [src/mcpServer.ts](src/mcpServer.ts) | Stand-alone stdio JSON-RPC server with workspace-scoped filtering |
+| [src/extension.ts](src/extension.ts) | Lifecycle, 17 commands, gitignore guard, health alert, top-level imports |
+| [src/test/integration.test.ts](src/test/integration.test.ts) | End-to-end pipeline tests (compress → store → search → dedup → retention → import-redaction) |
 
 </details>
 
@@ -466,8 +469,8 @@ flowchart TD
 
 - 🏠 **Storage:** VS Code `globalState` + atomic mirror to `~/.ghcp-mem/sessions.json`
 - 🤖 **LM traffic:** your existing Copilot subscription only
-- 🔒 **Redaction:** 21 rules, dual-pass (input + output of the LM)
-- 📁 **Workspace artifact:** only `.github/instructions/session-memory.instructions.md` (gitignore-friendly)
+- 🔒 **Redaction:** 21 rules, dual-pass (capture + LM output) plus redact-on-import for third-party packs
+- 📁 **Workspace artifact:** only `.github/instructions/session-memory.instructions.md` — **auto-added to `.gitignore`** on first write
 - 🛡️ **Attack surface:** VS Code extension host only — no subprocesses, no HTTP servers, no native modules
 
 ---
@@ -504,6 +507,6 @@ MIT — see [LICENSE](LICENSE).
 
 [Report a bug](https://github.com/Oluseyi-Kofoworola/ghcp-mem/issues) · [Request a feature](https://github.com/Oluseyi-Kofoworola/ghcp-mem/issues) · [Live demo](docs/DEMO.md) · [Compare against other memory tools](docs/COMPARISON.md)
 
-<sub>**v1.0.0** · 76 passing tests · zero native deps · zero ports · 21-rule redaction</sub>
+<sub>**v1.1.0** · 93 passing tests · zero native deps · zero ports · 21-rule redaction</sub>
 
 </div>

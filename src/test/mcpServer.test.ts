@@ -17,6 +17,7 @@ function mkSession(o: any = {}) {
     problemsSolved: o.problemsSolved ?? [],
     userTags: o.userTags ?? [],
     redactionCount: 0,
+    rawEventCount: 0,
   };
 }
 

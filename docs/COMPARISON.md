@@ -4,7 +4,7 @@
 
 ### How GHCP-MEM compares to other persistent-memory tools for AI coding assistants
 
-[![v1.0.0](https://img.shields.io/badge/version-1.0.0-7c3aed?style=for-the-badge)](../package.json)
+[![v1.1.0](https://img.shields.io/badge/version-1.1.0-7c3aed?style=for-the-badge)](../package.json)
 [![Scope](https://img.shields.io/badge/scope-VS_Code_+_Copilot-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](../README.md)
 
 </div>
@@ -50,31 +50,34 @@ GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, se
 <details open>
 <summary><b>🔬 Full feature comparison</b></summary>
 
-| Dimension | **GHCP-MEM v1.0.0** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
+| Dimension | **GHCP-MEM v1.1.0** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
 |---|---|---|---|---|---|---|
 | No external service / port | ✅ | ❌ (service by default) | ❌ (needs pipx + Python server) | ✅ | ✅ | ❌ (`:37777` worker) |
 | No native deps | ✅ | 🟡 (better-sqlite3 in legacy) | ❌ | ✅ | ❌ (sql-wasm, Nomic) | ❌ (SQLite, Chroma, Bun) |
 | Auto-capture signals | ✅ (edits, diagnostics, git, debug, tasks, terminal) | 🟡 (file save only) | ❌ (user-driven) | ✅ (chat transcript) | ✅ (transcript hooks) | ✅ |
-| Auto secret/PII redaction | ✅ (13 generic + 8 Azure, dual-pass) | ❌ | ❌ | ❌ | ❌ | 🟡 (`<private>` tags only) |
+| Auto secret/PII redaction | ✅ (13 generic + 8 Azure, dual-pass + redact-on-import) | ❌ | ❌ | ❌ | ❌ | 🟡 (`<private>` tags only) |
 | Glob-based file exclusion | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Observation typing | ✅ (12 types, rule + LM) | ❌ | 🟡 (manual scopes) | ✅ (decision / bug / arch) | ❌ | 🟡 (by tag) |
 | Progressive disclosure | ✅ (`/search` → `/timeline` → `/detail`) | 🟡 (`/recall`) | ❌ | 🟡 | ❌ | ✅ |
-| Inline query filters | ✅ (`type:X since:7d tag:Y`) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Inline query filters | ✅ (`type:X since:7d tag:Y workspaceId:Z`) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Vector embeddings | 🟡 (feature-detected `vscode.lm.computeEmbeddings`) | ✅ | ❌ | 🟡 | ✅ (768d Nomic) | ✅ (Chroma) |
 | Hybrid ranking (vec + FTS + recency) | ✅ (RRF K=60 + 7-day decay + workspace boost) | 🟡 | ❌ | ❌ | ✅ | 🟡 |
-| Auto-inject prior context | ✅ (`.github/instructions/*.md`) | 🟡 | ✅ (frontmatter MD) | ✅ (CLAUDE.md) | ✅ | ✅ |
+| Auto-inject prior context | ✅ (`.github/instructions/*.md`, auto-gitignored) | 🟡 | ✅ (frontmatter MD) | ✅ (CLAUDE.md) | ✅ | ✅ |
 | Sidebar tree view | ✅ | ✅ | ✅ | ✅ | ❌ (statusline) | ❌ (external web viewer) |
 | Status bar counter | ✅ (`MEM ●●●○○ 73`) | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Export / import | ✅ (JSON) | ✅ (bundles + named packs) | 🟡 (MD files) | ✅ (single-MD export) | 🟡 (raw sqlite) | 🟡 |
-| Team-shareable packs | ✅ (`.ghcpmem-pack.json`, schema-versioned, auto-redacted) | ✅ (`.memorypack.json`) | ✅ (workspace scope) | 🟡 (commit `.cortex/`) | ❌ | ❌ |
+| Export / import | ✅ (JSON, redacted on import) | ✅ (bundles + named packs) | 🟡 (MD files) | ✅ (single-MD export) | 🟡 (raw sqlite) | 🟡 |
+| Team-shareable packs | ✅ (`.ghcpmem-pack.json`, schema-versioned, redacted on import) | ✅ (`.memorypack.json`) | ✅ (workspace scope) | 🟡 (commit `.cortex/`) | ❌ | ❌ |
 | Age-based retention | ✅ | ❌ | n/a | ❌ | ❌ | 🟡 (count only) |
 | Per-session delete / tag | ✅ | ✅ (`/forget`) | ✅ (edit MD) | ✅ | ✅ | ❌ |
 | Content-hash dedup | ✅ (SHA-256) | 🟡 | ❌ | ❌ | ✅ | 🟡 |
 | Backups / recovery | ✅ (rolling 5, restore command) | 🟡 | n/a | ❌ | ✅ | ❌ |
 | Context-pressure autosave | ✅ (event count + wall-clock) | ❌ | ❌ | 🟡 | ✅ | ✅ |
-| Multi-AI interop (MCP) | ✅ (stdio MCP, 4 tools, JSON-RPC 2.0) | 🟡 (LM tool) | ✅ (MCP) | ✅ (MCP + CLAUDE.md) | ❌ | ✅ (3-layer MCP) |
+| Multi-AI interop (MCP) | ✅ (stdio MCP, 4 tools, workspace-scoped, JSON-RPC 2.0) | 🟡 (LM tool) | ✅ (MCP) | ✅ (MCP + CLAUDE.md) | ❌ | ✅ (3-layer MCP) |
 | Azure-aware capture | ✅ (12-subsystem classifier + `az` snapshot) | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Formal test suite | ✅ (76 `node:test` cases) | ✅ (vitest) | 🟡 | 🟡 | ✅ (231 tests) | ❌ |
+| Health score alerting | ✅ (0–100, configurable threshold notification) | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Auto-gitignore injected files | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Async non-blocking index rebuild | ✅ (chunked `setImmediate`) | ❌ | n/a | ❌ | ❌ | n/a |
+| Formal test suite | ✅ (93 `node:test` cases, incl. integration + pipeline tests) | ✅ (vitest) | 🟡 | 🟡 | ✅ (231 tests) | ❌ |
 
 </details>
 
@@ -130,6 +133,6 @@ Every gap from the original v0.x analysis was closed before v1.0. Remaining item
 
 [← Back to README](../README.md) · [Live demo](DEMO.md) · [Report an issue](https://github.com/Oluseyi-Kofoworola/ghcp-mem/issues)
 
-<sub>**Comparison for GHCP-MEM v1.0.0** · last refreshed May 2026</sub>
+<sub>**Comparison for GHCP-MEM v1.1.0** · last refreshed May 2026</sub>
 
 </div>

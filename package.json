@@ -2,7 +2,7 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "Persistent session memory for GitHub Copilot. Captures, compresses, and injects coding session context with built-in secret redaction and progressive disclosure.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "OluseyiKofoworola",
   "license": "MIT",
   "repository": {
@@ -155,7 +155,8 @@
         "ghcpMem.autoInjectStartupContext": { "type": "boolean", "default": true, "description": "Write .github/instructions/session-memory.instructions.md for auto-injection" },
         "ghcpMem.autosave.enabled": { "type": "boolean", "default": true, "description": "Enable context-pressure autosave (flush based on event count + wall clock)" },
         "ghcpMem.autosave.eventThreshold": { "type": "number", "default": 40, "description": "Trigger autosave once this many captured events are buffered" },
-        "ghcpMem.autosave.minutesThreshold": { "type": "number", "default": 20, "description": "Trigger autosave after this many minutes since the last flush (with any pending events)" }
+        "ghcpMem.autosave.minutesThreshold": { "type": "number", "default": 20, "description": "Trigger autosave after this many minutes since the last flush (with any pending events)" },
+        "ghcpMem.healthAlertThreshold": { "type": "number", "default": 30, "description": "Show a warning notification if memory health score falls below this value (0 = disabled)" }
       }
     }
   },

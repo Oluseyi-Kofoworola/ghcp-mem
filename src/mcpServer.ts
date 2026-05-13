@@ -25,10 +25,12 @@ import { createInterface } from 'readline';
 import { homedir } from 'os';
 import { join } from 'path';
 import { promises as fs } from 'fs';
+// Import shared types to avoid duplicating interface definitions.
+import type { CompressedSession, ContextDatabase } from './types';
 
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_NAME = 'ghcp-mem';
-const SERVER_VERSION = '0.5.0';
+const SERVER_VERSION = '0.6.0';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -44,28 +46,9 @@ interface JsonRpcResponse {
   error?: { code: number; message: string; data?: any };
 }
 
-interface StoredSession {
-  id: string;
-  workspaceId: string;
-  workspaceName: string;
-  startTime: number;
-  endTime: number;
-  summary: string;
-  observationType: string;
-  keyFiles: string[];
-  keyTopics: string[];
-  decisions: string[];
-  problemsSolved: string[];
-  userTags: string[];
-  redactionCount: number;
-  azureContext?: any;
-}
-
-interface StoredDatabase {
-  version: number;
-  sessions: StoredSession[];
-  lastUpdated: number;
-}
+/** Alias to keep the rest of the file readable. */
+type StoredSession = CompressedSession;
+type StoredDatabase = ContextDatabase;
 
 function storePath(): string {
   return process.env.GHCP_MEM_STORE_PATH ?? join(homedir(), '.ghcp-mem', 'sessions.json');
@@ -192,6 +175,7 @@ const TOOLS = [
         type: { type: 'string', description: 'Optional observation type filter (feature, bugfix, infra, deployment, ...).' },
         sinceDays: { type: 'number', description: 'Only return sessions from the last N days.' },
         tag: { type: 'string', description: 'Filter by user-applied tag.' },
+        workspaceId: { type: 'string', description: 'Scope results to a specific workspace URI. Omit for all workspaces.' },
         limit: { type: 'number', description: 'Max results (default 5, max 25).' },
       },
       required: ['query'],
@@ -204,6 +188,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         limit: { type: 'number', description: 'Max results (default 5, max 25).' },
+        workspaceId: { type: 'string', description: 'Scope results to a specific workspace URI. Omit for all workspaces.' },
       },
     },
   },
@@ -248,15 +233,16 @@ async function handleCall(name: string, args: any): Promise<any> {
       const hits = searchSessions(
         db,
         String(args?.query ?? ''),
-        { type: args?.type, tag: args?.tag, sinceDays: args?.sinceDays },
+        { type: args?.type, tag: args?.tag, sinceDays: args?.sinceDays, workspaceId: args?.workspaceId },
         limit,
       );
       return textContent({ count: hits.length, results: hits.map(summarizeForMcp) });
     }
     case 'ghcpMem_recent': {
       const limit = clamp(args?.limit, 5, 25);
-      const recent = [...db.sessions].sort((a, b) => b.endTime - a.endTime).slice(0, limit);
-      return textContent({ count: recent.length, results: recent.map(summarizeForMcp) });
+      let recent = [...db.sessions].sort((a, b) => b.endTime - a.endTime);
+      if (args?.workspaceId) recent = recent.filter(s => s.workspaceId === args.workspaceId);
+      return textContent({ count: recent.slice(0, limit).length, results: recent.slice(0, limit).map(summarizeForMcp) });
     }
     case 'ghcpMem_timeline': {
       const days = clamp(args?.days, 7, 365);

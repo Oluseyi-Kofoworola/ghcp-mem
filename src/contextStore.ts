@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { CompressedSession, ContextDatabase, ObservationType, getConfig } from './types';
 import { cosineSim, EmbeddingFn } from './embeddings';
+import { redact } from './redactor';
 
 const DB_KEY = 'ghcpMem.contextDatabase';
 const DB_VERSION = 2;
@@ -42,14 +43,19 @@ export class ContextStore implements vscode.Disposable {
   /** Optional: set by extension.ts once the embedder is resolved. */
   embedder?: EmbeddingFn;
   private lastBackupAt = 0;
+  /** Queue to serialize syncToDisk calls and prevent interleaved writes. */
+  private syncQueue: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly globalState: vscode.Memento,
     private readonly backupDir?: vscode.Uri,
   ) {
     this.db = this.load();
-    this.rebuildIndex();
-    this.enforceRetention().catch(() => {});
+    // Chunk index rebuild to avoid blocking the extension host on large stores.
+    this.rebuildIndexAsync().then(() => {
+      // Run retention once at startup (not on every addSession).
+      this.enforceRetention().catch(() => {});
+    });
   }
 
   private load(): ContextDatabase {
@@ -99,7 +105,6 @@ export class ContextStore implements vscode.Disposable {
       const dropped = this.db.sessions.splice(0, this.db.sessions.length - config.maxStoredSessions);
       for (const d of dropped) this.removeFromIndex(d);
     }
-    await this.enforceRetention();
     await this.persist();
   }
 
@@ -301,10 +306,19 @@ export class ContextStore implements vscode.Disposable {
     }
     const existingIds = new Set(this.db.sessions.map(s => s.id));
     let imported = 0;
+    const r = (txt: string) => redact(txt, { redactSecrets: true, honorPrivateTags: true }).text;
     for (const s of parsed.sessions) {
       if (existingIds.has(s.id)) continue;
-      this.db.sessions.push(s);
-      this.indexSession(s);
+      // Re-run redaction on import to protect against unredacted third-party data.
+      const sanitized: CompressedSession = {
+        ...s,
+        summary: r(s.summary),
+        decisions: (s.decisions ?? []).map(r),
+        problemsSolved: (s.problemsSolved ?? []).map(r),
+        keyTopics: (s.keyTopics ?? []).map(r),
+      };
+      this.db.sessions.push(sanitized);
+      this.indexSession(sanitized);
       imported++;
     }
     this.db.sessions.sort((a, b) => a.startTime - b.startTime);
@@ -376,6 +390,29 @@ export class ContextStore implements vscode.Disposable {
     for (const s of this.db.sessions) this.indexSession(s);
   }
 
+  /**
+   * Chunked async index rebuild — avoids blocking the extension host UI thread
+   * when restoring a large store (500+ sessions) from backup or globalState.
+   */
+  private rebuildIndexAsync(): Promise<void> {
+    this.index.clear();
+    const sessions = [...this.db.sessions];
+    const CHUNK = 50;
+    let i = 0;
+    return new Promise<void>(resolve => {
+      const step = () => {
+        const end = Math.min(i + CHUNK, sessions.length);
+        for (; i < end; i++) this.indexSession(sessions[i]);
+        if (i < sessions.length) {
+          setImmediate(step);
+        } else {
+          resolve();
+        }
+      };
+      setImmediate(step);
+    });
+  }
+
   private extractTerms(text: string): Set<string> {
     return new Set(
       (text ?? '')
@@ -395,7 +432,9 @@ export class ContextStore implements vscode.Disposable {
     await this.globalState.update(DB_KEY, this.db);
     // Best-effort mirror to ~/.ghcp-mem/sessions.json so the standalone
     // MCP server (used by Cursor/Cline/Windsurf) can read our store.
-    this.syncToDisk().catch(() => {});
+    // Serialised through a queue to prevent interleaved writes from rapid
+    // successive addSession / tag / delete calls.
+    this.syncQueue = this.syncQueue.then(() => this.syncToDisk()).catch(() => {});
     this.onChangeEmitter.fire();
   }
 
@@ -483,7 +522,7 @@ export class ContextStore implements vscode.Disposable {
       throw new Error('Invalid backup file');
     }
     this.db = { version: DB_VERSION, sessions: parsed.sessions, lastUpdated: Date.now() };
-    this.rebuildIndex();
+    await this.rebuildIndexAsync();
     await this.globalState.update(DB_KEY, this.db);
     this.onChangeEmitter.fire();
     return this.db.sessions.length;

@@ -88,11 +88,17 @@ export async function importPack(store: ContextStore, pack: MemoryPack): Promise
   const existingIds = new Set(store.getAllSessions().map(s => s.id));
   let imported = 0;
   let skipped = 0;
+  const r = (txt: string) => redact(txt, { redactSecrets: true, honorPrivateTags: true }).text;
   for (const raw of pack.sessions) {
     if (existingIds.has(raw.id)) { skipped++; continue; }
-    const tagged = {
+    // Re-run redaction on every imported session to guard against unredacted pack data.
+    const tagged: CompressedSession = {
       ...raw,
       userTags: Array.from(new Set([...(raw.userTags ?? []), packTag])),
+      summary: r(raw.summary),
+      decisions: (raw.decisions ?? []).map(r),
+      problemsSolved: (raw.problemsSolved ?? []).map(r),
+      keyTopics: (raw.keyTopics ?? []).map(r),
     };
     await store.addSession(tagged);
     imported++;
