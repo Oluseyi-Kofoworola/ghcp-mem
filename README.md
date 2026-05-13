@@ -115,7 +115,7 @@ flowchart TB
 ```powershell
 git clone https://github.com/ITcredibl/ghcp-mem.git
 cd ghcp-mem
-code --install-extension ghcp-mem-1.1.3.vsix
+code --install-extension ghcp-mem-1.1.5.vsix
 ```
 
 Reload VS Code. You should see `$(history) MEM ●●○○○ 0` in the status bar.
@@ -129,9 +129,9 @@ cd ghcp-mem
 
 npm install          # install dev deps (no runtime native modules)
 npm run compile      # tsc → out/
-npm test             # 93 cases, ~3 s
+npm test             # 94 cases, ~3 s
 npx @vscode/vsce package
-code --install-extension ghcp-mem-1.1.3.vsix
+code --install-extension ghcp-mem-1.1.5.vsix
 ```
 
 `npm run watch` keeps the TypeScript compiler running for the F5 dev loop.
@@ -507,6 +507,6 @@ MIT — see [LICENSE](LICENSE).
 
 [Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](docs/DEMO.md) · [Compare against other memory tools](docs/COMPARISON.md)
 
-<sub>**v1.1.3** · 93 passing tests · zero native deps · zero ports · 21-rule redaction</sub>
+<sub>**v1.1.5** · 94 passing tests · zero native deps · zero ports · 24-rule redaction</sub>
 
 </div>
