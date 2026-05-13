@@ -110,8 +110,17 @@ export function redact(input: string, opts: RedactOptions): RedactionResult {
 /** Quick check whether a string contains any obvious secret. */
 export function looksSensitive(input: string): boolean {
   if (!input) return false;
-  // Re-create each regex to avoid lastIndex state leaking between calls on
-  // rules that use the /g flag — a subtle JS gotcha that caused false negatives
-  // when looksSensitive was called multiple times in the same JS tick.
-  return RULES.some(r => new RegExp(r.pattern.source, r.pattern.flags).test(input));
+  // Reset lastIndex on each rule's /g RegExp before .test() so stateful
+  // iteration from a previous call can't produce a false negative on the
+  // next one. This avoids allocating a fresh RegExp per rule per call,
+  // which was a notable hot path when the autosave trigger streamed
+  // hundreds of events through the pre-filter.
+  for (const r of RULES) {
+    r.pattern.lastIndex = 0;
+    if (r.pattern.test(input)) {
+      r.pattern.lastIndex = 0;
+      return true;
+    }
+  }
+  return false;
 }

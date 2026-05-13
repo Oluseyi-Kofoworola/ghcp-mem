@@ -4,6 +4,7 @@ src/**
 .gitignore
 tsconfig.json
 tsconfig.test.json
+esbuild.js
 scripts/**
 out-test/**
 out/test/**

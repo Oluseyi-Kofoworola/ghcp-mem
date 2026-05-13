@@ -200,13 +200,18 @@ export class ContextProvider implements vscode.Disposable {
   }
 
   buildStartupContext(): string {
-    const recent = this.store.getRecentSessions(3);
+    const recent = this.store.getStartupCandidates(3);
     if (recent.length === 0) return '';
     const lines = ['## Previous Session Context (auto-injected by GHCP-MEM)', ''];
-    for (const s of [...recent].reverse()) {
-      const date = new Date(s.startTime).toLocaleDateString();
-      lines.push(`### ${date} · ${s.observationType} · id:\`${s.id.substring(0, 8)}\``);
+    for (const s of recent) {
+      const when = formatInjectTimestamp(s.startTime);
+      lines.push(`### ${when} · ${s.observationType} · id:\`${s.id.substring(0, 8)}\``);
       lines.push(s.summary);
+      if (s.keyFiles.length) {
+        const shown = s.keyFiles.slice(0, 5);
+        const extra = s.keyFiles.length > shown.length ? ` (+${s.keyFiles.length - shown.length} more)` : '';
+        lines.push(`Files: ${shown.join(', ')}${extra}`);
+      }
       if (s.keyTopics.length) lines.push(`Topics: ${s.keyTopics.join(', ')}`);
       if (s.decisions.length) lines.push(`Decisions: ${s.decisions.join('; ')}`);
       if (s.problemsSolved.length) lines.push(`Resolved: ${s.problemsSolved.join('; ')}`);
@@ -266,6 +271,18 @@ export class ContextProvider implements vscode.Disposable {
     for (const d of this.disposables) d.dispose();
     this.disposables = [];
   }
+}
+
+/**
+ * Format a startup-inject timestamp as `M/D/YYYY HH:MM` (24h, local).
+ * Exported for tests.
+ */
+export function formatInjectTimestamp(ts: number): string {
+  const d = new Date(ts);
+  const date = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${date} ${hh}:${mm}`;
 }
 
 /**

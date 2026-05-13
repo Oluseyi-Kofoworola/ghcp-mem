@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { CompressedSession, ContextDatabase, ObservationType, getConfig } from './types';
 import { cosineSim, EmbeddingFn } from './embeddings';
 import { redact } from './redactor';
+import { extractTerms as sharedExtractTerms, keywordScore as sharedKeywordScore } from './searchCore';
 
 const DB_KEY = 'ghcpMem.contextDatabase';
 const DB_VERSION = 2;
@@ -40,8 +41,12 @@ export class ContextStore implements vscode.Disposable {
   private index = new Map<string, Set<string>>(); // term → session IDs
   private readonly onChangeEmitter = new vscode.EventEmitter<void>();
   readonly onChange = this.onChangeEmitter.event;
-  /** Optional: set by extension.ts once the embedder is resolved. */
-  embedder?: EmbeddingFn;
+  /**
+   * Embedder is set lazily via `setEmbedder()` once the proposed
+   * vscode.lm embeddings API has been resolved. Kept private so callers
+   * can't accidentally replace it with an incompatible function shape.
+   */
+  private embedder?: EmbeddingFn;
   private lastBackupAt = 0;
   /** Queue to serialize syncToDisk calls and prevent interleaved writes. */
   private syncQueue: Promise<void> = Promise.resolve();
@@ -56,6 +61,16 @@ export class ContextStore implements vscode.Disposable {
       // Run retention once at startup (not on every addSession).
       this.enforceRetention().catch(() => {});
     });
+  }
+
+  /** Wire in a (possibly async) embedding function once the API is available. */
+  setEmbedder(fn: EmbeddingFn): void {
+    this.embedder = fn;
+  }
+
+  /** Whether an embedder has been wired in. */
+  hasEmbedder(): boolean {
+    return !!this.embedder;
   }
 
   private load(): ContextDatabase {
@@ -293,6 +308,49 @@ export class ContextStore implements vscode.Disposable {
     return workspace.slice(-count);
   }
 
+  /**
+   * Pick the top-N workspace sessions for startup auto-injection.
+   *
+   * Combines recency (7-day exponential decay) with explicit importance
+   * signals so that a pinned/decision-bearing session can outrank a
+   * recent-but-empty one. Falls back to pure recency when no signals exist.
+   *
+   * Score = recencyScore + importanceScore, where:
+   *   recencyScore   = exp(-days / 7) * 10           // 0..10
+   *   importanceScore = (userTags ? 10 : 0)
+   *                   + (decisions.length ? 4 : 0)
+   *                   + (problemsSolved.length ? 4 : 0)
+   *                   + (observationType !== 'unknown' ? 1 : 0)
+   *
+   * Returns sessions in chronological (oldest-first) order to keep the
+   * inject narrative flowing forwards — matching the existing
+   * `getRecentSessions` contract used by the chat participant.
+   */
+  getStartupCandidates(count: number): CompressedSession[] {
+    const workspace = this.getWorkspaceSessions();
+    if (workspace.length === 0) return [];
+    const now = Date.now();
+    const DAY = 86_400_000;
+    const scored = workspace.map(s => {
+      const days = Math.max(0, (now - s.startTime) / DAY);
+      const recency = Math.exp(-days / 7) * 10;
+      const importance =
+        (s.userTags.length ? 10 : 0) +
+        (s.decisions.length ? 4 : 0) +
+        (s.problemsSolved.length ? 4 : 0) +
+        (s.observationType !== 'unknown' ? 1 : 0);
+      return { s, score: recency + importance };
+    });
+    scored.sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.s.startTime - a.s.startTime; // tie-break: newer first
+    });
+    const top = scored.slice(0, count).map(x => x.s);
+    // Return oldest-first so the inject reads chronologically.
+    top.sort((a, b) => a.startTime - b.startTime);
+    return top;
+  }
+
   async clear(): Promise<void> {
     this.db.sessions = [];
     this.index.clear();
@@ -353,20 +411,7 @@ export class ContextStore implements vscode.Disposable {
 
   /** Keyword-frequency score over weighted fields. Public-ish for tests. */
   keywordScore(s: CompressedSession, terms: Set<string>, wsId: string | undefined): number {
-    let score = 0;
-    if (wsId && s.workspaceId === wsId) score += 2;
-
-    const check = (text: string, weight: number) => {
-      const tokens = this.extractTerms(text);
-      for (const t of terms) if (tokens.has(t)) score += weight;
-    };
-    check(s.summary, 3);
-    for (const t of s.keyTopics) check(t, 5);
-    for (const f of s.keyFiles) check(f, 2);
-    for (const d of s.decisions) check(d, 4);
-    for (const p of s.problemsSolved) check(p, 4);
-    for (const t of s.userTags) check(t, 6);
-    return score;
+    return sharedKeywordScore(s, terms, wsId);
   }
 
   private indexSession(s: CompressedSession): void {
@@ -391,7 +436,22 @@ export class ContextStore implements vscode.Disposable {
   }
 
   private removeFromIndex(s: CompressedSession): void {
-    for (const [term, set] of this.index) {
+    // O(terms-in-session) instead of the previous O(total-unique-terms-in-store).
+    // We rebuild the same token set the indexer used so we only touch the
+    // buckets that could possibly contain this session id.
+    const fields = [
+      s.summary,
+      ...s.keyFiles,
+      ...s.keyTopics,
+      ...s.decisions,
+      ...s.problemsSolved,
+      ...s.userTags,
+      s.observationType,
+    ];
+    const tokens = this.extractTerms(fields.join(' '));
+    for (const term of tokens) {
+      const set = this.index.get(term);
+      if (!set) continue;
       set.delete(s.id);
       if (set.size === 0) this.index.delete(term);
     }
@@ -426,13 +486,7 @@ export class ContextStore implements vscode.Disposable {
   }
 
   private extractTerms(text: string): Set<string> {
-    return new Set(
-      (text ?? '')
-        .toLowerCase()
-        .replace(/[^a-z0-9\s_-]/g, ' ')
-        .split(/\s+/)
-        .filter(t => t.length > 2)
-    );
+    return sharedExtractTerms(text);
   }
 
   private async persist(): Promise<void> {

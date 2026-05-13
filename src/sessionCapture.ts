@@ -364,6 +364,18 @@ export class SessionCapture implements vscode.Disposable {
     }
   }
 
+  /**
+   * Push a previously-captured event back into the buffer — used by the
+   * shutdown-recovery flow in extension.ts so events left behind by an
+   * unclean reload aren't lost. Same overflow trimming as pushEvent().
+   */
+  pushExistingEvent(e: SessionEvent): void {
+    this.events.push(e);
+    if (this.events.length > 5000) {
+      this.events.splice(0, this.events.length - 3000);
+    }
+  }
+
   dispose(): void {
     this.flushEditBatch();
     for (const d of this.disposables) d.dispose();

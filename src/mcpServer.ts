@@ -27,10 +27,24 @@ import { join } from 'path';
 import { promises as fs } from 'fs';
 // Import shared types to avoid duplicating interface definitions.
 import type { CompressedSession, ContextDatabase } from './types';
+// Shared keyword scorer — single source of truth shared with ContextStore.
+import { extractTerms, keywordScore } from './searchCore';
 
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_NAME = 'ghcp-mem';
-const SERVER_VERSION = '0.6.0';
+// Read the package version at module load so we never drift from package.json.
+// Falls back to 'unknown' if the bundled package.json can't be located
+// (e.g. when this file is imported from out-test/ during the test compile).
+let SERVER_VERSION = 'unknown';
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  SERVER_VERSION = require('../package.json').version ?? 'unknown';
+} catch {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    SERVER_VERSION = require('../../package.json').version ?? 'unknown';
+  } catch { /* keep 'unknown' */ }
+}
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -79,31 +93,6 @@ async function loadDatabase(): Promise<StoredDatabase> {
   }
 }
 
-function extractTerms(text: string): Set<string> {
-  return new Set(
-    (text ?? '')
-      .toLowerCase()
-      .replace(/[^a-z0-9\s_-]/g, ' ')
-      .split(/\s+/)
-      .filter(t => t.length > 2),
-  );
-}
-
-function keywordScore(s: StoredSession, terms: Set<string>): number {
-  let score = 0;
-  const check = (text: string, weight: number) => {
-    const toks = extractTerms(text);
-    for (const t of terms) if (toks.has(t)) score += weight;
-  };
-  check(s.summary, 3);
-  for (const t of s.keyTopics) check(t, 5);
-  for (const f of s.keyFiles) check(f, 2);
-  for (const d of s.decisions) check(d, 4);
-  for (const p of s.problemsSolved) check(p, 4);
-  for (const t of s.userTags) check(t, 6);
-  return score;
-}
-
 /** RRF-fused search with recency decay. Mirrors ContextStore.search. */
 function searchSessions(
   db: StoredDatabase,
@@ -122,17 +111,30 @@ function searchSessions(
 
   const terms = extractTerms(query ?? '');
   const kScored = candidates.map(s => ({ s, k: keywordScore(s, terms) }));
-  const keywordRanked = [...kScored].sort((a, b) => b.k - a.k);
+
+  // When the user supplied a query AND at least one candidate has a positive
+  // keyword score, drop the zero-score candidates so unrelated sessions can't
+  // outrank a clear match through tiny differences in RRF rank position.
+  // Without this guard the previous logic could (and did) return 'ui tweaks'
+  // ahead of 'authentication rework' for the query 'authentication' purely
+  // because both sessions had identical recency.
+  let scoped = candidates;
+  if (terms.size > 0 && kScored.some(e => e.k > 0)) {
+    const positive = new Set(kScored.filter(e => e.k > 0).map(e => e.s.id));
+    scoped = candidates.filter(s => positive.has(s.id));
+  }
+  const scopedKScored = kScored.filter(e => scoped.includes(e.s));
+  const keywordRanked = [...scopedKScored].sort((a, b) => b.k - a.k);
   const kRank = new Map<string, number>();
   keywordRanked.forEach((e, i) => kRank.set(e.s.id, i));
-  const recencyRanked = [...candidates].sort((a, b) => b.endTime - a.endTime);
+  const recencyRanked = [...scoped].sort((a, b) => b.endTime - a.endTime);
   const rRank = new Map<string, number>();
   recencyRanked.forEach((s, i) => rRank.set(s.id, i));
 
   const K = 60;
   const HALF_LIFE = 7 * 24 * 60 * 60 * 1000;
   const now = Date.now();
-  const fused = candidates.map(s => {
+  const fused = scoped.map(s => {
     const rrf = 1 / (K + (kRank.get(s.id) ?? K * 10)) + 1 / (K + (rRank.get(s.id) ?? K * 10));
     const decay = Math.pow(2, -(now - s.endTime) / HALF_LIFE) * 0.3;
     return { s, score: rrf + decay };

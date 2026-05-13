@@ -85,3 +85,76 @@ test('ContextStore — RRF prefers recent+matching over old-only', async () => {
   const hits = store.search('rate', {}, 5);
   assert.equal(hits[0].id, 'new');
 });
+
+test('ContextStore — getStartupCandidates prefers sessions with decisions over plain ones at same recency', async () => {
+  const mem = new InMemoryMemento() as any;
+  const store = new ContextStore(mem);
+  const now = Date.now();
+  // Two equally-recent sessions; one has decisions, one is plain.
+  await store.addSession(makeSession({
+    id: '11111111-1111-4111-8111-111111111111',
+    summary: 'plain session', startTime: now, endTime: now,
+    decisions: [], problemsSolved: [], userTags: [],
+  }));
+  await store.addSession(makeSession({
+    id: '22222222-2222-4222-8222-222222222222',
+    summary: 'session with decisions', startTime: now, endTime: now,
+    decisions: ['picked X over Y'], problemsSolved: [],
+  }));
+  const picks = store.getStartupCandidates(1);
+  assert.equal(picks.length, 1);
+  assert.match(picks[0].summary, /decisions/);
+});
+
+test('ContextStore — getStartupCandidates lets a pinned older session beat a recent unknown-type one', async () => {
+  const mem = new InMemoryMemento() as any;
+  const store = new ContextStore(mem);
+  const now = Date.now();
+  const oldTs = now - 3 * 86_400_000; // 3 days old — recency still > 0
+  // Pinned, 3 days old. Should score ~10 (tag) + recency(~6) ≈ 16.
+  await store.addSession(makeSession({
+    id: '33333333-3333-4333-8333-333333333333',
+    summary: 'pinned older', startTime: oldTs, endTime: oldTs,
+    observationType: 'feature', userTags: ['pin'],
+  }));
+  // Recent but unknown-type with no metadata. Recency ~10, importance 0 = ~10.
+  await store.addSession(makeSession({
+    id: '44444444-4444-4444-8444-444444444444',
+    summary: 'recent empty', startTime: now, endTime: now,
+    observationType: 'unknown', userTags: [], decisions: [], problemsSolved: [],
+  }));
+  const picks = store.getStartupCandidates(1);
+  assert.equal(picks.length, 1);
+  assert.match(picks[0].summary, /pinned/);
+});
+
+test('ContextStore — getStartupCandidates returns oldest-first chronological order', async () => {
+  const mem = new InMemoryMemento() as any;
+  const store = new ContextStore(mem);
+  const t0 = Date.now() - 2 * 86_400_000;
+  const t1 = Date.now() - 1 * 86_400_000;
+  const t2 = Date.now();
+  await store.addSession(makeSession({
+    id: '55555555-5555-4555-8555-555555555555',
+    summary: 'middle', startTime: t1, endTime: t1, decisions: ['d'],
+  }));
+  await store.addSession(makeSession({
+    id: '66666666-6666-4666-8666-666666666666',
+    summary: 'newest', startTime: t2, endTime: t2, decisions: ['d'],
+  }));
+  await store.addSession(makeSession({
+    id: '77777777-7777-4777-8777-777777777777',
+    summary: 'oldest', startTime: t0, endTime: t0, decisions: ['d'],
+  }));
+  const picks = store.getStartupCandidates(3);
+  assert.equal(picks.length, 3);
+  assert.equal(picks[0].summary, 'oldest');
+  assert.equal(picks[1].summary, 'middle');
+  assert.equal(picks[2].summary, 'newest');
+});
+
+test('ContextStore — getStartupCandidates returns [] when no sessions', () => {
+  const mem = new InMemoryMemento() as any;
+  const store = new ContextStore(mem);
+  assert.deepEqual(store.getStartupCandidates(3), []);
+});

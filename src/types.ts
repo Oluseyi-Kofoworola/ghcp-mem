@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { createHash } from 'crypto';
 
 export interface SessionEvent {
   timestamp: number;
@@ -150,9 +151,6 @@ export function computeContentHash(input: {
     d: [...input.decisions].sort(),
     p: [...input.problemsSolved].sort(),
   });
-  // Lazy require to keep this file importable in non-node contexts (e.g. tests)
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { createHash } = require('crypto') as typeof import('crypto');
   return createHash('sha256').update(material).digest('hex');
 }
 

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import * as os from 'os';
 import * as path from 'path';
+import * as fsSync from 'fs';
 import { SessionCapture } from './sessionCapture';
 import { ContextCompressor } from './contextCompressor';
 import { ContextStore } from './contextStore';
@@ -10,7 +11,7 @@ import { SessionsTreeProvider, TreeNode } from './sessionsView';
 import { MemorySearchTool, MemoryStoreTool } from './memoryTool';
 import { getEmbedder } from './embeddings';
 import { captureAzureContext } from './azureContext';
-import { getConfig, CompressedSession, AzureContextMeta } from './types';
+import { getConfig, CompressedSession, AzureContextMeta, SessionEvent } from './types';
 import { computeHealth, formatHealthMarkdown, fillGlyph } from './health';
 import { buildPack, parsePack, importPack, uninstallPack, listInstalledPacks, PACK_TAG_PREFIX } from './packs';
 import { AutosaveTrigger } from './autosave';
@@ -23,6 +24,10 @@ let tree: SessionsTreeProvider;
 let compressionTimer: NodeJS.Timeout | undefined;
 let statusBarItem: vscode.StatusBarItem;
 let autosave: AutosaveTrigger | undefined;
+/** File where we stash drained events on shutdown so the next activation can recover. */
+let recoveryFile: vscode.Uri | undefined;
+/** Promise that the (best-effort) shutdown compress is tracked through, so deactivate() can await it. */
+let shutdownCompress: Promise<void> | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
   const config = getConfig();
@@ -32,6 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   const backupDir = vscode.Uri.joinPath(context.globalStorageUri, 'backups');
+  recoveryFile = vscode.Uri.joinPath(context.globalStorageUri, 'pending-events.json');
   store = new ContextStore(context.globalState, backupDir);
   compressor = new ContextCompressor();
   capture = new SessionCapture();
@@ -40,6 +46,12 @@ export function activate(context: vscode.ExtensionContext) {
 
   capture.start();
   provider.register();
+
+  // Recover any events left behind by an unclean shutdown of a previous
+  // session. We deliberately re-inject before user activity starts so the
+  // next compression pass naturally includes them, and we delete the
+  // recovery file even on parse error to avoid an infinite-restore loop.
+  void restorePendingEvents();
 
   vscode.window.registerTreeDataProvider('ghcpMem.sessionsView', tree);
 
@@ -52,7 +64,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Feature-detect the embeddings API (proposed). Safe no-op when unavailable.
   getEmbedder().then(fn => {
     if (fn) {
-      store.embedder = fn;
+      store.setEmbedder(fn);
       console.log('[GHCP-MEM] Embedding-based hybrid search enabled.');
     }
   }).catch(() => {});
@@ -472,7 +484,21 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push({
     dispose: () => {
       if (compressionTimer) clearInterval(compressionTimer);
-      compressAndStore().catch(() => {});
+      // 1. Synchronously write any drained events to disk FIRST so even if the
+      //    LM compress below hangs or the host is killed, the next activation
+      //    can pick the events back up. This is the only safe step here.
+      try {
+        const snapshot = capture.drain();
+        if (snapshot.events.length > 0) {
+          writeRecoveryFileSync(snapshot.events, snapshot.azureSubsystems, snapshot.azureTags, snapshot.redactionCount);
+        }
+        // Re-inject so the async compress below still has something to work on.
+        for (const e of snapshot.events) capture.pushExistingEvent?.(e);
+      } catch { /* swallow — recovery file is best-effort */ }
+      // 2. Kick off a best-effort compress. deactivate() awaits this promise.
+      shutdownCompress = compressAndStore()
+        .then(() => { try { deleteRecoveryFileSync(); } catch { /* ignore */ } })
+        .catch(() => { /* leave recovery file in place for next activate */ });
     },
   });
 
@@ -494,7 +520,79 @@ export function activate(context: vscode.ExtensionContext) {
   }
 }
 
-export function deactivate() {}
+export async function deactivate(): Promise<void> {
+  // VS Code waits a bounded amount of time for this to settle. If the
+  // in-flight compress hasn't finished by then the host is killed — but
+  // the synchronous recovery-file write in the subscription dispose above
+  // means the events are already safe on disk for next activation.
+  if (shutdownCompress) {
+    try { await shutdownCompress; } catch { /* ignore */ }
+  }
+}
+
+// ── Recovery helpers ────────────────────────────────────────
+
+interface RecoveryPayload {
+  version: 1;
+  capturedAt: number;
+  events: SessionEvent[];
+  azureSubsystems: string[];
+  azureTags: string[];
+  redactionCount: number;
+}
+
+function writeRecoveryFileSync(
+  events: SessionEvent[],
+  azureSubsystems: string[],
+  azureTags: string[],
+  redactionCount: number,
+): void {
+  if (!recoveryFile) return;
+  const payload: RecoveryPayload = {
+    version: 1,
+    capturedAt: Date.now(),
+    events,
+    azureSubsystems,
+    azureTags,
+    redactionCount,
+  };
+  try {
+    const p = recoveryFile.fsPath;
+    fsSync.mkdirSync(path.dirname(p), { recursive: true });
+    const tmp = `${p}.${process.pid}.tmp`;
+    fsSync.writeFileSync(tmp, JSON.stringify(payload), { encoding: 'utf8', mode: 0o600 });
+    fsSync.renameSync(tmp, p);
+  } catch {
+    // Best-effort — don't block shutdown on disk errors.
+  }
+}
+
+function deleteRecoveryFileSync(): void {
+  if (!recoveryFile) return;
+  try { fsSync.unlinkSync(recoveryFile.fsPath); } catch { /* ignore */ }
+}
+
+async function restorePendingEvents(): Promise<void> {
+  if (!recoveryFile) return;
+  let bytes: Uint8Array;
+  try {
+    bytes = await vscode.workspace.fs.readFile(recoveryFile);
+  } catch {
+    return; // No recovery file — normal case.
+  }
+  let payload: RecoveryPayload | undefined;
+  try {
+    const parsed = JSON.parse(Buffer.from(bytes).toString('utf-8')) as RecoveryPayload;
+    if (parsed && parsed.version === 1 && Array.isArray(parsed.events)) {
+      payload = parsed;
+    }
+  } catch { /* malformed — drop it */ }
+  // Always delete the file, even on parse error, to prevent infinite recovery loops.
+  try { await vscode.workspace.fs.delete(recoveryFile); } catch { /* ignore */ }
+  if (!payload || payload.events.length === 0) return;
+  for (const e of payload.events) capture.pushExistingEvent?.(e);
+  console.log(`[GHCP-MEM] Restored ${payload.events.length} event(s) from prior session.`);
+}
 
 // ── Internals ───────────────────────────────────────────────
 
