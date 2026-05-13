@@ -131,7 +131,7 @@ Every gap from the original v0.x analysis was closed before v1.0. Remaining item
 
 <div align="center">
 
-[← Back to README](../README.md) · [Live demo](DEMO.md) · [Report an issue](https://github.com/Oluseyi-Kofoworola/ghcp-mem/issues)
+[← Back to README](../README.md) · [Live demo](DEMO.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
 
 <sub>**Comparison for GHCP-MEM v1.1.0** · last refreshed May 2026</sub>
 
