@@ -5,6 +5,7 @@
   "version": "1.1.0",
   "publisher": "itcredibl",
   "license": "MIT",
+  "icon": "images/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/Oluseyi-Kofoworola/ghcp-mem.git"
