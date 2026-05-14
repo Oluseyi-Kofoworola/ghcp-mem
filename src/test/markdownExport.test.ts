@@ -61,3 +61,55 @@ test('exportSessionsMarkdown: sorts by startTime ascending', () => {
   const out = exportSessionsMarkdown([newer, older]);
   assert.ok(out.indexOf('Session older') < out.indexOf('Session newer'));
 });
+
+// Pin the exact byte-level output of a fixed session. This is the regression
+// guard for the "diff-friendly stable output" contract — if anyone tweaks the
+// formatter (adds a heading, changes spacing, reorders fields) this test
+// breaks loudly and forces a deliberate review of consumers (e.g. exports
+// committed into a repo, scripts that grep the output).
+test('exportSessionMarkdown: byte-identical to pinned fixture', () => {
+  const s = makeSession();
+  const expected = [
+    '# Session sess-1',
+    '',
+    '- type: feature',
+    '- start: 2026-01-01T12:00:00.000Z',
+    '- end: 2026-01-01T12:30:00.000Z',
+    '- workspace: demo',
+    '- redactions: 0',
+    '',
+    '## Summary',
+    '',
+    'Worked on tests.',
+    '',
+    '## Key Files',
+    '',
+    '- src/a.ts',
+    '- src/b.ts',
+    '',
+    '## Key Topics',
+    '',
+    '- ci',
+    '- testing',
+    '',
+    '## Decisions',
+    '',
+    '- Use node:test',
+    '',
+    '## Problems Solved',
+    '',
+    '- Mock vscode module',
+    '',
+    '## User Tags',
+    '',
+    '- demo',
+    '',
+  ].join('\n');
+  assert.equal(exportSessionMarkdown(s), expected);
+});
+
+test('exportSessionMarkdown: repeated calls produce identical strings (no clock/randomness)', () => {
+  const s = makeSession({ keyTopics: ['a', 'b', 'c'], decisions: ['x'] });
+  const runs = Array.from({ length: 5 }, () => exportSessionMarkdown(s));
+  for (let i = 1; i < runs.length; i++) assert.equal(runs[i], runs[0]);
+});

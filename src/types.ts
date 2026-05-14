@@ -191,6 +191,12 @@ export interface PluginConfig {
   githubCompatibleMode: boolean;
 }
 
+/** Clamp a number to a closed interval; NaN/non-finite falls back to `fallback`. */
+function clampNum(raw: unknown, lo: number, hi: number, fallback: number): number {
+  const n = typeof raw === 'number' && Number.isFinite(raw) ? raw : fallback;
+  return Math.max(lo, Math.min(hi, n));
+}
+
 export function getConfig(): PluginConfig {
   const cfg = vscode.workspace.getConfiguration('ghcpMem');
   const githubCompatibleMode = cfg.get('githubCompatibleMode', false);
@@ -213,7 +219,9 @@ export function getConfig(): PluginConfig {
     autoInjectStartupContext: cfg.get('autoInjectStartupContext', true),
     scope: githubCompatibleMode ? 'repo' : scope,
     validateAgainstCodebase: cfg.get('validateAgainstCodebase', true),
-    freshnessFloor: cfg.get('freshnessFloor', 0.25),
+    // Clamp to [0, 1] regardless of what the user types in settings.json.
+    // package.json declares min/max for the UI, but raw JSON edits can bypass that.
+    freshnessFloor: clampNum(cfg.get('freshnessFloor', 0.25), 0, 1, 0.25),
     githubCompatibleMode,
   };
 }

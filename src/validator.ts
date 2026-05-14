@@ -29,6 +29,13 @@ export interface ValidationResult {
   present: string[];
   /** Sessions whose `keyFiles` is empty get freshness=1 (nothing to check). */
   emptyKeyFiles: boolean;
+  /**
+   * Paths that couldn't be normalised (e.g. absolute paths from a different
+   * workspace root, or paths containing `..`). Not counted in freshness, but
+   * exposed here so callers can detect path-resolution issues that would
+   * otherwise be invisible.
+   */
+  skipped: number;
   checkedAt: number;
 }
 
@@ -58,6 +65,7 @@ export async function validateSession(
       missing: [],
       present: [],
       emptyKeyFiles: true,
+      skipped: 0,
       checkedAt: Date.now(),
     };
     cache.set(session.id, result);
@@ -73,6 +81,7 @@ export async function validateSession(
       missing: [],
       present: [],
       emptyKeyFiles: false,
+      skipped: 0,
       checkedAt: Date.now(),
     };
     cache.set(session.id, result);
@@ -81,10 +90,13 @@ export async function validateSession(
 
   const missing: string[] = [];
   const present: string[] = [];
+  let skipped = 0;
   for (const rel of session.keyFiles) {
     const cleaned = cleanRelPath(rel);
     if (!cleaned) {
-      // Couldn't normalize — don't count it either way.
+      // Couldn't normalize (absolute from another root, contains `..`, etc.)
+      // — count it as skipped so callers can detect path-resolution issues.
+      skipped++;
       continue;
     }
     const target = vscode.Uri.joinPath(root, cleaned);
@@ -103,6 +115,7 @@ export async function validateSession(
     missing,
     present,
     emptyKeyFiles: false,
+    skipped,
     checkedAt: Date.now(),
   };
   cache.set(session.id, result);

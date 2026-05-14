@@ -18,6 +18,11 @@ node_modules/**
 .eslintrc.json
 demo/**
 images/diagrams/**
+# GIF animations are referenced in README via absolute raw.githubusercontent.com URLs,
+# so they don't need to ship in the .vsix. Keep them in the repo for editing, exclude
+# from package to keep download size lean.
+images/demo/*.gif
+images/demo/*.svg
 README.md.bak
 # Only the two esbuild bundles are loaded at runtime;
 # every other compiled .js in out/ is stale tsc emit and is dead weight.

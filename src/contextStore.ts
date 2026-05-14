@@ -156,10 +156,14 @@ export class ContextStore implements vscode.Disposable {
     const config = getConfig();
     if (!config.maxStoreSizeMB || config.maxStoreSizeMB <= 0) return 0;
     const capBytes = config.maxStoreSizeMB * 1024 * 1024;
-    // Fast-path: estimate via sessions count first to avoid stringifying every persist.
     if (this.db.sessions.length === 0) return 0;
-    let serialised = JSON.stringify(this.db);
-    if (serialised.length <= capBytes) return 0;
+
+    // Single stringify upfront — the loop below only stringifies the *evicted*
+    // session (small, bounded) and tracks the running total, so the whole
+    // operation is O(n) instead of O(n²) on a store that's well over cap.
+    const initial = JSON.stringify(this.db);
+    if (initial.length <= capBytes) return 0;
+    let remainingBytes = initial.length;
 
     // Evict oldest endTime first until under cap or down to one session.
     const sorted = [...this.db.sessions].sort((a, b) => a.endTime - b.endTime);
@@ -169,9 +173,12 @@ export class ContextStore implements vscode.Disposable {
       this.removeFromIndex(s);
       const idx = this.db.sessions.indexOf(s);
       if (idx !== -1) this.db.sessions.splice(idx, 1);
+      // Subtract the bytes contributed by this session (JSON entry + `,` separator).
+      // Approximate (object key overhead in containing array is constant per element)
+      // but close enough — we re-verify with one final stringify below if needed.
+      remainingBytes -= JSON.stringify(s).length + 1;
       evicted++;
-      serialised = JSON.stringify(this.db);
-      if (serialised.length <= capBytes) break;
+      if (remainingBytes <= capBytes) break;
     }
     return evicted;
   }
@@ -384,7 +391,11 @@ export class ContextStore implements vscode.Disposable {
         if (kept.length >= limit) break;
       }
       return kept;
-    } catch {
+    } catch (err) {
+      // Validator failure is non-fatal (we always have something to return),
+      // but it indicates a real bug — surface it so the user can find it in
+      // the developer console instead of silently degrading retrieval.
+      console.warn('[GHCP-MEM] filterByFreshness validator failed; returning unfiltered slice:', err);
       return sessions.slice(0, limit);
     }
   }

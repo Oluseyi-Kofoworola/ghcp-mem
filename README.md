@@ -50,10 +50,8 @@ After install, open any workspace and run **`GHCP-MEM: Capture Session Snapshot 
 <summary><b>📺 Watch the install in 5 seconds</b></summary>
 
 <p align="center">
-  <img src="images/demo/install-animation.png" alt="Terminal animation: code --install-extension ITcredibl.ghcp-mem then 'Installed successfully · READY TO USE'" width="720">
+  <img src="https://raw.githubusercontent.com/ITcredibl/ghcp-mem/main/images/demo/install-animation.gif" alt="Animated terminal: code --install-extension ITcredibl.ghcp-mem then 'Installed successfully · READY TO USE'" width="720">
 </p>
-
-_▶ [Watch the animated version on GitHub](https://github.com/ITcredibl/ghcp-mem/blob/main/images/demo/install-animation.svg)_
 
 </details>
 
@@ -62,10 +60,8 @@ _▶ [Watch the animated version on GitHub](https://github.com/ITcredibl/ghcp-me
 ## 🎬 See it in action
 
 <p align="center">
-  <img src="images/demo/pipeline-animation.png" alt="GHCP-MEM pipeline: code edits flow through redactor, AI summariser, store, then return as recalled memory in @mem chat" width="900">
+  <img src="https://raw.githubusercontent.com/ITcredibl/ghcp-mem/main/images/demo/pipeline-animation.gif" alt="Animated GHCP-MEM pipeline: code edits flow through redactor, AI summariser, store, then return as recalled memory in @mem chat" width="900">
 </p>
-
-_▶ [Watch the animated version on GitHub](https://github.com/ITcredibl/ghcp-mem/blob/main/images/demo/pipeline-animation.svg)_
 
 **What you're watching:** every edit, diagnostic, git op, and terminal command you make in VS Code is **debounced**, **scrubbed of secrets** (24 rules + `<private>` tags), **summarised by your existing Copilot LM**, and **stored locally**. Next session, when you ask `@mem` anything, the relevant prior context is recalled in milliseconds — no sidecar, no port, no cloud round-trip.
 

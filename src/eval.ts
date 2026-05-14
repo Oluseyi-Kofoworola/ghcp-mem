@@ -1,5 +1,7 @@
+import * as vscode from 'vscode';
 import { ContextStore, SearchFilters } from './contextStore';
 import { CompressedSession } from './types';
+import { extractTerms, keywordScore } from './searchCore';
 
 /**
  * Lightweight retrieval evaluation harness (rebase recommendation #7).
@@ -42,16 +44,49 @@ export interface EvalReport {
 }
 
 const K = 5;
+/** Lower bound on queries — eval should never be measured on too small a sample. */
+const MIN_QUERIES = 20;
+/** Upper bound on queries — we don't need thousands; latency matters too. */
+const MAX_QUERIES = 50;
 
-/** Build a tiny query set from existing sessions for self-evaluation. */
-export function buildSelfQueries(sessions: CompressedSession[], max = 20): EvalQuery[] {
+/**
+ * Build a query set from existing sessions for self-evaluation.
+ *
+ * Sample size scales with the store: we want enough queries for the recall
+ * number to be statistically meaningful, but capped so eval stays fast.
+ * Caller can override via `max` (used by tests).
+ */
+export function buildSelfQueries(sessions: CompressedSession[], max?: number): EvalQuery[] {
+  const target = max ?? Math.max(MIN_QUERIES, Math.min(MAX_QUERIES, Math.floor(sessions.length / 2)));
   const queries: EvalQuery[] = [];
-  for (const s of sessions.slice(0, max)) {
+  for (const s of sessions.slice(0, target)) {
     const topic = (s.keyTopics[0] || s.problemsSolved[0] || s.decisions[0] || '').trim();
     if (!topic || topic.length < 4) continue;
     queries.push({ q: topic.slice(0, 80), relevant: [s.id] });
   }
   return queries;
+}
+
+/**
+ * Pure keyword-only ranker — used by the eval suite as a baseline.
+ *
+ * Deliberately *does not* call `store.search()`, which fuses keyword + recency
+ * via RRF. Here we score by the same `keywordScore()` helper the production
+ * search uses, but we sort by that score alone — no recency, no embeddings,
+ * no RRF, no freshness filter. This is what the docstring claims and what the
+ * eval suite needs to actually compare against the hybrid path.
+ */
+function keywordOnlyRun(store: ContextStore, query: string, limit: number): CompressedSession[] {
+  const terms = extractTerms(query);
+  if (terms.size === 0) return [];
+  const wsId = vscode.workspace.workspaceFolders?.[0]?.uri.toString();
+  return store
+    .getAllSessions()
+    .map(s => ({ s, score: keywordScore(s, terms, wsId) }))
+    .filter(e => e.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(e => e.s);
 }
 
 function recallAtK(top: CompressedSession[], relevant: Set<string>, k: number): number {
@@ -107,7 +142,7 @@ export async function runEvalSuite(store: ContextStore): Promise<EvalReport> {
   const runs: EvalRunStats[] = [];
 
   if (all.length >= 3 && queries.length > 0) {
-    runs.push(await evalRun('keyword-only', queries, q => store.search(q, filters, 20)));
+    runs.push(await evalRun('keyword-only', queries, q => keywordOnlyRun(store, q, 20)));
     runs.push(await evalRun('hybrid (default)', queries, q => store.search(q, filters, 20)));
     runs.push(await evalRun('hybrid + freshness', queries, q => store.searchWithEmbedding(q, filters, 20)));
   }

@@ -100,6 +100,10 @@ export function getRepoScopeSync(): RepoScopeInfo {
   };
 }
 
+/** Hard ceiling on .git/config size we'll parse. Any sane config is well under 64 KB;
+ *  going higher means we're either being fed a fake file or something is wrong. */
+const MAX_GIT_CONFIG_BYTES = 1_000_000;
+
 async function readGitRemote(workspaceUri: vscode.Uri): Promise<string | undefined> {
   // Read .git/config directly — avoids spawning a child process which is
   // unavailable in the VS Code web extension host and slow on first call.
@@ -108,6 +112,13 @@ async function readGitRemote(workspaceUri: vscode.Uri): Promise<string | undefin
   try {
     bytes = await vscode.workspace.fs.readFile(cfgUri);
   } catch {
+    return undefined;
+  }
+  // Size cap before regex — protects against catastrophic backtracking on
+  // pathological inputs (the negated character class is fine for small inputs
+  // but is still O(n) work the engine doesn't need to do on a 100MB file).
+  if (bytes.byteLength > MAX_GIT_CONFIG_BYTES) {
+    console.warn(`[GHCP-MEM] .git/config too large (${bytes.byteLength} bytes), skipping remote detection`);
     return undefined;
   }
   const text = Buffer.from(bytes).toString('utf-8');
