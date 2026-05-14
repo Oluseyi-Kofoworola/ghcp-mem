@@ -75,20 +75,19 @@ After install, open any workspace and run **`GHCP-MEM: Capture Session Snapshot 
 | 🔒 **Privacy-first by default** | All data on your disk. No telemetry. Dual-pass redaction. `.gitignore` auto-guarded so the auto-injected brief never gets committed. | Cloud-memory tools require trusting their backend with every line of code you wrote. |
 | 🌳 **Token-efficient by design** | Three-layer progressive disclosure: `/search` returns ~100-token summaries; `/detail` only after you filter. Doesn't burn 8k tokens per question. | Naïve RAG dumps 5–10 full sessions into context. This one stays under 500 tokens for the average query. |
 
-### 🎥 Real screen recording
+### 🎥 What the Marketplace listing looks like
+
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=ITcredibl.ghcp-mem">
+    <img src="https://raw.githubusercontent.com/ITcredibl/ghcp-mem/main/images/demo/marketplace-walkthrough.gif" alt="Animated walkthrough of the GHCP-MEM Marketplace listing — neon icon, install button, version, badges, features" width="900">
+  </a>
+</p>
+
+<sub align="center">↑ <a href="https://marketplace.visualstudio.com/items?itemName=ITcredibl.ghcp-mem">Click anywhere on the GIF</a> to open the Marketplace listing. The big green <b>Install</b> button does the rest.</sub>
 
 <details>
-<summary><b>Watch a 30-second walkthrough (coming soon — placeholder)</b></summary>
+<summary><b>Want a longer in-VS-Code walkthrough? Record one in 60 seconds.</b></summary>
 
-<!--
-  Drop in any of:
-  • A YouTube embed:    [![Watch the demo](https://img.youtube.com/vi/<id>/maxresdefault.jpg)](https://youtu.be/<id>)
-  • A Loom share link:  [![Demo](https://cdn.loom.com/sessions/thumbnails/<id>-thumbnail.gif)](https://loom.com/share/<id>)
-  • A locally hosted GIF: <img src="https://raw.githubusercontent.com/ITcredibl/ghcp-mem/main/images/demo/walkthrough.gif" width="800">
--->
-
-> _Recording yourself? Open a workspace, then capture **30 seconds** showing:_
->
 > 1. Type `@mem /status` in Copilot Chat → 0 sessions
 > 2. Edit 2–3 files, make a git commit, run a build (let GHCP-MEM observe)
 > 3. Run **`GHCP-MEM: Capture Session Snapshot Now`** from the palette
@@ -102,7 +101,7 @@ After install, open any workspace and run **`GHCP-MEM: Capture Session Snapshot 
 > Click Record · perform demo · click Stop in menu bar
 > Movie saves to ~/Desktop/Screen Recording … .mov
 > ```
-> Convert to GIF for the README via [ezgif.com](https://ezgif.com/video-to-gif) or `ffmpeg -i recording.mov -vf "fps=10,scale=800:-1:flags=lanczos" -loop 0 walkthrough.gif`. Drop it at `images/demo/walkthrough.gif` and uncomment the line above.
+> Convert to GIF: `ffmpeg -i recording.mov -vf "fps=12,scale=900:-2:flags=lanczos" -loop 0 vscode-walkthrough.gif`. Drop at `images/demo/vscode-walkthrough.gif`, embed below.
 
 </details>
 
