@@ -1,17 +1,17 @@
 <div align="center">
 
-# 🎬 GHCP-MEM v1.0.0 — Live Demo
+# 🎬 GHCP-MEM v1.2.0 — Live Demo
 
-### A 5-minute walkthrough that exercises every v1.0.0 capability
+### A 6-minute walkthrough that exercises every v1.2.0 capability
 
-[![Duration](https://img.shields.io/badge/Duration-5%20min-blueviolet?style=for-the-badge)](#)
-[![Steps](https://img.shields.io/badge/Steps-10-22c55e?style=for-the-badge)](#)
+[![Duration](https://img.shields.io/badge/Duration-6%20min-blueviolet?style=for-the-badge)](#)
+[![Steps](https://img.shields.io/badge/Steps-12-22c55e?style=for-the-badge)](#)
 [![Features](https://img.shields.io/badge/Features-all%20demonstrable-0ea5e9?style=for-the-badge)](#)
 
 </div>
 
 > [!NOTE]
-> **Prereqs:** GHCP-MEM v1.0.0 installed and VS Code reloaded. Open any workspace. No Azure subscription needed.
+> **Prereqs:** GHCP-MEM v1.2.0 installed (Marketplace search **GHCP-MEM**, or `code --install-extension ITcredibl.ghcp-mem`) and VS Code reloaded. Open any workspace. No Azure subscription needed — the Azure steps degrade gracefully if `az` isn't installed or signed in.
 
 ---
 
@@ -19,32 +19,34 @@
 
 ```mermaid
 timeline
-    title GHCP-MEM v1.0.0 — 5-minute live demo
+    title GHCP-MEM v1.2.0 — 6-minute live demo
     section 🩺 Health
-        0. Sanity check (10s)           : status bar glyph
-        1. Seed Azure sessions (15s)    : Seed Azure Demo Sessions
-        2. Health score (20s)           : Show Memory Health Score
+        0. Sanity check (10s)              : status bar glyph
+        1. Seed Azure sessions (15s)       : Seed Azure Demo Sessions
+        2. Health score (20s)              : Show Memory Health Score
     section 🔍 Retrieval
-        3. Progressive search (30s)     : @mem /search + /detail
-        4. Content-hash dedup (20s)     : re-seed = no duplicates
+        3. Progressive search (30s)        : @mem /search + /detail
+        4. Quick-filter bar (30s)          : sidebar filter chip
+        5. Pinned tier (20s)               : pin a session, see it stick on top
+        6. Content-hash dedup (15s)        : re-seed = no duplicates
     section 💾 Resilience
-        5. Backup + restore (45s)       : Clear → Restore From Backup
-        6. Memory packs (60s)           : Export → Clear → Import → Uninstall
-    section 🌐 Reach
-        7. MCP for external clients (45s) : Show External MCP Client Config
-        8. Autosave under pressure (30s)  : eventThreshold = 3
-    section 🧠 Intelligence
-        9. Rule-based observation typing (30s) : 3 creates → feature
-        10. Run the full test suite (20s)       : npm test → 76 pass
+        7. Backup + restore (45s)          : Clear → Restore From Backup
+        8. Memory packs (60s)              : Export → Clear → Import → Uninstall
+    section 🌐 Reach & Quality
+        9. MCP for external clients (45s)  : Show External MCP Client Config
+        10. Diff-friendly markdown (30s)   : Export Session as Diff-Friendly Markdown
+        11. Eval gate (30s)                : Run Retrieval Eval (recall@5 + MRR)
+    section 🧠 Compatibility
+        12. GitHub-compatible mode (15s)   : 28-day retention + repo scope
 ```
 
 | Section | Steps | Total |
 |---|---|---|
 | 🩺 **Health & Setup** | 0 → 2 | ~45 s |
-| 🔍 **Retrieval** | 3 → 4 | ~50 s |
-| 💾 **Resilience** | 5 → 6 | ~105 s |
-| 🌐 **Reach** | 7 → 8 | ~75 s |
-| 🧠 **Intelligence** | 9 → 10 | ~50 s |
+| 🔍 **Retrieval** | 3 → 6 | ~95 s |
+| 💾 **Resilience** | 7 → 8 | ~105 s |
+| 🌐 **Reach & Quality** | 9 → 11 | ~105 s |
+| 🧠 **Compatibility** | 12 | ~15 s |
 
 ---
 
@@ -64,14 +66,11 @@ $(history) MEM ●●○○○ 42
 
 Hover it → tooltip shows session counts + pending events + redactions.
 
-> [!TIP]
-> **What this demonstrates:** P4 status-bar health glyph + score.
-
 ---
 
 ## 1. Seed the demo store (15 sec)
 
-Press `Ctrl+Shift+P` → run **`GHCP-MEM: Seed Azure Demo Sessions`** → click **Seed**.
+Press `Ctrl+Shift+P` (or `Cmd+Shift+P`) → run **`GHCP-MEM: Seed Azure Demo Sessions`** → click **Seed**.
 
 You now have 5 realistic Azure sessions tagged `demo`. They'll show up in the **GHCP-MEM Sessions** tree view in the Activity Bar.
 
@@ -99,9 +98,6 @@ flowchart LR
   - 📝 Notes (e.g. *"X% sessions have no observation type"*)
 
 **Or** in chat: `@mem /health`.
-
-> [!TIP]
-> **What this demonstrates:** P4 analytics gap closed (item #9).
 
 ---
 
@@ -133,22 +129,48 @@ flowchart TB
 ```
 
 > [!TIP]
-> **What this demonstrates:** RRF + 7-day recency decay (P1 item #2) ranking the deployment-typed Azure sessions; inline filters still working.
+> **What this demonstrates:** RRF fusion (keyword + recency + embeddings when available) + 7-day exponential recency decay, with inline filters parsed from the query.
 
 ---
 
-## 4. Content-hash dedup (20 sec)
+## 4. Quick-filter bar (30 sec) **NEW in v1.2.0**
 
-- Run **`GHCP-MEM: Seed Azure Demo Sessions`** **a second time**.
-- Notice: the tree view does **not** double — duplicates with the same content hash are silently skipped.
-- Confirm in chat: `@mem /status` — total session count is unchanged.
+In the Sessions sidebar, click the funnel icon → **`GHCP-MEM: Filter Sessions...`**.
+
+Pick any combination of:
+- **Scope**: `workspace` / `repo` / `all`
+- **Type**: `feature` / `bugfix` / `infra` / …
+- **Tag**: `demo` / `azure` / your tag
+- **Last N days** (free-text)
+- **Free-text query**
+
+The active filter shows as a clickable chip in the tree header. Click the chip (or run **`GHCP-MEM: Clear Filter`**) to reset.
 
 > [!TIP]
-> **What this demonstrates:** SHA-256 dedup (P0 item #3).
+> **What this demonstrates:** the quick-filter bar lets you slice 1000s of sessions in seconds without leaving the sidebar.
 
 ---
 
-## 5. Rolling backups + restore (45 sec)
+## 5. Pinned tier (20 sec) **NEW in v1.2.0**
+
+Right-click any session in the tree → **Pin/Unpin Session** (or run `GHCP-MEM: Pin/Unpin Session`).
+
+Pinned sessions sort to the top of the tree under a 📌 group, and they get extra weight in the auto-injected startup-context brief.
+
+> [!TIP]
+> **What this demonstrates:** decision-bearing or reference sessions stay visible across the noise of day-to-day capture.
+
+---
+
+## 6. Content-hash dedup (15 sec)
+
+- Run **`GHCP-MEM: Seed Azure Demo Sessions`** **a second time**.
+- Notice: the tree view does **not** double — duplicates with the same SHA-256 content hash are silently skipped.
+- Confirm in chat: `@mem /status` — total session count is unchanged.
+
+---
+
+## 7. Rolling backups + restore (45 sec)
 
 ```mermaid
 sequenceDiagram
@@ -169,12 +191,9 @@ sequenceDiagram
 - Run **`GHCP-MEM: Restore From Backup`** → pick the most recent backup → confirm.
 - Tree view repopulates instantly.
 
-> [!TIP]
-> **What this demonstrates:** P0 item #6 — recovery from accidental wipe.
-
 ---
 
-## 6. Memory packs (team sharing) (60 sec)
+## 8. Memory packs (team sharing) (60 sec)
 
 <details open>
 <summary><b>📦 Full pack lifecycle: Export → Clear → Import → Uninstall</b></summary>
@@ -201,11 +220,11 @@ sequenceDiagram
 </details>
 
 > [!TIP]
-> **What this demonstrates:** P3 item #5 — full pack lifecycle, schema-versioned, auto-redacted on export.
+> **What this demonstrates:** schema-versioned packs that are auto-redacted on export _and_ re-redacted on import (defense-in-depth for third-party packs).
 
 ---
 
-## 7. External MCP client (Cursor/Cline/Windsurf/Claude Desktop) (45 sec)
+## 9. External MCP client (Cursor/Cline/Windsurf/Claude Desktop) (45 sec)
 
 1. `Ctrl+Shift+P` → **`GHCP-MEM: Show External MCP Client Config`**
 2. A markdown doc opens with:
@@ -216,31 +235,32 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant CLI as 🖥️ PowerShell
+    participant CLI as 🖥️ Terminal
     participant MCP as 🔌 mcpServer.js
     participant STORE as 🗂️ ~/.ghcp-mem/<br/>sessions.json
     CLI->>MCP: initialize (JSON-RPC 2024-11-05)
-    MCP-->>CLI: serverInfo { name: ghcp-mem }
+    MCP-->>CLI: serverInfo { name: ghcp-mem, version: 1.2.0 }
     CLI->>MCP: notifications/initialized
     CLI->>MCP: tools/list
     MCP->>STORE: mtime check (cached)
     MCP-->>CLI: ghcpMem_search · _recent · _timeline · _get
 ```
 
-**Quick verification** (PowerShell, no other client needed):
+**Quick verification** (POSIX shell, no other client needed):
 
-```powershell
-# Resolve the bundled MCP server path for whichever version is installed
-$mcp = (Get-ChildItem "$env:USERPROFILE\.vscode\extensions\*ghcp-mem*\out\mcpServer.js" | Select-Object -First 1).FullName
-'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"demo","version":"1"}}}' |
-  node $mcp
+```bash
+mcp="$(find ~/.vscode/extensions -name 'mcpServer.js' -path '*ghcp-mem*' | head -1)"
+{
+  echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"d","version":"1"}}}'
+  echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+  echo '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+} | node "$mcp"
 ```
 
-You'll get back a JSON-RPC response advertising the `ghcp-mem` server.
-
-Now list tools:
+PowerShell equivalent:
 
 ```powershell
+$mcp = (Get-ChildItem "$env:USERPROFILE\.vscode\extensions\*ghcp-mem*\out\mcpServer.js" | Select-Object -First 1).FullName
 @'
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"d","version":"1"}}}
 {"jsonrpc":"2.0","method":"notifications/initialized"}
@@ -251,70 +271,78 @@ Now list tools:
 Returns the 4-tool catalog: `ghcpMem_search`, `ghcpMem_recent`, `ghcpMem_timeline`, `ghcpMem_get`.
 
 > [!TIP]
-> **What this demonstrates:** P3 item #8 — Copilot-only is gone; any MCP client can read the store.
+> **What this demonstrates:** Copilot-only is gone; any MCP client can read the store over a stdio JSON-RPC channel.
 
 ---
 
-## 8. Autosave under "context pressure" (30 sec)
+## 10. Diff-friendly markdown export (30 sec) **NEW in v1.2.0**
 
-The autosave fires when buffered events exceed the threshold (default 40) **or** wall-clock minutes since last flush exceed the threshold (default 20).
+Right-click any session in the tree → **Export Session as Diff-Friendly Markdown...** (or run `GHCP-MEM: Export Session as Diff-Friendly Markdown...`). Pick a save location.
 
-To force it without waiting:
+Or in chat:
 
-1. Open settings → search `ghcpMem.autosave.eventThreshold` → set to `3`.
-2. Edit any 3 files (or save 3 times). The status bar pending-events tooltip increments, then a snapshot fires.
-3. Reset the setting to `40` afterwards.
+```text
+@mem /export <id-prefix>
+```
+
+The output is **byte-stable** (sorted arrays, ISO timestamps, deterministic ordering) so committing exports into a repo produces clean diffs across runs.
 
 > [!TIP]
-> **What this demonstrates:** P2 item #4 — guarantees no unfinished session is lost to a crash.
+> **What this demonstrates:** version-controllable session memory — diff a session week-over-week, paste into a PR description, or hand off context between teammates.
 
 ---
 
-## 9. Rule-based observation typing (visual proof) (30 sec)
+## 11. Retrieval eval gate (30 sec) **NEW in v1.2.0**
 
-The rule classifier runs **before** the LM. Quickest way to see it:
+`Ctrl+Shift+P` → **`GHCP-MEM: Run Retrieval Eval`**.
 
-1. Create three files: `src/feature/a.ts`, `src/feature/b.ts`, `src/feature/c.ts` with any content.
-2. Run **`GHCP-MEM: Capture Session Snapshot Now`**.
-3. Open the new session in the tree → its `observationType` is `feature` (3+ creates rule), even if the LM is offline.
+A markdown report opens showing **recall@5** and **MRR** for three retrieval configurations:
 
-<details>
-<summary><b>🏷️ Other rules to try</b></summary>
-
-| Signal | Resulting type |
+| Config | What it scores |
 |---|---|
-| Touch only `*.test.ts` | `test` |
-| Edit only `README.md` | `docs` |
-| Edit only `package.json` / `tsconfig.json` | `config` |
-| Run `git revert HEAD` | `bugfix` |
-| Edit `.bicep` / `.tf` files | `infra` |
-| Run `azd up` / `az deployment` | `deployment` |
+| `keyword-only` | Pure `keywordScore()` baseline |
+| `hybrid (default)` | RRF + recency + workspace boost |
+| `hybrid + freshness` | The above, plus codebase-validation filter |
 
-</details>
+This is the same suite the CI eval-gate runs (`scripts/eval-check.js`) — and the CI fails the build if recall drops > 5% from the pinned baseline.
 
 > [!TIP]
-> **What this demonstrates:** P2 item — smarter typing than the previous create>edit/diag>edit heuristics.
+> **What this demonstrates:** retrieval quality is measured, not assumed. Tweaks to weights, RRF, or freshness are gated on the baseline.
 
 ---
 
-## 10. Run the full test suite (20 sec)
+## 12. GitHub-compatible mode (15 sec) **NEW in v1.2.0**
+
+Open Settings → search `ghcpMem.githubCompatibleMode` → toggle **on**.
+
+Effective changes:
+- `retentionDays` is pinned to `28` (overrides whatever you have set)
+- `scope` is forced to `repo` (overrides `user` / `workspace`)
+
+This mirrors the contract of the cloud-hosted [GitHub Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) preview, so users moving between the cloud agent and the local IDE see consistent behaviour.
+
+> [!TIP]
+> **What this demonstrates:** parity-mode for Pro users who also use Copilot Memory in the cloud — same retention, same scope, no surprises.
+
+---
+
+## ✅ Run the full test suite (anytime)
 
 Terminal (from the repo root):
 
-```powershell
+```bash
 npm test
 ```
 
-You should see **76 tests pass**, covering: redactor, contextStore, types, azureDetect, ruleClassifier, health, packs, autosave, mcpServer.
+You should see **132 tests pass**, covering: redactor + redactor-corpus, contextStore, types, azureDetect, ruleClassifier, health, packs, autosave, mcpServer + mcpServer schema, eval, validator, repoScope, markdownExport, contextCompressor, integration.
 
 ```
-ℹ tests 76
-ℹ pass 76
+ℹ tests 132
+ℹ pass 132
 ℹ fail 0
 ```
 
-> [!TIP]
-> **What this demonstrates:** P0 item #7 — formal test coverage.
+Plus the CI pipeline runs three additional gates: `npm run lint` → `npm test` → `node scripts/eval-check.js` → `node scripts/bench-search.js` → `node scripts/smoke.js` → `npm run bundle:prod` → `vsce package`. All on **ubuntu × windows × node 20**.
 
 ---
 
@@ -327,25 +355,27 @@ You should see **76 tests pass**, covering: redactor, contextStore, types, azure
 | 1 | 🩺 Health score | Status bar shows `MEM ●●○○○ 73` |
 | 2 | 💬 `/health` chat command | `@mem /health` returns scored breakdown |
 | 3 | 🔍 RRF + recency search | `@mem /search ... since:30d type:X` |
-| 4 | 🧬 Dedup | Re-seed demo → tree count unchanged |
-| 5 | 🔄 Backups | Clear → Restore From Backup → restored |
-| 6 | 📦 Packs | Export → Clear → Import → Uninstall |
-| 7 | 🔌 MCP | `node out/mcpServer.js` → JSON-RPC ack |
-| 8 | 🪫 Autosave | Lower threshold → edit 3 files → snapshot fires |
-| 9 | 🏷️ Rule classifier | 3 creates → typed `feature` automatically |
-| 10 | ✅ Tests | `npm test` → **76 pass** |
+| 4 | 🪟 Quick-filter bar | Sidebar funnel → scope/type/tag/days/text chip |
+| 5 | 📌 Pinned tier | Pin a session → it sticks on top + boosts startup brief |
+| 6 | 🧬 Dedup | Re-seed demo → tree count unchanged |
+| 7 | 🔄 Backups | Clear → Restore From Backup → restored |
+| 8 | 📦 Packs | Export → Clear → Import → Uninstall |
+| 9 | 🔌 MCP | `node out/mcpServer.js` → JSON-RPC ack |
+| 10 | 📝 Diff-friendly export | `@mem /export <id>` → byte-stable markdown |
+| 11 | 📊 Eval gate | `Run Retrieval Eval` → recall@5 + MRR table |
+| 12 | 🤝 GitHub-compatible mode | `githubCompatibleMode: true` → 28d + repo scope |
 
 </div>
 
 > [!IMPORTANT]
-> All 9 items in the original [COMPARISON.md](COMPARISON.md) "Where GHCP-MEM is behind" section are now demonstrable in under 5 minutes.
+> All v1.2.0 features are demonstrable in under 6 minutes. Compare against the [GitHub Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) cloud preview in [COMPARISON.md](COMPARISON.md).
 
 ---
 
 <div align="center">
 
-[← Back to README](../README.md) · [Competitive analysis](COMPARISON.md) · [Report an issue](https://github.com/Oluseyi-Kofoworola/ghcp-mem/issues)
+[← Back to README](../README.md) · [Competitive analysis](COMPARISON.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
 
-<sub>**Demo script for GHCP-MEM v1.0.0** · 76 tests · zero native deps · zero ports</sub>
+<sub>**Demo script for GHCP-MEM v1.2.0** · 132 tests · zero native deps · zero ports · CI ubuntu × windows × node 20</sub>
 
 </div>

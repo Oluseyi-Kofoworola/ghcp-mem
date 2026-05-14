@@ -194,7 +194,7 @@ Inline filters: `@mem /search type:bugfix since:7d tag:auth login flow`
 ## 🎛️ Commands
 
 <details open>
-<summary><b>📋 17 commands organized by purpose</b></summary>
+<summary><b>📋 24 commands organized by purpose</b></summary>
 
 | Group | Command | Description |
 |---|---|---|
@@ -202,15 +202,22 @@ Inline filters: `@mem /search type:bugfix since:7d tag:auth login flow`
 | | `GHCP-MEM: Compress Current Session` | Same, with progress notification |
 | **Inspect** | `GHCP-MEM: Show Stored Context` | Markdown report of all sessions |
 | | `GHCP-MEM: Show Memory Health Score` | 0–100 score breakdown with notes |
+| | `GHCP-MEM: Run Retrieval Eval` | recall@5 / MRR over keyword vs hybrid vs hybrid+freshness |
 | **Backup / Restore** | `GHCP-MEM: Export Memory to JSON...` | Full backup |
 | | `GHCP-MEM: Import Memory from JSON...` | Restore / merge |
 | | `GHCP-MEM: Restore From Backup...` | Restore from rolling 5-snapshot backup |
 | **Team Sharing (Packs)** | `GHCP-MEM: Export Memory Pack...` | Build a shareable `.ghcpmem-pack.json` |
 | | `GHCP-MEM: Import Memory Pack...` | Install a pack from disk |
 | | `GHCP-MEM: Uninstall Memory Pack...` | Remove every session belonging to a pack |
+| **Sidebar** | `GHCP-MEM: Filter Sessions...` | Quick-filter (scope / type / tag / days / text) |
+| | `GHCP-MEM: Clear Filter` | Reset the active filter chip |
+| | `GHCP-MEM: Refresh` | Refresh the sessions tree view |
 | **Chat** | `GHCP-MEM: Inject Relevant Context Into Copilot Chat...` | Copy top-N matches, open Chat |
-| **Manage** | `GHCP-MEM: Delete Session...` | Remove a single session |
+| **Manage** | `GHCP-MEM: Delete Session` | Remove a single session |
 | | `GHCP-MEM: Tag Session...` | Add user tags |
+| | `GHCP-MEM: Pin/Unpin Session` | Toggle pinned tier (pinned sessions surface on top) |
+| | `GHCP-MEM: Open Session Detail` | Open a session in a markdown preview |
+| | `GHCP-MEM: Export Session as Diff-Friendly Markdown...` | Stable, deterministic markdown export (commit-friendly) |
 | | `GHCP-MEM: Clear All Stored Context` | Wipe everything (irreversible) |
 | **Azure** | `GHCP-MEM: Capture Azure Context Snapshot...` | Live `az` subscription/RG/resource IDs |
 | | `GHCP-MEM: Seed Azure Demo Sessions` | 5 pre-tagged demo sessions |
@@ -240,6 +247,7 @@ Copilot's **agent mode** can call these tools automatically — no MCP server re
 | `/search` | `@mem /search type:bugfix since:7d authentication` |
 | `/timeline` | `@mem /timeline 72h` or `@mem /timeline <id>` |
 | `/detail` | `@mem /detail a1b2c3d4` |
+| `/export` | `@mem /export a1b2c3d4` (diff-friendly markdown — paste into PR) |
 | `/azure` | `@mem /azure key-vault` |
 | `/health` | `@mem /health` |
 
@@ -248,21 +256,32 @@ Copilot's **agent mode** can call these tools automatically — no MCP server re
 ## ⚙️ Settings
 
 <details>
-<summary><b>🎚️ 11 configurable knobs</b></summary>
+<summary><b>🎚️ 22 configurable settings</b></summary>
 
 | Key | Default | Description |
 |---|---|---|
 | `ghcpMem.enabled` | `true` | Master switch |
 | `ghcpMem.compressionIntervalMinutes` | `15` | Periodic compression |
 | `ghcpMem.maxStoredSessions` | `50` | Count-based retention |
-| `ghcpMem.retentionDays` | `90` | Age-based retention (`0` = off) |
+| `ghcpMem.maxStoreSizeMB` | `25` | Soft byte cap on `~/.ghcp-mem/sessions.json` (size-based eviction) |
+| `ghcpMem.retentionDays` | `90` | Age-based retention (`0` = off; clamped to `28` in `githubCompatibleMode`) |
 | `ghcpMem.contextRetrievalCount` | `5` | Results injected into search |
+| `ghcpMem.scope` | `"user"` | Retrieval scope: `user` / `workspace` / `repo` (auto-detected from `.git/config`) |
+| `ghcpMem.validateAgainstCodebase` | `true` | Drop sessions whose `keyFiles` no longer exist in the workspace (60s cache) |
+| `ghcpMem.freshnessFloor` | `0.25` | Minimum fraction of `keyFiles` that must still exist (`0`–`1`, runtime-clamped) |
+| `ghcpMem.githubCompatibleMode` | `false` | Mirror Copilot Memory's contract: 28-day retention + repo scope (overrides above) |
 | `ghcpMem.redactSecrets` | `true` | Secret/PII scanning |
 | `ghcpMem.honorPrivateTags` | `true` | Strip `<private>...</private>` content |
-| `ghcpMem.excludeGlobs` | `[".env*", "*.pem", "*.key", "secrets/**", "node_modules/**"]` | Skip these paths |
+| `ghcpMem.excludeGlobs` | `["**/.env*","**/*.pem","**/*.key","**/secrets/**","**/node_modules/**"]` | Skip these paths (matched at any directory depth) |
 | `ghcpMem.autoInjectStartupContext` | `true` | Write `.github/instructions/*.md` (auto-gitignored) |
 | `ghcpMem.healthAlertThreshold` | `30` | Warn at startup when memory health score falls below this value (`0` = off) |
-| `ghcpMem.captureFileEdits` / `captureDiagnostics` / `captureTerminalCommands` / `captureGitOps` | `true` | Per-signal toggles |
+| `ghcpMem.autosave.enabled` | `true` | Master switch for context-pressure autosave |
+| `ghcpMem.autosave.eventThreshold` | `40` | Buffered events that trigger an autosave |
+| `ghcpMem.autosave.minutesThreshold` | `20` | Wall-clock minutes since last flush that trigger an autosave |
+| `ghcpMem.captureFileEdits` | `true` | Capture file edit events |
+| `ghcpMem.captureDiagnostics` | `true` | Capture diagnostic transitions |
+| `ghcpMem.captureTerminalCommands` | `true` | Capture terminal commands (needs shell integration) |
+| `ghcpMem.captureGitOps` | `true` | Capture git operations |
 
 </details>
 
@@ -307,23 +326,28 @@ Use `GHCP-MEM: Show External MCP Client Config` to get the exact resolved path.
 
 | Module | Responsibility |
 |---|---|
-| [src/types.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/types.ts) | Event types, observation types, config reader, glob matcher, `AzureContextMeta` |
-| [src/redactor.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/redactor.ts) | 24-rule secret/PII scanner (incl. 8 Azure rules), `<private>` tag stripper |
+| [src/types.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/types.ts) | Event types, observation types, config reader (with runtime clamping), glob matcher, `AzureContextMeta` |
+| [src/redactor.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/redactor.ts) | 24-rule secret/PII scanner (incl. 8 Azure rules), `<private>` tag stripper, redactor-corpus tests |
 | [src/azureDetect.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/azureDetect.ts) | 12-subsystem classifier for file paths, terminal commands, and content |
 | [src/azureContext.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/azureContext.ts) | `az` CLI wrapper (5-min cache, graceful fallback) — **fully tested** |
 | [src/sessionCapture.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/sessionCapture.ts) | VS Code event hooks with debounce + exclude + redact + Azure tagging |
-| [src/contextCompressor.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/contextCompressor.ts) | `vscode.lm` calls, rule-based fallback, observation-type classification, Azure context — **fully tested** |
-| [src/contextStore.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/contextStore.ts) | Persistent DB, inverted index (async chunked rebuild), serial sync queue, retention, redact-on-import, rolling backups |
+| [src/contextCompressor.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/contextCompressor.ts) | `vscode.lm` calls, rule-based fallback, observation-type classification, Azure context, repo-scope tagging — **fully tested** |
+| [src/contextStore.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/contextStore.ts) | Persistent DB, inverted index (async chunked rebuild), serial sync queue, age + count + size eviction, redact-on-import, rolling backups, freshness filter |
+| [src/searchCore.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/searchCore.ts) | Shared keyword-scorer used by `mcpServer` and `contextStore` (eliminates ranking drift) |
 | [src/embeddings.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/embeddings.ts) | Feature-detected `vscode.lm.computeEmbeddings` helper |
 | [src/ruleClassifier.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/ruleClassifier.ts) | Pre-LM observation typing |
+| [src/repoScope.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/repoScope.ts) | Stable per-repo scope ID from git `origin` URL (or workspace fallback); 1 MB `.git/config` cap |
+| [src/validator.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/validator.ts) | Codebase validation (drop sessions whose `keyFiles` are gone), 60s cache, `skipped` counter |
 | [src/autosave.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/autosave.ts) | Context-pressure autosave trigger |
 | [src/health.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/health.ts) | 0–100 health score with configurable alert threshold |
 | [src/packs.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/packs.ts) | Build / import (with redaction) / uninstall `.ghcpmem-pack.json` |
+| [src/markdownExport.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/markdownExport.ts) | Diff-friendly stable-output markdown exporter (sorted arrays, ISO timestamps) |
+| [src/eval.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/eval.ts) | recall@k + MRR harness over keyword vs hybrid vs hybrid+freshness retrieval |
 | [src/contextProvider.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/contextProvider.ts) | `@mem` chat participant with layered slash commands |
-| [src/sessionsView.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/sessionsView.ts) | Activity bar tree view |
+| [src/sessionsView.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/sessionsView.ts) | Activity bar tree view with quick-filter chip + pinned tier |
 | [src/memoryTool.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/memoryTool.ts) | Agent-mode `ghcpMem_search` + `ghcpMem_store` tools |
 | [src/mcpServer.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/mcpServer.ts) | Stand-alone stdio JSON-RPC server with workspace-scoped filtering |
-| [src/extension.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/extension.ts) | Lifecycle, 17 commands, gitignore guard, health alert, top-level imports |
+| [src/extension.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/extension.ts) | Lifecycle, 24 commands, walkthroughs, shutdown recovery, gitignore guard, health alert |
 | [src/test/integration.test.ts](https://github.com/ITcredibl/ghcp-mem/blob/main/src/test/integration.test.ts) | End-to-end pipeline tests (compress → store → search → dedup → retention → import-redaction) |
 
 </details>
@@ -372,4 +396,4 @@ MIT — see [LICENSE](https://github.com/ITcredibl/ghcp-mem/blob/main/LICENSE).
 
 [Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/DEMO.md) · [Compare against other memory tools](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/COMPARISON.md)
 
-<sub>**v1.1.8** · 94 passing tests · zero native deps · zero ports · 24-rule redaction</sub>
+<sub>**v1.2.0** · 132 passing tests · zero native deps · zero ports · 24-rule redaction · CI: ubuntu × windows × node 20</sub>
