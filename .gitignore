@@ -11,3 +11,13 @@ Thumbs.db
 
 # GHCP-MEM auto-injected per-user context (regenerated on every persist)
 .github/instructions/session-memory.instructions.md
+
+# Secrets — NEVER commit. Covers .env, .env.local, .env.production, etc.
+# .env.example is the only allowed variant (committed templates are fine).
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+.npmrc

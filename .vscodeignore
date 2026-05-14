@@ -18,6 +18,14 @@ node_modules/**
 .eslintrc.json
 demo/**
 images/diagrams/**
+# Belt-and-braces: secrets must never ship in the .vsix even if accidentally
+# placed in the repo (also covered by .gitignore so they shouldn't be present).
+.env
+.env.*
+.npmrc
+*.pem
+*.key
+secrets/**
 # GIF animations are referenced in README via absolute raw.githubusercontent.com URLs,
 # so they don't need to ship in the .vsix. Keep them in the repo for editing, exclude
 # from package to keep download size lean.
