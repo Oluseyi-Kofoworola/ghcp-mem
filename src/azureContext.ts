@@ -22,7 +22,13 @@ export interface AzureContextSnapshot {
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
-let cache: { snapshot: AzureContextSnapshot; at: number } | undefined;
+const cache = new Map<string, { snapshot: AzureContextSnapshot; at: number }>();
+
+function cacheKey(opts?: { includeResources?: boolean; resourceGroup?: string }): string {
+  const include = opts?.includeResources ? '1' : '0';
+  const rg = (opts?.resourceGroup ?? '').trim().toLowerCase();
+  return `includeResources=${include};rg=${rg}`;
+}
 
 function runAz(args: string[], timeoutMs = 4000): Promise<string | undefined> {
   return new Promise((resolve) => {
@@ -44,14 +50,16 @@ function runAz(args: string[], timeoutMs = 4000): Promise<string | undefined> {
  */
 export async function captureAzureContext(opts?: { includeResources?: boolean; resourceGroup?: string }): Promise<AzureContextSnapshot> {
   const now = Date.now();
-  if (cache && now - cache.at < CACHE_TTL_MS) return cache.snapshot;
+  const key = cacheKey(opts);
+  const cached = cache.get(key);
+  if (cached && now - cached.at < CACHE_TTL_MS) return cached.snapshot;
 
   const snapshot: AzureContextSnapshot = { capturedAt: new Date().toISOString() };
 
   const accountJson = await runAz(['account', 'show', '--output', 'json']);
   if (!accountJson) {
     snapshot.notes = 'az CLI unavailable or not signed in';
-    cache = { snapshot, at: now };
+    cache.set(key, { snapshot, at: now });
     return snapshot;
   }
 
@@ -86,11 +94,11 @@ export async function captureAzureContext(opts?: { includeResources?: boolean; r
     }
   }
 
-  cache = { snapshot, at: now };
+  cache.set(key, { snapshot, at: now });
   return snapshot;
 }
 
 /** For tests. */
 export function _resetAzureContextCache(): void {
-  cache = undefined;
+  cache.clear();
 }

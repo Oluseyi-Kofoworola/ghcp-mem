@@ -23,7 +23,7 @@ export interface HealthScore {
  * Compute a health score summarising memory quality.
  *
  * Composite weighting:
- *   - redactionCoveragePct  (20%) — proportion of sessions that had ≥1 redaction or had <private> stripped
+ *   - secretHygienePct      (20%) — inverse of secret incidence (fewer redaction hits => healthier)
  *   - typedPct              (15%) — proportion of sessions with a non-unknown observationType
  *   - taggedPct             (10%) — proportion with at least one userTag
  *   - dedupRatio            (20%) — 1 - (unique contentHash / total). Higher is better (more dedup = healthier).
@@ -57,6 +57,9 @@ export function computeHealth(sessions: CompressedSession[]): HealthScore {
   const azure = sessions.filter(s => !!s.azureContext || (s.userTags ?? []).includes('azure')).length;
 
   const redactionCoveragePct = pct(redacted, total);
+  // We still expose redactionCoveragePct for transparency, but for health we
+  // score inverse incidence so "fewer leaked secrets observed" is better.
+  const secretHygienePct = 100 - redactionCoveragePct;
   const typedPct = pct(typed, total);
   const taggedPct = pct(tagged, total);
 
@@ -79,7 +82,7 @@ export function computeHealth(sessions: CompressedSession[]): HealthScore {
 
   // Weights sum to 100.
   const score = Math.round(
-    redactionCoveragePct * 0.20 +
+    secretHygienePct * 0.20 +
       typedPct * 0.15 +
       taggedPct * 0.10 +
       (100 * (1 - (total - hashes.size) / total)) * 0.20 + // "no dup" health
@@ -87,7 +90,7 @@ export function computeHealth(sessions: CompressedSession[]): HealthScore {
       freshnessPct * 0.15
   );
 
-  if (redactionCoveragePct < 20) notes.push('Low redaction coverage — verify ghcpMem.redactSecrets is enabled.');
+  if (redactionCoveragePct > 40) notes.push('High secret incidence detected in captured events — consider expanding excludeGlobs/private tags.');
   if (typedPct < 60) notes.push('Many sessions are type:unknown — LM classifier may be skipped or offline.');
   if (retentionHeadroomPct < 20) notes.push('Nearing maxStoredSessions — consider raising or tagging for retention.');
   if (dedupRatio > 0.15) notes.push(`${Math.round(dedupRatio * 100)}% of sessions were dedup-merged — consider larger compression windows.`);

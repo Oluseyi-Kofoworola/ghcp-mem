@@ -101,3 +101,31 @@ test('validator: validateSessions returns a map keyed by id', async () => {
   assert.ok(map.get('x'));
   assert.ok(map.get('y'));
 });
+
+test('validator: multi-root resolves root from session.workspaceId', async () => {
+  _clearValidationCache();
+  (vscode.workspace as any).workspaceFolders = [
+    { uri: { fsPath: '/ws-a', path: '/ws-a', toString: () => 'file:///ws-a' } },
+    { uri: { fsPath: '/ws-b', path: '/ws-b', toString: () => 'file:///ws-b' } },
+  ];
+  const origStat = (vscode.workspace.fs as any).stat;
+  const seen: string[] = [];
+  (vscode.workspace.fs as any).stat = async (uri: any) => {
+    const p = String(uri.path ?? uri.fsPath ?? '');
+    seen.push(p);
+    if (p.startsWith('/ws-b/')) return {};
+    throw new Error('missing');
+  };
+  try {
+    const r = await validateSession(makeSession({
+      id: 'mr-1',
+      workspaceId: 'file:///ws-b',
+      keyFiles: ['src/ok.ts'],
+    }));
+    assert.equal(r.freshness, 1);
+    assert.ok(seen.some(p => p.startsWith('/ws-b/')));
+    assert.ok(!seen.some(p => p.startsWith('/ws-a/')));
+  } finally {
+    (vscode.workspace.fs as any).stat = origStat;
+  }
+});

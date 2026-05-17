@@ -134,3 +134,26 @@ test('azureContext — result is cached for 5 minutes', async () => {
   await captureAzureContext(); // second call should hit cache
   assert.equal(callCount, 1, 'execFile should be called only once due to caching');
 });
+
+test('azureContext — cache is option-aware (includeResources/resourceGroup)', async () => {
+  _resetAzureContextCache();
+  let callCount = 0;
+  const fakeAccount = JSON.stringify({ id: 'sub-opt', name: 'opt-sub', tenantId: 't-opt' });
+  execFileMock = (_file, args, _opts, cb) => {
+    const key = args.join(' ');
+    if (key.includes('account show')) {
+      callCount++;
+      setImmediate(() => cb(null, fakeAccount));
+    } else if (key.includes('resource list')) {
+      setImmediate(() => cb(null, '[]'));
+    } else {
+      setImmediate(() => cb(null, '[]'));
+    }
+    return { on: () => {} };
+  };
+  const { captureAzureContext } = await import('../azureContext');
+  await captureAzureContext({ includeResources: false });
+  await captureAzureContext({ includeResources: true, resourceGroup: 'rg-a' });
+  await captureAzureContext({ includeResources: true, resourceGroup: 'rg-b' });
+  assert.equal(callCount, 3, 'distinct option sets must not share cache entries');
+});

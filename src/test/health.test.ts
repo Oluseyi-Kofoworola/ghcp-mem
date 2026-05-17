@@ -36,17 +36,28 @@ test('computeHealth — empty store yields score 0 and max headroom', () => {
   assert.equal(h.retentionHeadroomPct, 100);
 });
 
-test('computeHealth — typed+tagged+redacted sessions score high', () => {
+test('computeHealth — typed+tagged+clean sessions score high', () => {
+  const sessions: CompressedSession[] = [
+    mk({ observationType: 'feature', userTags: ['alpha'], redactionCount: 0 }),
+    mk({ observationType: 'bugfix',  userTags: ['alpha'], redactionCount: 0 }),
+    mk({ observationType: 'infra',   userTags: ['alpha'], redactionCount: 0 }),
+  ];
+  const h = computeHealth(sessions);
+  assert.ok(h.score >= 70, `expected score >=70, got ${h.score}`);
+  assert.equal(h.typedPct, 100);
+  assert.equal(h.taggedPct, 100);
+  assert.equal(h.redactionCoveragePct, 0);
+});
+
+test('computeHealth — high secret incidence adds advisory note', () => {
   const sessions: CompressedSession[] = [
     mk({ observationType: 'feature', userTags: ['alpha'], redactionCount: 2 }),
     mk({ observationType: 'bugfix',  userTags: ['alpha'], redactionCount: 1 }),
     mk({ observationType: 'infra',   userTags: ['alpha'], redactionCount: 4 }),
   ];
   const h = computeHealth(sessions);
-  assert.ok(h.score >= 70, `expected score >=70, got ${h.score}`);
-  assert.equal(h.typedPct, 100);
-  assert.equal(h.taggedPct, 100);
   assert.equal(h.redactionCoveragePct, 100);
+  assert.ok(h.notes.some(n => n.includes('High secret incidence')));
 });
 
 test('computeHealth — unknown+untagged sessions score low', () => {

@@ -72,7 +72,7 @@ export async function validateSession(
     return result;
   }
 
-  const root = workspaceRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri;
+  const root = workspaceRoot ?? resolveWorkspaceRootForSession(session);
   // No workspace open — we cannot validate, return neutral freshness.
   if (!root) {
     const result: ValidationResult = {
@@ -133,11 +133,18 @@ export async function validateSessions(
   sessions: CompressedSession[],
   workspaceRoot?: vscode.Uri,
 ): Promise<Map<string, ValidationResult>> {
-  const root = workspaceRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri;
-  const results = await Promise.all(sessions.map(s => validateSession(s, root)));
+  const results = await Promise.all(sessions.map(s => validateSession(s, workspaceRoot ?? resolveWorkspaceRootForSession(s))));
   const map = new Map<string, ValidationResult>();
   for (const r of results) map.set(r.sessionId, r);
   return map;
+}
+
+function resolveWorkspaceRootForSession(session: CompressedSession): vscode.Uri | undefined {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  if (folders.length === 0) return undefined;
+  const byId = folders.find(f => f.uri.toString() === session.workspaceId);
+  if (byId) return byId.uri;
+  return folders[0].uri;
 }
 
 /**
