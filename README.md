@@ -402,4 +402,4 @@ MIT — see [LICENSE](https://github.com/ITcredibl/ghcp-mem/blob/main/LICENSE).
 
 [Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/DEMO.md) · [Compare against other memory tools](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/COMPARISON.md)
 
-<sub>**v1.2.1** · 132 passing tests · zero native deps · zero ports · 24-rule redaction · CI: ubuntu × windows × node 20</sub>
+<sub>**v1.2.3** · 136 passing tests · zero native deps · zero ports · 24-rule redaction · CI: ubuntu × windows × node 20</sub>
