@@ -6,7 +6,7 @@
 >
 > **That token waste is silent, constant, and completely avoidable.**
 >
-> GHCP-MEM gives Copilot a persistent memory so it never needs to re-read what it already knew. Tokens go to moving forward — not catching up.
+> GHCP-MEM gives Copilot a persistent memory layer so it can recall what it already knew instead of starting from zero. Tokens go to moving forward — not catching up.
 
 **Zero dependencies · Zero network ports · Native Copilot + MCP · Secret-redacted by default**
 
@@ -37,7 +37,7 @@ Before it can help, it burns tokens just to answer three questions:
 
 That catch-up tax is invisible, constant, and completely avoidable.
 
-GHCP-MEM stores a compressed record of your actual work — what you changed, decided, fixed, and deployed. The next session, Copilot already knows the answers. Tokens go to moving forward, not catching up.
+GHCP-MEM stores a compressed record of your actual work — what you changed, decided, fixed, and deployed. The next session, that context is available to surface through `@mem`, native Copilot agent tools, or MCP. Tokens go to moving forward, not catching up.
 
 ---
 
@@ -58,13 +58,13 @@ The result: a significant slice of every Copilot session is wasted on context th
 
 **GHCP-MEM gives Copilot a persistent memory layer so it never needs to re-learn what it already knew.**
 
-It captures what you do in each session, compresses it into structured memory, redacts secrets before storage, and hands that context back to Copilot at the start of every session — automatically, locally, for free.
+It captures what you do in each session, compresses it into structured memory, redacts secrets before storage, and makes that context available through `@mem` commands, native Copilot agent tools, and MCP — locally, for free.
 
-The AI already knows the *what*, *how*, and *why*. Every token goes to actual work.
+Use `@mem /recent`, `#ghcpMemSearch`, or the auto-injected session instructions file to bring prior context into the conversation.
 
 It surfaces memory through:
 
-- the **`@mem`** chat participant (15 commands including `/savings` to see tokens recovered)
+- the **`@mem`** chat participant (20 commands including `/savings` to see estimated tokens recovered)
 - native Copilot **agent tools** (`#ghcpMemSearch`, `#ghcpMemStore`)
 - a bundled **stdio MCP server** for Cursor, Cline, Windsurf, and Claude Desktop
 
@@ -72,9 +72,9 @@ Why engineers trust it:
 
 | What GHCP-MEM does | Why it matters |
 |---|---|
-| **Eliminates catch-up tokens** | Copilot already knows your project from prior sessions |
+| **Reduces catch-up tokens** | Session memory is queryable via `@mem`, `#ghcpMemSearch`, and MCP — so Copilot can build on what it already knew |
 | **Runs with zero native dependencies** | No Bun, Python, SQLite binary, WASM, Chroma, or model downloads |
-| **Opens zero network ports** | Nothing listens on localhost. Nothing phones home |
+| **Opens zero network ports** | No GHCP-MEM backend or telemetry. LM compression uses your existing Copilot subscription only |
 | **Stores data locally** | Memory stays on your machine under your control |
 | **Redacts secrets by default** | 24-rule dual-pass redaction plus `<private>...</private>` stripping |
 | **Understands Azure workflows** | Azure subsystem tagging, live `az` snapshotting, Azure-specific redaction |
@@ -153,6 +153,14 @@ Stop burning tokens on catch-up. Install GHCP-MEM and capture your first snapsho
 
 ---
 
+## Who it is built for
+
+GHCP-MEM is the local, auditable session-memory layer for engineers who live in VS Code, use Copilot, work in Azure-heavy enterprise environments, and cannot run cloud memory services, sidecars, local HTTP workers, or native dependencies.
+
+If your machine is locked down, air-gapped, or subject to data residency rules, GHCP-MEM is designed for your constraints — not around them.
+
+---
+
 ## Why teams need this
 
 Without persistent session memory, every session charges the same hidden tax:
@@ -170,13 +178,13 @@ GHCP-MEM eliminates that tax. **The tokens you stop wasting on catch-up are the 
 
 With GHCP-MEM, the catch-up tax disappears:
 
-- **Copilot already knows what you're building** — no re-reading files to get oriented
-- **Copilot already knows how it works** — architecture and patterns are in memory
-- **Copilot already knows why you made those choices** — decisions persist across sessions
+- **Copilot can recall what you're building** — surface prior file context without re-reading from scratch
+- **Copilot can recall how it works** — architecture and patterns are queryable from memory
+- **Copilot can recall why you made those choices** — decisions persist and are retrievable across sessions
 - you resume work in seconds instead of spending the first 10 minutes re-explaining
 - enterprise machines stay compliant — no ports, no cloud, no native binaries
 - Azure-heavy teams get memory that understands their stack natively
-- **`@mem /savings` shows exactly how many tokens were recovered** and the dollar-equivalent at GPT-4o pricing
+- **`@mem /savings` shows an estimated token recovery** and GPT-4o dollar-equivalent — labeled as an estimate based on session compression ratios
 
 That is the outcome: **tokens go to building, not catching up.**
 
@@ -463,7 +471,7 @@ Key modules:
 | `src/contextCompressor.ts` | LM compression, classification, and git branch tagging |
 | `src/contextStore.ts` | Persistent storage, indexing, eviction, backups, lifetime token stats |
 | `src/searchCore.ts` | Shared retrieval scoring (BM25 + RRF + recency decay) |
-| `src/contextProvider.ts` | `@mem` chat participant with 15 slash commands |
+| `src/contextProvider.ts` | `@mem` chat participant with 20 slash commands |
 | `src/memoryTool.ts` | Agent-mode tools |
 | `src/mcpServer.ts` | Stand-alone stdio MCP server (6 tools, read + write) |
 | `src/timelinePanel.ts` | Visual Memory Timeline WebviewPanel |
@@ -476,7 +484,9 @@ More detail: [docs/diagrams/pipeline.mmd](https://github.com/ITcredibl/ghcp-mem/
 
 ## Privacy & security
 
-> **All data stays on your machine.** GHCP-MEM does not open a port, phone home, or send your stored memory to a third party.
+> **All GHCP-MEM data stays on your machine.** GHCP-MEM has no backend, opens no ports, and sends no telemetry to any third party.
+>
+> Note: LM compression uses `vscode.lm` — your existing GitHub Copilot subscription — meaning compressed session summaries pass through Copilot's LM. No GHCP-MEM service is involved.
 
 - **Storage:** VS Code `globalState` plus atomic mirror to `~/.ghcp-mem/sessions.json`
 - **LM traffic:** your existing Copilot subscription only
@@ -525,4 +535,4 @@ MIT — see [LICENSE](https://github.com/ITcredibl/ghcp-mem/blob/main/LICENSE).
 
 [Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](docs/DEMO.md) · [Compare memory tools](docs/COMPARISON.md) · [Uninstall guide](docs/UNINSTALL.md) · [Configuration reference](docs/CONFIGURATION.md) · [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md)
 
-<sub>**v1.4.2** · zero native deps · zero ports · local-first memory for Copilot</sub>
+<sub>**v1.4.3** · zero native deps · zero ports · local-first memory for Copilot</sub>
