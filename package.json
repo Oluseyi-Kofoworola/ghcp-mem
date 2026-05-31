@@ -2,7 +2,7 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "Stops Copilot burning tokens re-reading code it already knew. Persistent session memory with zero dependencies, zero ports, local-first storage, and built-in secret redaction.",
-  "version": "1.4.7",
+  "version": "1.4.8",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -45,7 +45,8 @@
   ],
   "main": "./out/extension.js",
   "bin": {
-    "ghcp-mem-mcp": "./out/mcpServer.js"
+    "ghcp-mem-mcp": "./out/mcpServer.js",
+    "ghcp-mem-ci-seed": "./out/ciSeeder.js"
   },
   "contributes": {
     "commands": [
@@ -572,6 +573,28 @@
           "minimum": 1,
           "maximum": 20,
           "description": "Number of recent sessions to include in the auto-injected instructions file."
+        },
+        "ghcpMem.idleTimeoutSeconds": {
+          "type": "number",
+          "default": 30,
+          "minimum": 0,
+          "maximum": 300,
+          "description": "Seconds of editor inactivity before idle-triggered compression fires (0 = disabled)"
+        },
+        "ghcpMem.customRedactionRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "description": "Rule label (e.g., 'PII-SSN')" },
+              "pattern": { "type": "string", "description": "JavaScript regex (without delimiters), e.g., '\\d{3}-\\d{2}-\\d{4}'" },
+              "replacement": { "type": "string", "description": "Replacement text. Defaults to '[REDACTED:custom]'" },
+              "flags": { "type": "string", "description": "Regex flags (g, i, m, etc.). Defaults to 'g'" }
+            },
+            "required": ["name", "pattern"]
+          },
+          "default": [],
+          "description": "User-defined regex redaction rules applied after the built-in 26-rule set (enterprise compliance modes)"
         },
         "ghcpMem.autosave.enabled": {
           "type": "boolean",

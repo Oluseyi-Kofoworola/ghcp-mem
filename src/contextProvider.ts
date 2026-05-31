@@ -1464,12 +1464,23 @@ function parseInlineFilters(q: string): {
         filters.type = v as ObservationType;
         break;
       case 'since': {
-        const m = v.match(/^(\d+)([hdw])$/);
-        if (m) {
-          const n = parseInt(m[1], 10);
-          const ms = m[2] === 'h' ? n * 3600000 : m[2] === 'd' ? n * 86400000 : n * 604800000;
-          filters.sinceTs = Date.now() - ms;
+        // Parse "since:7d", "since:24h", "since:yesterday", "since:last-week"
+        const normalizedV = v.toLowerCase().replace(/_/g, '-');
+        let ms = 0;
+
+        if (normalizedV === 'yesterday') ms = 24 * 3600000;
+        else if (normalizedV === 'today') ms = 0; // not filtered by time
+        else if (normalizedV === 'last-week') ms = 7 * 86400000;
+        else if (normalizedV === 'last-month') ms = 30 * 86400000;
+        else {
+          const m = normalizedV.match(/^(\d+)([hdw])$/);
+          if (m) {
+            const n = parseInt(m[1], 10);
+            ms = m[2] === 'h' ? n * 3600000 : m[2] === 'd' ? n * 86400000 : n * 604800000;
+          }
         }
+
+        if (ms > 0) filters.sinceTs = Date.now() - ms;
         break;
       }
       case 'tag': filters.tag = v; break;

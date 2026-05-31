@@ -25,6 +25,8 @@ let store: ContextStore;
 let provider: ContextProvider;
 let tree: SessionsTreeProvider;
 let compressionTimer: NodeJS.Timeout | undefined;
+let idleCheckTimer: NodeJS.Timeout | undefined;
+let lastActivityMs = Date.now();
 let statusBarItem: vscode.StatusBarItem;
 let autosave: AutosaveTrigger | undefined;
 let reviewStateStore: vscode.Memento | undefined;
@@ -116,7 +118,13 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   }).catch(() => {});
 
-  startCompressionTimer(config.compressionIntervalMinutes);
+  startCompressionTimer(config.compressionIntervalMinutes, config.idleTimeoutSeconds);
+
+  // Track editor activity so the idle-timeout compression knows when to fire.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeTextDocument(() => { lastActivityMs = Date.now(); }),
+    vscode.window.onDidChangeActiveTextEditor(() => { lastActivityMs = Date.now(); }),
+  );
 
   // Context-pressure autosave — flushes when either event count or wall-clock
   // threshold is exceeded, so we never lose an unfinished session to an IDE
@@ -795,7 +803,8 @@ export async function activate(context: vscode.ExtensionContext) {
       if (e.affectsConfiguration('ghcpMem')) {
         const c = getConfig();
         if (compressionTimer) clearInterval(compressionTimer);
-        startCompressionTimer(c.compressionIntervalMinutes);
+        if (idleCheckTimer) clearInterval(idleCheckTimer);
+        startCompressionTimer(c.compressionIntervalMinutes, c.idleTimeoutSeconds);
       }
     })
   );
@@ -805,6 +814,7 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push({
     dispose: () => {
       if (compressionTimer) clearInterval(compressionTimer);
+      if (idleCheckTimer) clearInterval(idleCheckTimer);
       // 1. Synchronously write any drained events to disk FIRST so even if the
       //    LM compress below hangs or the host is killed, the next activation
       //    can pick the events back up. This is the only safe step here.
@@ -976,10 +986,22 @@ async function compressAndStore(): Promise<void> {
   }
 }
 
-function startCompressionTimer(intervalMinutes: number): void {
+function startCompressionTimer(intervalMinutes: number, idleSeconds = 30): void {
   compressionTimer = setInterval(async () => {
     if (capture.eventCount > 0) await compressAndStore();
   }, intervalMinutes * 60 * 1000);
+
+  // Idle-aware compression: fires ASAP when the developer stops typing for
+  // idleSeconds, rather than waiting the full interval. Set idleSeconds to 0
+  // to rely only on the interval timer. Polls every 5 s; lightweight.
+  if (idleSeconds > 0) {
+    idleCheckTimer = setInterval(async () => {
+      if (capture.eventCount > 0 && Date.now() - lastActivityMs >= idleSeconds * 1000) {
+        lastActivityMs = Date.now(); // reset so we don't fire again immediately
+        await compressAndStore();
+      }
+    }, 5_000);
+  }
 }
 
 /** Live status bar states: compressing shows a spinner; error shows in red. */

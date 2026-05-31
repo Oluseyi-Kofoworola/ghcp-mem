@@ -141,6 +141,8 @@ export interface ContextDatabase {
   version: number;
   sessions: CompressedSession[];
   lastUpdated: number;
+  /** Optional free-form observations seeded from CI/CD pipelines. */
+  observations?: Array<{ id: string; text: string; seedLabel: string; capturedAt: string; redactionCount: number }>;
 }
 
 /**
@@ -192,6 +194,25 @@ export interface PluginConfig {
   freshnessFloor: number;
   /** GitHub agentic-memory-compatible mode: force retentionDays=28 + repo scope. */
   githubCompatibleMode: boolean;
+  /**
+   * How many seconds of editor inactivity must pass before an idle-triggered
+   * compression fires. Set to 0 to rely only on the interval timer.
+   */
+  idleTimeoutSeconds: number;
+  /** User-defined regex redaction rules applied after the built-in 26-rule set. */
+  customRedactionRules: CustomRedactionRule[];
+}
+
+/** A user-defined redaction rule injected via `ghcpMem.customRedactionRules`. */
+export interface CustomRedactionRule {
+  /** Human-readable label shown in audit output. */
+  name: string;
+  /** JavaScript regex source string (no delimiters, e.g. "MY_SECRET_[A-Z0-9]{20}"). */
+  pattern: string;
+  /** Replacement string. Defaults to "[REDACTED:custom]". */
+  replacement?: string;
+  /** Regex flags. Defaults to "g". */
+  flags?: string;
 }
 
 /** Clamp a number to a closed interval; NaN/non-finite falls back to `fallback`. */
@@ -227,6 +248,8 @@ export function getConfig(): PluginConfig {
     // package.json declares min/max for the UI, but raw JSON edits can bypass that.
     freshnessFloor: clampNum(cfg.get('freshnessFloor', 0.25), 0, 1, 0.25),
     githubCompatibleMode,
+    idleTimeoutSeconds: clampNum(cfg.get('idleTimeoutSeconds', 30), 0, 300, 30),
+    customRedactionRules: cfg.get<CustomRedactionRule[]>('customRedactionRules', []),
   };
 }
 

@@ -73,6 +73,8 @@ const PRIVATE_TAG_RE = /<private>[\s\S]*?<\/private>/g;
 export interface RedactOptions {
   redactSecrets: boolean;
   honorPrivateTags: boolean;
+  /** User-defined regex rules appended after the built-in 26-rule set. */
+  customRules?: import('./types').CustomRedactionRule[];
 }
 
 export interface RedactionResult {
@@ -105,6 +107,25 @@ export function redact(input: string, opts: RedactOptions): RedactionResult {
       if (text !== before) {
         count++;
         categories.add(rule.name);
+      }
+    }
+
+    // User-defined rules applied after built-in rules so enterprise overrides
+    // compose on top of the default set without replacing it.
+    if (opts.customRules && opts.customRules.length > 0) {
+      for (const rule of opts.customRules) {
+        try {
+          const re = new RegExp(rule.pattern, rule.flags ?? 'g');
+          const repl = rule.replacement ?? '[REDACTED:custom]';
+          const before = text;
+          text = text.replace(re, repl);
+          if (text !== before) {
+            count++;
+            categories.add(`custom:${rule.name}`);
+          }
+        } catch {
+          // Invalid regex — skip this rule silently rather than crashing capture.
+        }
       }
     }
   }

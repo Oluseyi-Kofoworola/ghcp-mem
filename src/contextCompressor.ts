@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { SessionEvent, CompressedSession, ObservationType, computeContentHash, AzureContextMeta } from './types';
+import { SessionEvent, CompressedSession, ObservationType, computeContentHash, AzureContextMeta, getConfig } from './types';
 import { redact } from './redactor';
 import { AzureSubsystem, inferAzureObservationType } from './azureDetect';
 import { captureAzureContext } from './azureContext';
@@ -149,8 +149,10 @@ ${eventLog}`;
       return this.fallbackCompress(events, sessionStartTime, workspaceId, workspaceName, captureRedactionCount, azureSubsystems);
     }
 
-    // Defense-in-depth: redact LM output in case it echoed anything sensitive
-    const sanitize = (s: string) => redact(s, { redactSecrets: true, honorPrivateTags: true }).text;
+    // Defense-in-depth: redact LM output in case it echoed anything sensitive.
+    // Also applies any user-defined custom redaction rules.
+    const customRules = getConfig().customRedactionRules;
+    const sanitize = (s: string) => redact(s, { redactSecrets: true, honorPrivateTags: true, customRules }).text;
 
     const summary = sanitize(parsed.summary ?? '');
     const keyFiles = (parsed.keyFiles ?? []).map(sanitize);
