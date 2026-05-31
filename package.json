@@ -2,7 +2,7 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "Stops Copilot burning tokens re-reading code it already knew. Persistent session memory with zero dependencies, zero ports, local-first storage, and built-in secret redaction.",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",

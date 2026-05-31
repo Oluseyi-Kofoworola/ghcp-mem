@@ -58,9 +58,9 @@ The result: a significant slice of every Copilot session is wasted on context th
 
 **GHCP-MEM gives Copilot a persistent memory layer so it never needs to re-learn what it already knew.**
 
-It captures what you do in each session, compresses it into structured memory, redacts secrets before storage, and makes that context available through `@mem` commands, native Copilot agent tools, and MCP — locally, for free.
+It captures what you do in each session, compresses it into structured memory, redacts secrets before storage, and hands that context back to Copilot at the start of every session — automatically, via VS Code's native instructions file (`.github/instructions/session-memory.instructions.md`).
 
-Use `@mem /recent`, `#ghcpMemSearch`, or the auto-injected session instructions file to bring prior context into the conversation.
+You can also query explicitly with `@mem` commands, `#ghcpMemSearch`, and MCP.
 
 It surfaces memory through:
 
@@ -72,7 +72,7 @@ Why engineers trust it:
 
 | What GHCP-MEM does | Why it matters |
 |---|---|
-| **Reduces catch-up tokens** | Session memory is queryable via `@mem`, `#ghcpMemSearch`, and MCP — so Copilot can build on what it already knew |
+| **Reduces catch-up tokens** | Injects prior session context automatically via VS Code instructions file — queryable via `@mem`, `#ghcpMemSearch`, and MCP |
 | **Runs with zero native dependencies** | No Bun, Python, SQLite binary, WASM, Chroma, or model downloads |
 | **Opens zero network ports** | No GHCP-MEM backend or telemetry. LM compression uses your existing Copilot subscription only |
 | **Stores data locally** | Memory stays on your machine under your control |
