@@ -1,6 +1,9 @@
 # 🧠 GHCP-MEM
 
-### Persistent session memory for GitHub Copilot in VS Code
+### Stop paying tokens to re-explain your own project
+
+**Every new AI session re-reads your files, re-learns your architecture, and re-discovers your decisions — burning tokens on work it already did last session.**  
+GHCP-MEM stops that waste. It compresses what happened, stores it locally, and hands it back to Copilot so the tokens go to actual work — not catch-up.
 
 **Zero dependencies · Zero network ports · Native Copilot + MCP · Secret-redacted by default**
 
@@ -21,54 +24,57 @@
 
 ## Why this exists
 
-You use GitHub Copilot to build real software, and you want it to remember what already happened:
+Every time you open a new Copilot chat, the AI starts from zero.
 
-- what you fixed
-- what you decided
-- which files mattered
-- what broke last time
-- how you deployed it
+Before it can help, it burns tokens just to answer three questions:
 
-You do **not** want to re-explain your project every session.
+- **What are you building?** (re-reads files, structure, stack)
+- **How does it work?** (re-reads architecture, patterns, decisions)
+- **Why did you do it this way?** (re-reads history it has no memory of)
+
+That catch-up tax is invisible, constant, and completely avoidable.
+
+GHCP-MEM stores a compressed record of your actual work — what you changed, decided, fixed, and deployed. The next session, Copilot already knows the answers. Tokens go to moving forward, not catching up.
 
 ---
 
-## What gets in the way
+## What the waste looks like
 
-Copilot is powerful, but every new session starts with memory loss.
-
-That creates three problems:
-
-| Problem | What it costs |
+| Every new session… | The real cost |
 |---|---|
-| **Context disappears** | You repeat the same history, architecture, and decisions. |
-| **Most memory tools are heavy** | They need sidecars, native binaries, localhost ports, or cloud sync. |
-| **Enterprise reality gets ignored** | Locked-down laptops, air-gapped installs, and Azure-heavy workflows break the usual "just run another service" advice. |
+| AI re-reads files to understand what you're building | Tokens spent on catch-up, not code |
+| AI re-discovers your architecture and past decisions | You repeat the same explanations again |
+| AI re-learns why a change was made | It guesses, and sometimes guesses wrong |
+| Most "memory" tools need ports, sidecars, or cloud sync | New risk, new complexity, new failure point |
 
-The result is friction, lost flow, and avoidable mistakes.
+The result: a significant slice of every Copilot session is wasted on context the AI already had last time.
 
 ---
 
-## Why GHCP-MEM
+## How GHCP-MEM solves it
 
-**GHCP-MEM** gives GitHub Copilot a persistent memory layer built for the way engineers actually work in VS Code.
+**GHCP-MEM gives Copilot a persistent memory layer so it never needs to re-learn what it already knew.**
 
-It captures what you do, compresses it into useful memory, redacts secrets before storage, and makes that context available again through:
+It captures what you do in each session, compresses it into structured memory, redacts secrets before storage, and hands that context back to Copilot at the start of every session — automatically, locally, for free.
 
-- the **`@mem`** chat participant
-- native Copilot **agent tools**
-- a bundled **stdio MCP server** for external clients
+The AI already knows the *what*, *how*, and *why*. Every token goes to actual work.
 
-Why teams trust it:
+It surfaces memory through:
+
+- the **`@mem`** chat participant (15 commands including `/savings` to see tokens recovered)
+- native Copilot **agent tools** (`#ghcpMemSearch`, `#ghcpMemStore`)
+- a bundled **stdio MCP server** for Cursor, Cline, Windsurf, and Claude Desktop
+
+Why engineers trust it:
 
 | What GHCP-MEM does | Why it matters |
 |---|---|
-| **Runs with zero native dependencies** | No Bun, Python, SQLite binary, WASM, Chroma, or model downloads. |
-| **Opens zero network ports** | Nothing listens on localhost. Nothing phones home. |
-| **Stores data locally** | Memory stays on disk under your control. |
-| **Redacts secrets by default** | 24-rule dual-pass redaction plus `<private>...</private>` stripping. |
-| **Works with Copilot natively** | `@mem`, `#ghcpMemSearch`, `#ghcpMemStore`, and MCP all ship together. |
-| **Understands Azure workflows** | Azure subsystem tagging, live `az` snapshotting, and Azure-specific redaction rules. |
+| **Eliminates catch-up tokens** | Copilot already knows your project from prior sessions |
+| **Runs with zero native dependencies** | No Bun, Python, SQLite binary, WASM, Chroma, or model downloads |
+| **Opens zero network ports** | Nothing listens on localhost. Nothing phones home |
+| **Stores data locally** | Memory stays on your machine under your control |
+| **Redacts secrets by default** | 24-rule dual-pass redaction plus `<private>...</private>` stripping |
+| **Understands Azure workflows** | Azure subsystem tagging, live `az` snapshotting, Azure-specific redaction |
 
 ---
 
@@ -125,12 +131,13 @@ Or connect the bundled MCP server from clients like Cursor, Cline, Windsurf, or 
 
 ## Get started
 
-If you want Copilot to stop starting from zero, install GHCP-MEM and capture your first snapshot:
+Stop burning tokens on catch-up. Install GHCP-MEM and capture your first snapshot:
 
 1. Install **GHCP-MEM**
 2. Open any workspace
 3. Run **`GHCP-MEM: Capture Session Snapshot Now`**
 4. Open Copilot Chat and try **`@mem /recent`**
+5. Run **`@mem /savings`** after a few sessions to see exactly how many tokens you've recovered
 
 <details>
 <summary><b>📺 Watch the install in 5 seconds</b></summary>
@@ -145,30 +152,30 @@ If you want Copilot to stop starting from zero, install GHCP-MEM and capture you
 
 ## Why teams need this
 
-Without persistent session memory, teams keep paying the same tax:
+Without persistent session memory, every session charges the same hidden tax:
 
-- repeating the same project context
-- losing deployment and debugging history
-- forgetting why a change was made
-- exposing themselves to unnecessary tool sprawl
-- adopting memory tools that add ports, sidecars, or cloud risk
+- tokens burned re-explaining what the project does
+- tokens burned re-establishing architecture and patterns
+- tokens burned re-learning why a decision was made
+- more tokens spent on the same work, slower progress, worse answers
 
-GHCP-MEM is designed to avoid that failure mode while keeping the attack surface small.
+GHCP-MEM eliminates that tax. **The tokens you stop wasting on catch-up are the tokens that get your work done.**
 
 ---
 
 ## What success looks like
 
-With GHCP-MEM, a better workflow becomes normal:
+With GHCP-MEM, the catch-up tax disappears:
 
-- Copilot recalls prior decisions instead of guessing
-- you resume work faster after interruptions
-- enterprise machines stay compliant and simple
-- Azure-heavy teams get memory that understands their stack
-- useful context shows up without flooding the prompt window
-- **token savings are visible** — `@mem /savings` shows lifetime tokens saved and a dollar-equivalent at GPT-4o pricing
+- **Copilot already knows what you're building** — no re-reading files to get oriented
+- **Copilot already knows how it works** — architecture and patterns are in memory
+- **Copilot already knows why you made those choices** — decisions persist across sessions
+- you resume work in seconds instead of spending the first 10 minutes re-explaining
+- enterprise machines stay compliant — no ports, no cloud, no native binaries
+- Azure-heavy teams get memory that understands their stack natively
+- **`@mem /savings` shows exactly how many tokens were recovered** and the dollar-equivalent at GPT-4o pricing
 
-That is the outcome: **less repetition, better continuity, and more reliable AI-assisted development.**
+That is the outcome: **tokens go to building, not catching up.**
 
 ---
 
