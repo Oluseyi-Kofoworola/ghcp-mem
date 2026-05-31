@@ -1,9 +1,12 @@
 # 🧠 GHCP-MEM
 
-### Stop paying tokens to re-explain your own project
+### Stop burning tokens on code your AI already read
 
-**Every new AI session re-reads your files, re-learns your architecture, and re-discovers your decisions — burning tokens on work it already did last session.**  
-GHCP-MEM stops that waste. It compresses what happened, stores it locally, and hands it back to Copilot so the tokens go to actual work — not catch-up.
+> **Every time you start a new Copilot chat, the AI re-reads your files, re-learns your architecture, and re-discovers every decision you made — burning tokens just to understand what you wrote, how it works, and why you built it that way.**
+>
+> **That token waste is silent, constant, and completely avoidable.**
+>
+> GHCP-MEM gives Copilot a persistent memory so it never needs to re-read what it already knew. Tokens go to moving forward — not catching up.
 
 **Zero dependencies · Zero network ports · Native Copilot + MCP · Secret-redacted by default**
 
