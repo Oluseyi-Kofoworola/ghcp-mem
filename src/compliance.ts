@@ -104,7 +104,7 @@ export function buildComplianceReport(
     if (s.correctionOf) corrections++;
 
     const decisionsCount = s.decisions.length;
-    const evidenceCount = (s.decisionEvidence ?? []).filter(ev => ev.length > 0).length;
+    const evidenceCount = (s.decisionEvidence ?? []).filter((ev) => ev.length > 0).length;
     decisionsWithEvidence += evidenceCount;
     decisionsWithoutEvidence += Math.max(0, decisionsCount - evidenceCount);
     if (evidenceCount > 0) groundedDecisionSessions++;
@@ -131,8 +131,11 @@ export function buildComplianceReport(
     }
 
     const u = s.usage;
-    if (u && (u.retrieved + u.accepted + u.rejected) > 0) sessionsWithFeedback++;
-    if (u) { accepts += u.accepted; rejects += u.rejected; }
+    if (u && u.retrieved + u.accepted + u.rejected > 0) sessionsWithFeedback++;
+    if (u) {
+      accepts += u.accepted;
+      rejects += u.rejected;
+    }
 
     if (s.startTime < oldest) oldest = s.startTime;
     if (s.endTime > newest) newest = s.endTime;
@@ -147,12 +150,11 @@ export function buildComplianceReport(
   }
 
   const totalDecisions = decisionsWithEvidence + decisionsWithoutEvidence;
-  const evidenceCoveragePct = totalDecisions === 0
-    ? 0
-    : Math.round((decisionsWithEvidence / totalDecisions) * 1000) / 10; // one decimal
+  const evidenceCoveragePct =
+    totalDecisions === 0 ? 0 : Math.round((decisionsWithEvidence / totalDecisions) * 1000) / 10; // one decimal
 
   const entities = (inputs.customSensitiveEntities ?? [])
-    .map(s => (s ?? '').trim())
+    .map((s) => (s ?? '').trim())
     .filter(Boolean);
 
   return {
@@ -170,8 +172,10 @@ export function buildComplianceReport(
     totalRedactions,
     compressorBreakdown: { lm, fallback, unknown: unknownMode },
     truncatedEventLogs: truncated,
-    meanStoredConfidence: confidenceCount === 0 ? null : Math.round((confidenceSum / confidenceCount) * 100) / 100,
-    meanEffectiveConfidence: effectiveCount === 0 ? null : Math.round((effectiveSum / effectiveCount) * 100) / 100,
+    meanStoredConfidence:
+      confidenceCount === 0 ? null : Math.round((confidenceSum / confidenceCount) * 100) / 100,
+    meanEffectiveConfidence:
+      effectiveCount === 0 ? null : Math.round((effectiveSum / effectiveCount) * 100) / 100,
     confidenceBuckets: buckets,
     sessionsWithFeedback,
     totalAccepts: accepts,
@@ -194,29 +198,44 @@ export function renderComplianceReport(r: ComplianceReport): string {
   lines.push('');
 
   lines.push(`### Store posture`);
-  lines.push(`- **Total sessions:** ${r.totalSessions} (${r.activeSessions} active, ${r.retractedSessions} retracted, ${r.supersededSessions} superseded, ${r.correctionSessions} correction-rooted)`);
-  if (r.oldestSessionAt) lines.push(`- **Time range:** ${r.oldestSessionAt} → ${r.newestSessionAt}`);
-  lines.push(`- **Custom sensitive entities configured:** ${r.customSensitiveEntityCount}${r.customSensitiveEntityCount ? ` (${r.customSensitiveEntityList.map(e => `\`${e}\``).join(', ')})` : ''}`);
+  lines.push(
+    `- **Total sessions:** ${r.totalSessions} (${r.activeSessions} active, ${r.retractedSessions} retracted, ${r.supersededSessions} superseded, ${r.correctionSessions} correction-rooted)`,
+  );
+  if (r.oldestSessionAt)
+    lines.push(`- **Time range:** ${r.oldestSessionAt} → ${r.newestSessionAt}`);
+  lines.push(
+    `- **Custom sensitive entities configured:** ${r.customSensitiveEntityCount}${r.customSensitiveEntityCount ? ` (${r.customSensitiveEntityList.map((e) => `\`${e}\``).join(', ')})` : ''}`,
+  );
   lines.push('');
 
   lines.push(`### Grounding`);
-  lines.push(`- **Evidence coverage:** ${r.evidenceCoveragePct}% of decisions cite at least one piece of evidence (${r.decisionsWithEvidenceCount}/${r.decisionsWithEvidenceCount + r.decisionsWithoutEvidenceCount})`);
+  lines.push(
+    `- **Evidence coverage:** ${r.evidenceCoveragePct}% of decisions cite at least one piece of evidence (${r.decisionsWithEvidenceCount}/${r.decisionsWithEvidenceCount + r.decisionsWithoutEvidenceCount})`,
+  );
   lines.push(`- **Sessions with SHA-anchored key files:** ${r.sessionsWithKeyFileHashes}`);
-  lines.push(`- **Compressor mode:** ${r.compressorBreakdown.lm} LM · ${r.compressorBreakdown.fallback} fallback · ${r.compressorBreakdown.unknown} legacy`);
+  lines.push(
+    `- **Compressor mode:** ${r.compressorBreakdown.lm} LM · ${r.compressorBreakdown.fallback} fallback · ${r.compressorBreakdown.unknown} legacy`,
+  );
   lines.push(`- **Truncated event logs:** ${r.truncatedEventLogs}`);
   lines.push('');
 
   lines.push(`### Trust distribution`);
   if (r.meanStoredConfidence !== null) {
-    lines.push(`- **Mean stored / effective confidence:** ${r.meanStoredConfidence.toFixed(2)} / ${r.meanEffectiveConfidence?.toFixed(2)}`);
+    lines.push(
+      `- **Mean stored / effective confidence:** ${r.meanStoredConfidence.toFixed(2)} / ${r.meanEffectiveConfidence?.toFixed(2)}`,
+    );
   }
-  lines.push(`- **Buckets:** 🟢 ${r.confidenceBuckets.green} · 🟡 ${r.confidenceBuckets.yellow} · 🔴 ${r.confidenceBuckets.red} · ◌ ${r.confidenceBuckets.unscored} unscored`);
+  lines.push(
+    `- **Buckets:** 🟢 ${r.confidenceBuckets.green} · 🟡 ${r.confidenceBuckets.yellow} · 🔴 ${r.confidenceBuckets.red} · ◌ ${r.confidenceBuckets.unscored} unscored`,
+  );
   lines.push('');
 
   lines.push(`### Reinforcement & conflicts`);
   lines.push(`- **Sessions with reinforcement signal:** ${r.sessionsWithFeedback}`);
   lines.push(`- **Total accepts / rejects:** ${r.totalAccepts} 👍 / ${r.totalRejects} 👎`);
-  lines.push(`- **Heuristic conflicts pending review:** ${r.pendingConflicts}${r.pendingConflicts ? ' — run `@mem /conflicts`' : ''}`);
+  lines.push(
+    `- **Heuristic conflicts pending review:** ${r.pendingConflicts}${r.pendingConflicts ? ' — run `@mem /conflicts`' : ''}`,
+  );
   lines.push('');
 
   lines.push(`### Redaction`);

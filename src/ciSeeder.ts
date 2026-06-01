@@ -111,10 +111,10 @@ async function main(): Promise<void> {
       sess.summary = sanitizedSummary.text;
       sess.redactionCount = (sess.redactionCount ?? 0) + sanitizedSummary.redactionCount;
 
-      sess.keyTopics = sess.keyTopics!.map(t => redact(t, redactOpts).text);
-      sess.keyFiles = sess.keyFiles!.map(f => redact(f, redactOpts).text);
-      sess.decisions = sess.decisions!.map(d => redact(d, redactOpts).text);
-      sess.problemsSolved = sess.problemsSolved!.map(p => redact(p, redactOpts).text);
+      sess.keyTopics = sess.keyTopics!.map((t) => redact(t, redactOpts).text);
+      sess.keyFiles = sess.keyFiles!.map((f) => redact(f, redactOpts).text);
+      sess.decisions = sess.decisions!.map((d) => redact(d, redactOpts).text);
+      sess.problemsSolved = sess.problemsSolved!.map((p) => redact(p, redactOpts).text);
 
       // Tag with seed label for easy filtering
       if (!sess.userTags!.includes(seedLabel)) {
@@ -123,7 +123,7 @@ async function main(): Promise<void> {
 
       // Deduplicate by content hash
       const hash = sess.contentHash ?? generateContentHash(sess as CompressedSession);
-      const isDuplicate = db.sessions.some(s => s.contentHash === hash || s.id === sess.id);
+      const isDuplicate = db.sessions.some((s) => s.contentHash === hash || s.id === sess.id);
 
       if (!isDuplicate) {
         db.sessions.push(sess as CompressedSession);
@@ -186,7 +186,7 @@ function generateContentHash(session: CompressedSession): string {
   return createHash('sha256').update(content).digest('hex');
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(`[GHCP-MEM-CI] Uncaught error: ${err}`);
   process.exit(1);
 });

@@ -54,7 +54,7 @@ export const CONTRADICTION_MARKERS: string[] = [
  * words. Returns the matched marker (lowercased) when present.
  */
 const MARKER_RE = new RegExp(
-  '\\b(' + CONTRADICTION_MARKERS.map(m => m.replace(/ /g, '\\s+')).join('|') + ')\\b',
+  '\\b(' + CONTRADICTION_MARKERS.map((m) => m.replace(/ /g, '\\s+')).join('|') + ')\\b',
   'i',
 );
 
@@ -106,8 +106,8 @@ export function detectConflicts(
   if (newSession.retracted) return warnings;
   if (newSession.decisions.length === 0) return warnings;
 
-  const newFiles = new Set(newSession.keyFiles.map(f => f.toLowerCase()));
-  const newTopics = new Set(newSession.keyTopics.map(t => t.toLowerCase()));
+  const newFiles = new Set(newSession.keyFiles.map((f) => f.toLowerCase()));
+  const newTopics = new Set(newSession.keyTopics.map((t) => t.toLowerCase()));
 
   for (const decision of newSession.decisions) {
     const marker = hasContradictionMarker(decision);
@@ -121,8 +121,8 @@ export function detectConflicts(
       if (other.retracted) continue;
       if (other.endTime >= newSession.endTime) continue;
       if (other.decisions.length === 0) continue;
-      const sharedFiles = other.keyFiles.filter(f => newFiles.has(f.toLowerCase()));
-      const sharedTopics = other.keyTopics.filter(t => newTopics.has(t.toLowerCase()));
+      const sharedFiles = other.keyFiles.filter((f) => newFiles.has(f.toLowerCase()));
+      const sharedTopics = other.keyTopics.filter((t) => newTopics.has(t.toLowerCase()));
       if (sharedFiles.length === 0 && sharedTopics.length === 0) continue;
       candidates.push({
         sessionId: other.id,
@@ -135,10 +135,11 @@ export function detectConflicts(
     if (candidates.length === 0) continue;
 
     // Rank candidates by (sharedFiles + sharedTopics) DESC, then recency.
-    candidates.sort((a, b) =>
-      (b.sharedFiles.length + b.sharedTopics.length)
-      - (a.sharedFiles.length + a.sharedTopics.length)
-      || b.endTime - a.endTime,
+    candidates.sort(
+      (a, b) =>
+        b.sharedFiles.length +
+          b.sharedTopics.length -
+          (a.sharedFiles.length + a.sharedTopics.length) || b.endTime - a.endTime,
     );
 
     warnings.push({
@@ -165,16 +166,22 @@ export function renderConflictWarning(w: ConflictWarning): string {
   const lines: string[] = [];
   lines.push(`### ⚠️ Possible conflict in \`${w.newSessionId.substring(0, 8)}\``);
   lines.push(`> ${w.decisionText}`);
-  lines.push(`**Marker:** \`${w.marker}\` · **Detected:** ${new Date(w.detectedAt).toLocaleString()}`);
+  lines.push(
+    `**Marker:** \`${w.marker}\` · **Detected:** ${new Date(w.detectedAt).toLocaleString()}`,
+  );
   lines.push('');
   lines.push(`**Candidates likely being overturned:**`);
   for (const c of w.candidates) {
     const shared = [
       c.sharedFiles.length ? `${c.sharedFiles.length} file(s)` : '',
       c.sharedTopics.length ? `${c.sharedTopics.length} topic(s)` : '',
-    ].filter(Boolean).join(', ');
+    ]
+      .filter(Boolean)
+      .join(', ');
     lines.push(`- \`${c.sessionId.substring(0, 8)}\` — ${c.summary} _(shares ${shared})_`);
-    lines.push(`  > Resolve: \`@mem /supersede ${w.newSessionId.substring(0, 8)} ${c.sessionId.substring(0, 8)}\``);
+    lines.push(
+      `  > Resolve: \`@mem /supersede ${w.newSessionId.substring(0, 8)} ${c.sessionId.substring(0, 8)}\``,
+    );
   }
   lines.push('');
   return lines.join('\n');

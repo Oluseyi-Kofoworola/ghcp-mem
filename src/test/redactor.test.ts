@@ -86,14 +86,16 @@ test('redactor — opts.redactSecrets=false disables scanning', () => {
 // ---------- Azure-specific secrets ----------
 
 test('redactor — Azure storage connection string', () => {
-  const s = 'conn=DefaultEndpointsProtocol=https;AccountName=mystore;AccountKey=abc123xyz==;EndpointSuffix=core.windows.net';
+  const s =
+    'conn=DefaultEndpointsProtocol=https;AccountName=mystore;AccountKey=abc123xyz==;EndpointSuffix=core.windows.net';
   const r = redact(s, OPTS);
   assert.match(r.text, /\[REDACTED:azure-storage-conn\]/);
   assert.doesNotMatch(r.text, /abc123xyz==/);
 });
 
 test('redactor — Azure Service Bus connection string', () => {
-  const s = 'Endpoint=sb://foo.servicebus.windows.net/;SharedAccessKeyName=Root;SharedAccessKey=abcKEY123==;EntityPath=q1';
+  const s =
+    'Endpoint=sb://foo.servicebus.windows.net/;SharedAccessKeyName=Root;SharedAccessKey=abcKEY123==;EntityPath=q1';
   const r = redact(s, OPTS);
   assert.match(r.text, /\[REDACTED:azure-sb-conn\]/);
 });
@@ -105,7 +107,8 @@ test('redactor — Azure Cosmos DB connection string', () => {
 });
 
 test('redactor — Azure SQL connection string', () => {
-  const s = 'Server=tcp:foo.database.windows.net,1433;Database=d;User ID=u;Password=P@ssw0rd!xyz;Encrypt=true';
+  const s =
+    'Server=tcp:foo.database.windows.net,1433;Database=d;User ID=u;Password=P@ssw0rd!xyz;Encrypt=true';
   const r = redact(s, OPTS);
   assert.match(r.text, /\[REDACTED:azure-sql-conn\]/);
 });
@@ -137,7 +140,12 @@ test('redactor — Azure subscription GUID with context keyword', () => {
 test('custom redaction rules compose after built-in rules', () => {
   const input = 'AWS key: AKIA1234567890ABCDEF and CUSTOM_SECRET_XYZ12345678901234567890';
   const customRules = [
-    { name: 'custom-secret', pattern: 'CUSTOM_SECRET_[A-Za-z0-9]{20,}', replacement: '[REDACTED:custom]', flags: 'g' },
+    {
+      name: 'custom-secret',
+      pattern: 'CUSTOM_SECRET_[A-Za-z0-9]{20,}',
+      replacement: '[REDACTED:custom]',
+      flags: 'g',
+    },
   ];
   const result = redact(input, {
     redactSecrets: true,

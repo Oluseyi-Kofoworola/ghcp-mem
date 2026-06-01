@@ -34,8 +34,8 @@ export const CAUSAL_SUCCESSOR_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 export type CausalEdgeLabel =
   | 'continues_work_from'
   | 'introduced_issue_fixed_by'
-  | 'extends'                  // refactor of a feature
-  | 'tests'                    // test session targeting a feature/refactor
+  | 'extends' // refactor of a feature
+  | 'tests' // test session targeting a feature/refactor
   | 'related';
 
 export interface CausalEdge {
@@ -67,10 +67,10 @@ export function getCausalNeighbors(
   allSessions: CompressedSession[],
   limit = 5,
 ): CausalNeighbors | undefined {
-  const center = allSessions.find(s => s.id === id);
+  const center = allSessions.find((s) => s.id === id);
   if (!center) return undefined;
 
-  const centerFiles = new Set(center.keyFiles.map(f => f.toLowerCase()));
+  const centerFiles = new Set(center.keyFiles.map((f) => f.toLowerCase()));
   if (centerFiles.size === 0) {
     return { centerId: id, predecessors: [], successors: [] };
   }
@@ -80,7 +80,7 @@ export function getCausalNeighbors(
   for (const other of allSessions) {
     if (other.id === center.id) continue;
     if (other.retracted) continue;
-    const shared = other.keyFiles.filter(f => centerFiles.has(f.toLowerCase()));
+    const shared = other.keyFiles.filter((f) => centerFiles.has(f.toLowerCase()));
     if (shared.length === 0) continue;
 
     // Predecessor: ended before center started, within window.
@@ -151,7 +151,9 @@ export function renderCausalNeighbors(n: CausalNeighbors): string {
   lines.push(`## 🧭 Lineage for \`${n.centerId.substring(0, 8)}\``);
   lines.push('');
   if (n.predecessors.length === 0 && n.successors.length === 0) {
-    lines.push(`_No causal neighbours found (no other session within ±30 days shares a key file)._`);
+    lines.push(
+      `_No causal neighbours found (no other session within ±30 days shares a key file)._`,
+    );
     return lines.join('\n');
   }
   if (n.predecessors.length) {
@@ -159,9 +161,13 @@ export function renderCausalNeighbors(n: CausalNeighbors): string {
     for (const p of n.predecessors) {
       const days = Math.round(p.gapMs / (24 * 60 * 60 * 1000));
       const files = p.sharedFiles.slice(0, 2).join(', ');
-      lines.push(`- \`${p.sessionId.substring(0, 8)}\` · ${p.observationType} · ${days}d earlier · _${prettyLabel(p.label)}_`);
+      lines.push(
+        `- \`${p.sessionId.substring(0, 8)}\` · ${p.observationType} · ${days}d earlier · _${prettyLabel(p.label)}_`,
+      );
       lines.push(`  > ${p.summary}`);
-      lines.push(`  > 📎 shared: ${files}${p.sharedFiles.length > 2 ? ` (+${p.sharedFiles.length - 2})` : ''}`);
+      lines.push(
+        `  > 📎 shared: ${files}${p.sharedFiles.length > 2 ? ` (+${p.sharedFiles.length - 2})` : ''}`,
+      );
     }
     lines.push('');
   }
@@ -170,9 +176,13 @@ export function renderCausalNeighbors(n: CausalNeighbors): string {
     for (const s of n.successors) {
       const days = Math.round(s.gapMs / (24 * 60 * 60 * 1000));
       const files = s.sharedFiles.slice(0, 2).join(', ');
-      lines.push(`- \`${s.sessionId.substring(0, 8)}\` · ${s.observationType} · ${days}d later · _${prettyLabel(s.label)}_`);
+      lines.push(
+        `- \`${s.sessionId.substring(0, 8)}\` · ${s.observationType} · ${days}d later · _${prettyLabel(s.label)}_`,
+      );
       lines.push(`  > ${s.summary}`);
-      lines.push(`  > 📎 shared: ${files}${s.sharedFiles.length > 2 ? ` (+${s.sharedFiles.length - 2})` : ''}`);
+      lines.push(
+        `  > 📎 shared: ${files}${s.sharedFiles.length > 2 ? ` (+${s.sharedFiles.length - 2})` : ''}`,
+      );
     }
     lines.push('');
   }
@@ -181,10 +191,15 @@ export function renderCausalNeighbors(n: CausalNeighbors): string {
 
 function prettyLabel(label: CausalEdgeLabel): string {
   switch (label) {
-    case 'introduced_issue_fixed_by': return 'introduced an issue fixed by';
-    case 'extends': return 'extended by';
-    case 'tests': return 'covered by tests in';
-    case 'continues_work_from': return 'work continued';
-    default: return label;
+    case 'introduced_issue_fixed_by':
+      return 'introduced an issue fixed by';
+    case 'extends':
+      return 'extended by';
+    case 'tests':
+      return 'covered by tests in';
+    case 'continues_work_from':
+      return 'work continued';
+    default:
+      return label;
   }
 }

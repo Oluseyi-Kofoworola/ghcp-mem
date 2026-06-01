@@ -12,10 +12,10 @@ export const PACK_TAG_PREFIX = 'pack:';
  * `JSON.parse` + redaction. Picked generously enough that any realistic
  * team-shared pack passes through unaffected.
  */
-export const MAX_PACK_BYTES = 10 * 1024 * 1024;          // 10 MB total
+export const MAX_PACK_BYTES = 10 * 1024 * 1024; // 10 MB total
 export const MAX_SESSIONS_PER_PACK = 1000;
-export const MAX_FIELD_LENGTH = 8 * 1024;                 // 8 KB per text field
-export const MAX_LIST_LENGTH = 100;                        // per session, max items per array
+export const MAX_FIELD_LENGTH = 8 * 1024; // 8 KB per text field
+export const MAX_LIST_LENGTH = 100; // per session, max items per array
 
 export interface MemoryPack {
   schemaVersion: number;
@@ -37,26 +37,23 @@ export interface ExportPackOptions {
   redactAgain?: boolean;
 }
 
-export function buildPack(
-  store: ContextStore,
-  opts: ExportPackOptions,
-): MemoryPack {
+export function buildPack(store: ContextStore, opts: ExportPackOptions): MemoryPack {
   const all = store.getAllSessions();
   let filtered = all;
 
   if (opts.filterTags?.length) {
     const wanted = new Set(opts.filterTags);
-    filtered = filtered.filter(s => s.userTags.some(t => wanted.has(t)));
+    filtered = filtered.filter((s) => s.userTags.some((t) => wanted.has(t)));
   }
   if (opts.filterTypes?.length) {
     const wanted = new Set(opts.filterTypes);
-    filtered = filtered.filter(s => wanted.has(s.observationType));
+    filtered = filtered.filter((s) => wanted.has(s.observationType));
   }
 
   const packTag = `${PACK_TAG_PREFIX}${opts.name}`;
   const redactAgain = opts.redactAgain !== false;
 
-  const sessions: CompressedSession[] = filtered.map(s => {
+  const sessions: CompressedSession[] = filtered.map((s) => {
     const tags = Array.from(new Set([...s.userTags, packTag]));
     if (!redactAgain) return { ...s, userTags: tags };
     const r = (txt: string) => redact(txt, { redactSecrets: true, honorPrivateTags: true }).text;
@@ -85,16 +82,21 @@ export function parsePack(json: string): MemoryPack {
   // session count and per-field text length after parse.
   if (typeof json !== 'string') throw new Error('Pack input must be a string.');
   if (json.length > MAX_PACK_BYTES) {
-    throw new Error(`Pack rejected: payload ${json.length} bytes exceeds the ${MAX_PACK_BYTES}-byte limit.`);
+    throw new Error(
+      `Pack rejected: payload ${json.length} bytes exceeds the ${MAX_PACK_BYTES}-byte limit.`,
+    );
   }
 
   const parsed = JSON.parse(json);
   if (!parsed || typeof parsed !== 'object') throw new Error('Pack is not a JSON object.');
-  if (typeof parsed.name !== 'string' || !parsed.name.trim()) throw new Error('Pack missing "name".');
+  if (typeof parsed.name !== 'string' || !parsed.name.trim())
+    throw new Error('Pack missing "name".');
   if (!Array.isArray(parsed.sessions)) throw new Error('Pack missing "sessions" array.');
   if (typeof parsed.schemaVersion !== 'number') throw new Error('Pack missing "schemaVersion".');
   if (parsed.schemaVersion > PACK_SCHEMA_VERSION) {
-    throw new Error(`Pack schema v${parsed.schemaVersion} is newer than supported v${PACK_SCHEMA_VERSION}.`);
+    throw new Error(
+      `Pack schema v${parsed.schemaVersion} is newer than supported v${PACK_SCHEMA_VERSION}.`,
+    );
   }
   // Validate pack name — prevent path traversal if the name is ever used as a filename/tag component.
   if (!/^[a-z0-9._-]{1,64}$/i.test(parsed.name.trim())) {
@@ -102,31 +104,46 @@ export function parsePack(json: string): MemoryPack {
   }
   // Bound session count so a pack with millions of empty objects doesn't slowly chew up RAM.
   if (parsed.sessions.length > MAX_SESSIONS_PER_PACK) {
-    throw new Error(`Pack rejected: ${parsed.sessions.length} sessions exceeds the ${MAX_SESSIONS_PER_PACK} per-pack limit.`);
+    throw new Error(
+      `Pack rejected: ${parsed.sessions.length} sessions exceeds the ${MAX_SESSIONS_PER_PACK} per-pack limit.`,
+    );
   }
   // Validate that every session has a UUID-shaped ID to prevent injection.
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   for (const s of parsed.sessions as Array<{
-    id?: unknown; summary?: unknown;
-    keyFiles?: unknown; keyTopics?: unknown; decisions?: unknown; problemsSolved?: unknown;
-    decisionEvidence?: unknown; problemEvidence?: unknown;
+    id?: unknown;
+    summary?: unknown;
+    keyFiles?: unknown;
+    keyTopics?: unknown;
+    decisions?: unknown;
+    problemsSolved?: unknown;
+    decisionEvidence?: unknown;
+    problemEvidence?: unknown;
   }>) {
     if (typeof s.id !== 'string' || !uuidRe.test(s.id)) {
-      throw new Error(`Pack contains a session with an invalid ID: "${String(s.id).substring(0, 40)}"`);
+      throw new Error(
+        `Pack contains a session with an invalid ID: "${String(s.id).substring(0, 40)}"`,
+      );
     }
     // Per-field length caps — defends against degenerate single-string OOM.
     if (typeof s.summary === 'string' && s.summary.length > MAX_FIELD_LENGTH) {
-      throw new Error(`Pack rejected: session ${s.id} has a summary of ${s.summary.length} chars (cap: ${MAX_FIELD_LENGTH}).`);
+      throw new Error(
+        `Pack rejected: session ${s.id} has a summary of ${s.summary.length} chars (cap: ${MAX_FIELD_LENGTH}).`,
+      );
     }
     for (const arrField of ['keyFiles', 'keyTopics', 'decisions', 'problemsSolved'] as const) {
       const arr = s[arrField];
       if (Array.isArray(arr) && arr.length > MAX_LIST_LENGTH) {
-        throw new Error(`Pack rejected: session ${s.id} has ${arr.length} ${arrField} entries (cap: ${MAX_LIST_LENGTH}).`);
+        throw new Error(
+          `Pack rejected: session ${s.id} has ${arr.length} ${arrField} entries (cap: ${MAX_LIST_LENGTH}).`,
+        );
       }
       if (Array.isArray(arr)) {
         for (const item of arr) {
           if (typeof item === 'string' && item.length > MAX_FIELD_LENGTH) {
-            throw new Error(`Pack rejected: session ${s.id} has a ${arrField} entry of ${item.length} chars (cap: ${MAX_FIELD_LENGTH}).`);
+            throw new Error(
+              `Pack rejected: session ${s.id} has a ${arrField} entry of ${item.length} chars (cap: ${MAX_FIELD_LENGTH}).`,
+            );
           }
         }
       }
@@ -145,7 +162,9 @@ export function parsePack(json: string): MemoryPack {
           const fp = (ev as { filePath?: unknown }).filePath;
           if (typeof fp !== 'string') continue;
           if (isUnsafeRelPath(fp)) {
-            throw new Error(`Pack rejected: session ${s.id} carries evidence with an unsafe filePath: "${fp.substring(0, 80)}".`);
+            throw new Error(
+              `Pack rejected: session ${s.id} carries evidence with an unsafe filePath: "${fp.substring(0, 80)}".`,
+            );
           }
         }
       }
@@ -164,7 +183,7 @@ function isUnsafeRelPath(p: string): boolean {
   const s = p.trim();
   if (!s) return false; // empty is fine — drops to "no path" branch in callers
   if (s.startsWith('/')) return true;
-  if (/^[a-zA-Z]:[\\/]/.test(s)) return true;         // windows drive prefix
+  if (/^[a-zA-Z]:[\\/]/.test(s)) return true; // windows drive prefix
   if (s.startsWith('file://')) return true;
   if (s.split(/[\\/]/).includes('..')) return true;
   return false;
@@ -185,15 +204,21 @@ function isUnsafeRelPath(p: string): boolean {
  * so an imported chain "A → B → C" continues to render as a single
  * lineage even when only B was previously known locally.
  */
-export async function importPack(store: ContextStore, pack: MemoryPack): Promise<{ imported: number; skipped: number; conflictsRaised: number }> {
+export async function importPack(
+  store: ContextStore,
+  pack: MemoryPack,
+): Promise<{ imported: number; skipped: number; conflictsRaised: number }> {
   const packTag = `${PACK_TAG_PREFIX}${pack.name}`;
-  const existingIds = new Set(store.getAllSessions().map(s => s.id));
+  const existingIds = new Set(store.getAllSessions().map((s) => s.id));
   let imported = 0;
   let skipped = 0;
   const conflictsBefore = store.getPendingConflicts().length;
   const r = (txt: string) => redact(txt, { redactSecrets: true, honorPrivateTags: true }).text;
   for (const raw of pack.sessions) {
-    if (existingIds.has(raw.id)) { skipped++; continue; }
+    if (existingIds.has(raw.id)) {
+      skipped++;
+      continue;
+    }
     // Re-run redaction on every imported session to guard against unredacted pack data.
     // The optional retractedReason carries free-form user text → re-redact too.
     const tagged: CompressedSession = {
@@ -217,9 +242,9 @@ export async function importPack(store: ContextStore, pack: MemoryPack): Promise
  */
 export async function uninstallPack(store: ContextStore, name: string): Promise<number> {
   const packTag = `${PACK_TAG_PREFIX}${name}`;
-  const toDelete = store.getAllSessions().filter(s => s.userTags.includes(packTag));
+  const toDelete = store.getAllSessions().filter((s) => s.userTags.includes(packTag));
   if (toDelete.length === 0) return 0;
-  return store.deleteSessions(toDelete.map(s => s.id));
+  return store.deleteSessions(toDelete.map((s) => s.id));
 }
 
 /**
@@ -235,5 +260,7 @@ export function listInstalledPacks(store: ContextStore): { name: string; count: 
       }
     }
   }
-  return Array.from(counts, ([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
+  return Array.from(counts, ([name, count]) => ({ name, count })).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 }

@@ -47,10 +47,12 @@ test('exportSessionMarkdown: emits ISO timestamps', () => {
 });
 
 test('exportSessionMarkdown: includes repoScope label when present', () => {
-  const out = exportSessionMarkdown(makeSession({
-    repoScope: 'abcd1234',
-    repoScopeLabel: 'github.com/foo/bar',
-  }));
+  const out = exportSessionMarkdown(
+    makeSession({
+      repoScope: 'abcd1234',
+      repoScopeLabel: 'github.com/foo/bar',
+    }),
+  );
   assert.match(out, /- repo: github\.com\/foo\/bar/);
   assert.match(out, /- repoScope: abcd1234/);
 });

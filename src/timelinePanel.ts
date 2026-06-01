@@ -4,18 +4,18 @@ import { CompressedSession } from './types';
 
 /** Color palette keyed by observationType — WCAG AA-safe on both light and dark. */
 const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  feature:    { bg: '#1a4731', border: '#3fb950', text: '#56d364' },
-  bugfix:     { bg: '#4a1717', border: '#f85149', text: '#ff7b72' },
-  refactor:   { bg: '#0d2e5c', border: '#58a6ff', text: '#79c0ff' },
-  docs:       { bg: '#2c1e5c', border: '#bc8cff', text: '#d2a8ff' },
-  test:       { bg: '#3d2600', border: '#e3b341', text: '#f0c040' },
-  chore:      { bg: '#1c1c1c', border: '#6e7681', text: '#8b949e' },
-  research:   { bg: '#3a2700', border: '#ffa657', text: '#ffb77c' },
-  config:     { bg: '#002244', border: '#79c0ff', text: '#a5d6ff' },
-  security:   { bg: '#4a2900', border: '#ff7b72', text: '#ffa198' },
+  feature: { bg: '#1a4731', border: '#3fb950', text: '#56d364' },
+  bugfix: { bg: '#4a1717', border: '#f85149', text: '#ff7b72' },
+  refactor: { bg: '#0d2e5c', border: '#58a6ff', text: '#79c0ff' },
+  docs: { bg: '#2c1e5c', border: '#bc8cff', text: '#d2a8ff' },
+  test: { bg: '#3d2600', border: '#e3b341', text: '#f0c040' },
+  chore: { bg: '#1c1c1c', border: '#6e7681', text: '#8b949e' },
+  research: { bg: '#3a2700', border: '#ffa657', text: '#ffb77c' },
+  config: { bg: '#002244', border: '#79c0ff', text: '#a5d6ff' },
+  security: { bg: '#4a2900', border: '#ff7b72', text: '#ffa198' },
   deployment: { bg: '#1a3320', border: '#56d364', text: '#7ee787' },
-  infra:      { bg: '#2d1f3d', border: '#d2a8ff', text: '#e2c0ff' },
-  unknown:    { bg: '#1c1c1c', border: '#484f58', text: '#6e7681' },
+  infra: { bg: '#2d1f3d', border: '#d2a8ff', text: '#e2c0ff' },
+  unknown: { bg: '#1c1c1c', border: '#484f58', text: '#6e7681' },
 };
 
 /**
@@ -45,7 +45,7 @@ export class MemoryTimelinePanel {
 
     this.panel.iconPath = new vscode.ThemeIcon('history');
 
-    this.panel.webview.onDidReceiveMessage(msg => this.handleMessage(msg));
+    this.panel.webview.onDidReceiveMessage((msg) => this.handleMessage(msg));
     this.panel.onDidDispose(() => {
       this.storeListener.dispose();
       MemoryTimelinePanel.instance = undefined;
@@ -77,18 +77,21 @@ export class MemoryTimelinePanel {
   private buildAdaptiveCard(): string {
     const weights = this.store.getAdaptiveWeights();
     const samples = this.store.getAdaptiveSampleCount();
-    const hasDelta = Object.values(weights).some(v => Math.abs(v - 1) > 0.001);
+    const hasDelta = Object.values(weights).some((v) => Math.abs(v - 1) > 0.001);
     if (!hasDelta && samples.accepted + samples.rejected === 0) return '';
-    const cells = Object.entries(weights).map(([name, w]) => {
-      const delta = w - 1;
-      const color = delta > 0.02 ? '#3fb950' : delta < -0.02 ? '#ff7b72' : '#8b949e';
-      const sign = delta > 0 ? '+' : '';
-      return `<span class="weight-chip" title="${name} multiplier">${name}: <strong style="color:${color}">${w.toFixed(2)} (${sign}${(delta * 100).toFixed(0)}%)</strong></span>`;
-    }).join('');
+    const cells = Object.entries(weights)
+      .map(([name, w]) => {
+        const delta = w - 1;
+        const color = delta > 0.02 ? '#3fb950' : delta < -0.02 ? '#ff7b72' : '#8b949e';
+        const sign = delta > 0 ? '+' : '';
+        return `<span class="weight-chip" title="${name} multiplier">${name}: <strong style="color:${color}">${w.toFixed(2)} (${sign}${(delta * 100).toFixed(0)}%)</strong></span>`;
+      })
+      .join('');
     const samplesText = `${samples.accepted} 👍 / ${samples.rejected} 👎`;
-    const note = (samples.accepted + samples.rejected) < 10
-      ? ' <em>(cold-start — defaults active until 10+ samples)</em>'
-      : '';
+    const note =
+      samples.accepted + samples.rejected < 10
+        ? ' <em>(cold-start — defaults active until 10+ samples)</em>'
+        : '';
     return `<div class="adaptive-row" title="Adaptive ranking weights learned from your accept/reject feedback (Phase 5)">
       <strong>🎚 Learned ranker:</strong> ${cells}
       <span class="samples">${samplesText}${note}</span>
@@ -102,7 +105,10 @@ export class MemoryTimelinePanel {
       });
     } else if (msg.type === 'copyId' && msg.id) {
       vscode.env.clipboard.writeText(msg.id);
-      vscode.window.setStatusBarMessage(`$(check) Copied session ID: ${msg.id.substring(0, 8)}`, 2500);
+      vscode.window.setStatusBarMessage(
+        `$(check) Copied session ID: ${msg.id.substring(0, 8)}`,
+        2500,
+      );
     } else if (msg.type === 'openSearch' && msg.query) {
       vscode.commands.executeCommand('workbench.action.chat.open', {
         query: `@mem /search ${msg.query}`,
@@ -121,11 +127,13 @@ export class MemoryTimelinePanel {
       })();
     } else if (msg.type === 'addTag' && msg.id) {
       void (async () => {
-        const tag = (await vscode.window.showInputBox({
-          prompt: 'Tag this session',
-          placeHolder: 'e.g. wip, reference, debug-rabbit-hole',
-          validateInput: v => (v.trim() ? null : 'Tag cannot be empty'),
-        }))?.trim();
+        const tag = (
+          await vscode.window.showInputBox({
+            prompt: 'Tag this session',
+            placeHolder: 'e.g. wip, reference, debug-rabbit-hole',
+            validateInput: (v) => (v.trim() ? null : 'Tag cannot be empty'),
+          })
+        )?.trim();
         if (!tag) return;
         await this.store.addTag(msg.id!, tag);
         vscode.window.setStatusBarMessage(`GHCP-MEM: tagged with #${tag}`, 2000);
@@ -152,11 +160,14 @@ export class MemoryTimelinePanel {
       });
     } else if (msg.type === 'correct' && msg.id) {
       void (async () => {
-        const text = (await vscode.window.showInputBox({
-          prompt: 'Correction text (a new linked session will be recorded; the original is superseded)',
-          placeHolder: 'e.g. "The actual decision was to use Redis Sentinel, not Cluster"',
-          validateInput: v => (v.trim() ? null : 'Correction cannot be empty'),
-        }))?.trim();
+        const text = (
+          await vscode.window.showInputBox({
+            prompt:
+              'Correction text (a new linked session will be recorded; the original is superseded)',
+            placeHolder: 'e.g. "The actual decision was to use Redis Sentinel, not Cluster"',
+            validateInput: (v) => (v.trim() ? null : 'Correction cannot be empty'),
+          })
+        )?.trim();
         if (!text) return;
         vscode.commands.executeCommand('workbench.action.chat.open', {
           query: `@mem /correct ${msg.id} ${text}`,
@@ -196,7 +207,10 @@ export class MemoryTimelinePanel {
         relPath.startsWith('file://') ||
         relPath.split(/[\\/]/).includes('..')
       ) {
-        vscode.window.setStatusBarMessage(`GHCP-MEM: refused unsafe path "${relPath.substring(0, 60)}"`, 4000);
+        vscode.window.setStatusBarMessage(
+          `GHCP-MEM: refused unsafe path "${relPath.substring(0, 60)}"`,
+          4000,
+        );
         return;
       }
       const ws = vscode.workspace.workspaceFolders?.[0];
@@ -216,36 +230,43 @@ export class MemoryTimelinePanel {
     };
     for (const s of sessions) {
       stats.types.set(s.observationType, (stats.types.get(s.observationType) ?? 0) + 1);
-      s.keyFiles.forEach(f => stats.files.add(f));
+      s.keyFiles.forEach((f) => stats.files.add(f));
     }
 
     // Group sessions by calendar day
     const groups = new Map<string, CompressedSession[]>();
     for (const s of sessions) {
       const key = new Date(s.startTime).toLocaleDateString(undefined, {
-        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
       });
       const arr = groups.get(key) ?? [];
       arr.push(s);
       groups.set(key, arr);
     }
 
-    const typeFilterPills = Array.from(new Set(sessions.map(s => s.observationType))).map(t => {
-      const c = TYPE_COLORS[t] ?? TYPE_COLORS.unknown;
-      return `<button class="type-pill" data-type="${t}" style="border-color:${c.border};color:${c.text}" onclick="toggleType('${t}')">${t} <span class="pill-count">${stats.types.get(t) ?? 0}</span></button>`;
-    }).join('');
+    const typeFilterPills = Array.from(new Set(sessions.map((s) => s.observationType)))
+      .map((t) => {
+        const c = TYPE_COLORS[t] ?? TYPE_COLORS.unknown;
+        return `<button class="type-pill" data-type="${t}" style="border-color:${c.border};color:${c.text}" onclick="toggleType('${t}')">${t} <span class="pill-count">${stats.types.get(t) ?? 0}</span></button>`;
+      })
+      .join('');
 
-    const dayHtml = Array.from(groups.entries()).map(([day, daySessions]) => {
-      const cards = daySessions.map(s => this.buildCard(s)).join('');
-      return `
-        <div class="day-group" data-types="${daySessions.map(s => s.observationType).join(',')}">
+    const dayHtml = Array.from(groups.entries())
+      .map(([day, daySessions]) => {
+        const cards = daySessions.map((s) => this.buildCard(s)).join('');
+        return `
+        <div class="day-group" data-types="${daySessions.map((s) => s.observationType).join(',')}">
           <h2 class="day-label">
             <span class="day-icon">📅</span> ${day}
             <span class="day-count">${daySessions.length} session${daySessions.length !== 1 ? 's' : ''}</span>
           </h2>
           <div class="cards-row">${cards}</div>
         </div>`;
-    }).join('');
+      })
+      .join('');
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -452,12 +473,16 @@ export class MemoryTimelinePanel {
 </div>
 
 <div class="timeline" id="timeline">
-  ${sessions.length === 0 ? `
+  ${
+    sessions.length === 0
+      ? `
   <div class="empty-state">
     <span class="icon">🌱</span>
     <div>No sessions yet.</div>
     <div>Start coding and GHCP-MEM will automatically capture your sessions.</div>
-  </div>` : dayHtml}
+  </div>`
+      : dayHtml
+  }
   <div class="no-match" id="noMatch">No sessions match your filter.</div>
 </div>
 
@@ -553,7 +578,10 @@ export class MemoryTimelinePanel {
 
   private buildCard(s: CompressedSession): string {
     const c = TYPE_COLORS[s.observationType] ?? TYPE_COLORS.unknown;
-    const time = new Date(s.startTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    const time = new Date(s.startTime).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
     const shortId = s.id.substring(0, 8);
     const isPinned = s.userTags.includes('pinned');
     const branchChip = s.branchName
@@ -561,19 +589,32 @@ export class MemoryTimelinePanel {
       : '';
     const metaChips = [
       branchChip,
-      ...s.keyFiles.slice(0, 2).map(f => `<span class="meta-chip file" title="${htmlEscape(f)}">${htmlEscape(f.split('/').pop() ?? f)}</span>`),
-      ...s.keyTopics.slice(0, 2).map(t => `<span class="meta-chip topic">${htmlEscape(t)}</span>`),
-      ...s.userTags.filter(t => t !== 'pinned').slice(0, 2).map(t => `<span class="meta-chip tag">#${htmlEscape(t)}</span>`),
+      ...s.keyFiles
+        .slice(0, 2)
+        .map(
+          (f) =>
+            `<span class="meta-chip file" title="${htmlEscape(f)}">${htmlEscape(f.split('/').pop() ?? f)}</span>`,
+        ),
+      ...s.keyTopics
+        .slice(0, 2)
+        .map((t) => `<span class="meta-chip topic">${htmlEscape(t)}</span>`),
+      ...s.userTags
+        .filter((t) => t !== 'pinned')
+        .slice(0, 2)
+        .map((t) => `<span class="meta-chip tag">#${htmlEscape(t)}</span>`),
     ].join('');
 
     // Phase 2 inspector chips — trust badge, supersession, retraction.
-    const trustChip = (typeof s.confidence === 'number') ? (() => {
-      const conf = s.confidence!;
-      const emoji = conf >= 0.75 ? '🟢' : conf >= 0.5 ? '🟡' : '🔴';
-      const mode = s.compressorMode ? ` ${s.compressorMode}` : '';
-      const trunc = s.eventLogTruncated ? ' · truncated' : '';
-      return `<span class="trust-chip" title="Trust score${mode}${trunc} — set at compression time">${emoji} ${conf.toFixed(2)}</span>`;
-    })() : '';
+    const trustChip =
+      typeof s.confidence === 'number'
+        ? (() => {
+            const conf = s.confidence!;
+            const emoji = conf >= 0.75 ? '🟢' : conf >= 0.5 ? '🟡' : '🔴';
+            const mode = s.compressorMode ? ` ${s.compressorMode}` : '';
+            const trunc = s.eventLogTruncated ? ' · truncated' : '';
+            return `<span class="trust-chip" title="Trust score${mode}${trunc} — set at compression time">${emoji} ${conf.toFixed(2)}</span>`;
+          })()
+        : '';
     const supersededChip = s.supersededBy
       ? `<span class="status-chip superseded" title="Superseded by ${s.supersededBy.substring(0, 8)}">⤴ superseded</span>`
       : '';
@@ -585,7 +626,7 @@ export class MemoryTimelinePanel {
       : '';
     const usageChip = (() => {
       const u = s.usage;
-      if (!u || (u.retrieved + u.accepted + u.rejected) === 0) return '';
+      if (!u || u.retrieved + u.accepted + u.rejected === 0) return '';
       const parts = [];
       if (u.retrieved) parts.push(`${u.retrieved}× retrieved`);
       if (u.accepted) parts.push(`👍${u.accepted}`);
@@ -593,27 +634,44 @@ export class MemoryTimelinePanel {
       return `<span class="usage-chip" title="Local reinforcement counters">${parts.join(' · ')}</span>`;
     })();
     const statusRow = [trustChip, supersededChip, correctionChip, retractedChip, usageChip]
-      .filter(Boolean).join(' ');
+      .filter(Boolean)
+      .join(' ');
 
     // Per-decision evidence chips — clickable to jump straight to the file.
     const evidenceRow = (() => {
       if (!s.decisions.length) return '';
-      const items = s.decisions.slice(0, 3).map((text, i) => {
-        const ev = s.decisionEvidence?.[i];
-        const files = ev
-          ? Array.from(new Set(ev.map(e => e.filePath).filter((f): f is string => !!f))).slice(0, 2)
-          : [];
-        const fileChips = files.map(f =>
-          `<button class="ev-chip" data-action="gotoFile" data-id="${htmlEscape(s.id + '::' + f)}" title="Open ${htmlEscape(f)}">📎 ${htmlEscape(f.split('/').pop() ?? f)}</button>`
-        ).join('');
-        const dec = htmlEscape(text.length > 100 ? text.substring(0, 97) + '…' : text);
-        return `<li class="decision-row">${dec}${fileChips ? ' ' + fileChips : ''}</li>`;
-      }).join('');
+      const items = s.decisions
+        .slice(0, 3)
+        .map((text, i) => {
+          const ev = s.decisionEvidence?.[i];
+          const files = ev
+            ? Array.from(new Set(ev.map((e) => e.filePath).filter((f): f is string => !!f))).slice(
+                0,
+                2,
+              )
+            : [];
+          const fileChips = files
+            .map(
+              (f) =>
+                `<button class="ev-chip" data-action="gotoFile" data-id="${htmlEscape(s.id + '::' + f)}" title="Open ${htmlEscape(f)}">📎 ${htmlEscape(f.split('/').pop() ?? f)}</button>`,
+            )
+            .join('');
+          const dec = htmlEscape(text.length > 100 ? text.substring(0, 97) + '…' : text);
+          return `<li class="decision-row">${dec}${fileChips ? ' ' + fileChips : ''}</li>`;
+        })
+        .join('');
       return `<ul class="decisions">${items}</ul>`;
     })();
 
     // Build a searchable text blob for client-side filtering
-    const searchBlob = [s.summary, ...s.keyFiles, ...s.keyTopics, ...s.decisions, ...s.userTags, s.branchName ?? '']
+    const searchBlob = [
+      s.summary,
+      ...s.keyFiles,
+      ...s.keyTopics,
+      ...s.decisions,
+      ...s.userTags,
+      s.branchName ?? '',
+    ]
       .join(' ')
       .toLowerCase()
       .replace(/"/g, '&quot;');
@@ -623,7 +681,9 @@ export class MemoryTimelinePanel {
     const supersededClass = s.supersededBy ? ' superseded-card' : '';
     const pinIcon = isPinned ? '<span class="pinned-indicator" title="Pinned">📌</span>' : '';
     const retractLabel = s.retracted ? '↩' : '🚫';
-    const retractTitle = s.retracted ? 'Undo retraction' : 'Retract this session (excluded from retrieval + injection)';
+    const retractTitle = s.retracted
+      ? 'Undo retraction'
+      : 'Retract this session (excluded from retrieval + injection)';
 
     return `<div class="session-card${pinnedClass}${retractedClass}${supersededClass}" data-id="${s.id}" data-type="${s.observationType}" data-text="${searchBlob}"
       style="background:${c.bg};border-color:${c.border}">
@@ -652,5 +712,9 @@ export class MemoryTimelinePanel {
 }
 
 function htmlEscape(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }

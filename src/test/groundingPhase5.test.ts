@@ -30,7 +30,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
   const decisions = overrides.decisions ?? [];
   const problemsSolved = overrides.problemsSolved ?? [];
   const base: CompressedSession = {
-    id: overrides.id ?? `00000000-0000-0000-0000-${String(Math.floor(Math.random() * 1e12)).padStart(12, '0')}`,
+    id:
+      overrides.id ??
+      `00000000-0000-0000-0000-${String(Math.floor(Math.random() * 1e12)).padStart(12, '0')}`,
     workspaceId: overrides.workspaceId ?? 'ws1',
     workspaceName: overrides.workspaceName ?? 'ws',
     startTime: overrides.startTime ?? Date.now() - 1000,
@@ -44,7 +46,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
     rawEventCount: overrides.rawEventCount ?? 10,
     userTags: overrides.userTags ?? [],
     redactionCount: overrides.redactionCount ?? 0,
-    contentHash: overrides.contentHash ?? computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
+    contentHash:
+      overrides.contentHash ??
+      computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
   };
   if (overrides.confidence !== undefined) base.confidence = overrides.confidence;
   if (overrides.supersedes !== undefined) base.supersedes = overrides.supersedes;
@@ -53,7 +57,10 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
   return base;
 }
 
-function buildSample(values: Partial<Record<typeof SIGNALS[number], number>>, feedback: 1 | -1): FeedbackSample {
+function buildSample(
+  values: Partial<Record<(typeof SIGNALS)[number], number>>,
+  feedback: 1 | -1,
+): FeedbackSample {
   const full = { keyword: 0, recency: 0, confidence: 0, reinforcement: 0, feedback: 0 };
   return { values: { ...full, ...values }, feedback };
 }
@@ -77,8 +84,10 @@ test('recomputeWeights — below MIN_SAMPLES returns defaults', () => {
 test('recomputeWeights — bumps weights of signals that correlate with acceptance', () => {
   const state = emptyState();
   // 12 acceptances with high keyword score; 12 rejections with low keyword score.
-  for (let i = 0; i < 12; i++) recordSample(state, buildSample({ keyword: 0.9, confidence: 0.5 }, 1));
-  for (let i = 0; i < 12; i++) recordSample(state, buildSample({ keyword: 0.1, confidence: 0.5 }, -1));
+  for (let i = 0; i < 12; i++)
+    recordSample(state, buildSample({ keyword: 0.9, confidence: 0.5 }, 1));
+  for (let i = 0; i < 12; i++)
+    recordSample(state, buildSample({ keyword: 0.1, confidence: 0.5 }, -1));
   const w = recomputeWeights(state);
   assert.ok(w.keyword > 1.0, `keyword weight should rise (got ${w.keyword})`);
   // Confidence values were identical across the two buckets → no change.
@@ -105,7 +114,10 @@ test('recomputeWeights — never exceeds bounds [MIN_WEIGHT, MAX_WEIGHT]', () =>
     assert.ok(state.weights[s] >= MIN_WEIGHT, `${s} below MIN_WEIGHT`);
     assert.ok(state.weights[s] <= MAX_WEIGHT, `${s} above MAX_WEIGHT`);
   }
-  assert.ok(state.weights.keyword > 1.2, 'after sustained positive feedback keyword should approach the upper bound');
+  assert.ok(
+    state.weights.keyword > 1.2,
+    'after sustained positive feedback keyword should approach the upper bound',
+  );
 });
 
 test('recomputeWeights — keeps defaults when only one feedback side present', () => {
@@ -126,8 +138,12 @@ test('ContextStore — initial adaptive weights are defaults', async () => {
 test('ContextStore — sample counts grow on accept/reject', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({ id: '00000000-0000-0000-0000-000000000001', summary: 'unique a' }));
-  await store.addSession(makeSession({ id: '00000000-0000-0000-0000-000000000002', summary: 'unique b' }));
+  await store.addSession(
+    makeSession({ id: '00000000-0000-0000-0000-000000000001', summary: 'unique a' }),
+  );
+  await store.addSession(
+    makeSession({ id: '00000000-0000-0000-0000-000000000002', summary: 'unique b' }),
+  );
   // search() captures signal snapshots that recordAcceptance/Rejection need.
   store.search('unique', {}, 5);
   await store.recordAcceptance('00000000-0000-0000-0000-000000000001');
@@ -150,14 +166,20 @@ test('ContextStore.resetAdaptiveWeights — back to defaults', async () => {
 test('importPack — preserves supersession links across import boundary', async () => {
   const mem = new InMemoryMemento() as any;
   const exporter = new ContextStore(mem);
-  await exporter.addSession(makeSession({
-    id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
-    summary: 'original a', supersededBy: '00000000-0000-0000-0000-bbbbbbbbbbbb',
-  }));
-  await exporter.addSession(makeSession({
-    id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
-    summary: 'original b', supersedes: '00000000-0000-0000-0000-aaaaaaaaaaaa',
-  }));
+  await exporter.addSession(
+    makeSession({
+      id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+      summary: 'original a',
+      supersededBy: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+    }),
+  );
+  await exporter.addSession(
+    makeSession({
+      id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+      summary: 'original b',
+      supersedes: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+    }),
+  );
   const pack = buildPack(exporter, { name: 'lineage-test', redactAgain: false });
 
   // Now import into a fresh store.
@@ -175,38 +197,45 @@ test('importPack — raises conflict warning when an imported decision overturns
   const mem = new InMemoryMemento() as any;
   const importer = new ContextStore(mem);
   // Pre-existing local session with a decision.
-  await importer.addSession(makeSession({
-    id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
-    summary: 'local cookie auth',
-    decisions: ['use cookie sessions'],
-    keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
-    endTime: Date.now() - 60_000,
-  }));
+  await importer.addSession(
+    makeSession({
+      id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+      summary: 'local cookie auth',
+      decisions: ['use cookie sessions'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
+      endTime: Date.now() - 60_000,
+    }),
+  );
   // Pack contains a session that contradicts local memory.
   const incomingPack = {
     schemaVersion: 1,
     name: 'team-pack',
     createdAt: Date.now(),
-    sessions: [makeSession({
-      id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
-      summary: 'team migrated to JWT instead of cookie sessions',
-      decisions: ['use JWT instead of cookie sessions for stateless API'],
-      keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
-      endTime: Date.now(),
-    })],
+    sessions: [
+      makeSession({
+        id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+        summary: 'team migrated to JWT instead of cookie sessions',
+        decisions: ['use JWT instead of cookie sessions for stateless API'],
+        keyFiles: ['src/auth.ts'],
+        keyTopics: ['authentication'],
+        endTime: Date.now(),
+      }),
+    ],
   };
   const res = await importPack(importer, incomingPack);
   assert.equal(res.imported, 1);
   assert.ok(res.conflictsRaised >= 1, 'pack import must surface the conflict count');
   const pending = importer.getPendingConflicts();
-  assert.ok(pending.some(p => p.newSessionId === '00000000-0000-0000-0000-bbbbbbbbbbbb'));
+  assert.ok(pending.some((p) => p.newSessionId === '00000000-0000-0000-0000-bbbbbbbbbbbb'));
 });
 
 // ─── NER-lite custom-entity redaction ────────────────────────────────────────
 
 test('redact — customSensitiveEntities scrubs literal entity names', () => {
   const out = redact('We shipped Project Hydra to AcmeCorp internal staging today.', {
-    redactSecrets: true, honorPrivateTags: false,
+    redactSecrets: true,
+    honorPrivateTags: false,
     customSensitiveEntities: ['Project Hydra', 'AcmeCorp internal'],
   });
   assert.match(out.text, /\[REDACTED:entity\]/);
@@ -218,7 +247,8 @@ test('redact — customSensitiveEntities scrubs literal entity names', () => {
 
 test('redact — customSensitiveEntities is case-insensitive', () => {
   const out = redact('we deployed project hydra last week.', {
-    redactSecrets: true, honorPrivateTags: false,
+    redactSecrets: true,
+    honorPrivateTags: false,
     customSensitiveEntities: ['Project Hydra'],
   });
   assert.ok(!/project hydra/i.test(out.text));
@@ -226,7 +256,8 @@ test('redact — customSensitiveEntities is case-insensitive', () => {
 
 test('redact — customSensitiveEntities respects word boundaries (no false positive inside identifiers)', () => {
   const out = redact('class ProjectHydraService { … }', {
-    redactSecrets: true, honorPrivateTags: false,
+    redactSecrets: true,
+    honorPrivateTags: false,
     customSensitiveEntities: ['Project Hydra'],
   });
   // "ProjectHydraService" is one identifier — entity match must NOT fire
@@ -236,7 +267,8 @@ test('redact — customSensitiveEntities respects word boundaries (no false posi
 
 test('redact — customSensitiveEntities empty array is a no-op', () => {
   const out = redact('Plain text without entities.', {
-    redactSecrets: true, honorPrivateTags: false,
+    redactSecrets: true,
+    honorPrivateTags: false,
     customSensitiveEntities: [],
   });
   assert.equal(out.text, 'Plain text without entities.');
@@ -244,8 +276,13 @@ test('redact — customSensitiveEntities empty array is a no-op', () => {
 
 test('redact — customSensitiveEntities skipped when redactSecrets=false', () => {
   const out = redact('Project Hydra', {
-    redactSecrets: false, honorPrivateTags: false,
+    redactSecrets: false,
+    honorPrivateTags: false,
     customSensitiveEntities: ['Project Hydra'],
   });
-  assert.equal(out.text, 'Project Hydra', 'when scanning is disabled NER-lite must not fire either');
+  assert.equal(
+    out.text,
+    'Project Hydra',
+    'when scanning is disabled NER-lite must not fire either',
+  );
 });

@@ -5,12 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import {
-  classifyRequest,
-  extractMentionedPaths,
-  estimateAttachTokens,
-  recommend,
-} from '../router';
+import { classifyRequest, extractMentionedPaths, estimateAttachTokens, recommend } from '../router';
 import { TOOLS } from '../mcpServer';
 import { InMemoryMemento } from './__mocks__/vscode';
 import { ContextStore } from '../contextStore';
@@ -38,7 +33,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
     rawEventCount: overrides.rawEventCount ?? 10,
     userTags: overrides.userTags ?? [],
     redactionCount: overrides.redactionCount ?? 0,
-    contentHash: overrides.contentHash ?? computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
+    contentHash:
+      overrides.contentHash ??
+      computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
   };
 }
 
@@ -100,18 +97,25 @@ test('recommend — lookup intent picks MCP and shows savings', () => {
   assert.equal(rec.intent, 'lookup');
   assert.ok(rec.actions.length >= 1);
   assert.equal(rec.actions[0].kind, 'mcp');
-  assert.ok(rec.estimatedTotalTokens < rec.naiveAttachTokens, 'MCP route must be cheaper than attach');
+  assert.ok(
+    rec.estimatedTotalTokens < rec.naiveAttachTokens,
+    'MCP route must be cheaper than attach',
+  );
 });
 
 test('recommend — modify intent suggests file pull (and a memory probe)', () => {
-  const rec = recommend('add a new field to FileEditData in src/types.ts', { fileSizes: { 'src/types.ts': 8000 } });
+  const rec = recommend('add a new field to FileEditData in src/types.ts', {
+    fileSizes: { 'src/types.ts': 8000 },
+  });
   assert.equal(rec.intent, 'modify');
-  const hasFile = rec.actions.some(a => a.kind === 'attach');
+  const hasFile = rec.actions.some((a) => a.kind === 'attach');
   assert.ok(hasFile, 'modification intent must include a file action');
 });
 
 test('recommend — mixed intent emits a multi-step plan', () => {
-  const rec = recommend('explain the bug then fix it in payments.ts', { fileSizes: { 'payments.ts': 4000 } });
+  const rec = recommend('explain the bug then fix it in payments.ts', {
+    fileSizes: { 'payments.ts': 4000 },
+  });
   assert.equal(rec.intent, 'mixed');
   assert.ok(rec.actions.length >= 2, 'mixed intent should propose more than one action');
 });
@@ -129,24 +133,32 @@ test('recommend — mcpAvailable=false degrades to attach-only', () => {
 
 test('recommend — token total never exceeds naive attach for lookup intents', () => {
   // Lookup over a 50K-token file: MCP estimate should be a tiny fraction.
-  const rec = recommend('what decisions exist for src/big.ts', { fileSizes: { 'src/big.ts': 200_000 } });
-  assert.ok(rec.estimatedTotalTokens < rec.naiveAttachTokens / 10, `expected ≥10× saving, got ${rec.estimatedTotalTokens} vs ${rec.naiveAttachTokens}`);
+  const rec = recommend('what decisions exist for src/big.ts', {
+    fileSizes: { 'src/big.ts': 200_000 },
+  });
+  assert.ok(
+    rec.estimatedTotalTokens < rec.naiveAttachTokens / 10,
+    `expected ≥10× saving, got ${rec.estimatedTotalTokens} vs ${rec.naiveAttachTokens}`,
+  );
 });
 
 // ─── MCP catalog wiring ─────────────────────────────────────────────────────
 
 test('mcpServer — ghcpMem_route tool is declared with `query` required', () => {
-  const t = TOOLS.find(t => t.name === 'ghcpMem_route');
+  const t = TOOLS.find((t) => t.name === 'ghcpMem_route');
   assert.ok(t, 'ghcpMem_route must be in the MCP catalog');
   assert.deepEqual(t!.inputSchema.required, ['query']);
 });
 
 test('mcpServer — strengthened descriptions mention PREFER routing guidance', () => {
   for (const name of ['ghcpMem_search', 'ghcpMem_entity', 'ghcpMem_snippets']) {
-    const t = TOOLS.find(t => t.name === name);
+    const t = TOOLS.find((t) => t.name === name);
     assert.ok(t, `tool ${name} must exist`);
-    assert.match(t!.description, /PREFER THIS|tokens vs/i,
-      `tool ${name} description should include explicit routing guidance for agents`);
+    assert.match(
+      t!.description,
+      /PREFER THIS|tokens vs/i,
+      `tool ${name} description should include explicit routing guidance for agents`,
+    );
   }
 });
 
@@ -156,17 +168,23 @@ test('buildStartupContext — emits a routing primer that teaches MCP-first beha
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
   // Need at least one session for buildStartupContext to emit anything.
-  return store.addSession(makeSession({
-    id: 'a', summary: 'auth refactor', keyTopics: ['authentication'],
-  })).then(() => {
-    const provider = new ContextProvider(store);
-    const md = provider.buildStartupContext();
-    assert.match(md, /How to gather context cheaply/, 'primer header missing');
-    assert.match(md, /@mem \/entity/, 'primer must teach the /entity command');
-    assert.match(md, /@mem \/search/, 'primer must teach the /search command');
-    assert.match(md, /@mem \/route/, 'primer must teach the /route command');
-    assert.match(md, /MODIFY/, 'primer must distinguish modify from lookup intent');
-  });
+  return store
+    .addSession(
+      makeSession({
+        id: 'a',
+        summary: 'auth refactor',
+        keyTopics: ['authentication'],
+      }),
+    )
+    .then(() => {
+      const provider = new ContextProvider(store);
+      const md = provider.buildStartupContext();
+      assert.match(md, /How to gather context cheaply/, 'primer header missing');
+      assert.match(md, /@mem \/entity/, 'primer must teach the /entity command');
+      assert.match(md, /@mem \/search/, 'primer must teach the /search command');
+      assert.match(md, /@mem \/route/, 'primer must teach the /route command');
+      assert.match(md, /MODIFY/, 'primer must distinguish modify from lookup intent');
+    });
 });
 
 test('buildStartupContext — primer absent when there are no sessions', () => {

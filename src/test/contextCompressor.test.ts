@@ -27,7 +27,7 @@ const vscodeMock = {
   lm: {
     selectChatModels: async (opts?: { family?: string }) => {
       if (!opts?.family) return mockModels;
-      return mockModels.filter(m => m.family === opts.family);
+      return mockModels.filter((m) => m.family === opts.family);
     },
   },
   LanguageModelChatMessage: {
@@ -35,7 +35,9 @@ const vscodeMock = {
   },
   CancellationTokenSource: class {
     token = { isCancellationRequested: false };
-    cancel() { this.token.isCancellationRequested = true; }
+    cancel() {
+      this.token.isCancellationRequested = true;
+    }
     dispose() {}
   },
 };
@@ -80,12 +82,14 @@ function makeInput(overrides: Partial<CompressorInput> = {}): CompressorInput {
   };
 }
 
-function makeLmResponse(json: object): typeof mockModels[0] {
+function makeLmResponse(json: object): (typeof mockModels)[0] {
   const text = JSON.stringify(json);
   return {
     family: 'gpt-4o-mini',
     sendRequest: async () => ({
-      text: (async function* () { yield text; })(),
+      text: (async function* () {
+        yield text;
+      })(),
     }),
   };
 }
@@ -95,7 +99,11 @@ function makeLmResponse(json: object): typeof mockModels[0] {
 test('ContextCompressor — returns null for empty events', async () => {
   mockModels.length = 0;
   const c = new ContextCompressor();
-  const result = await c.compress({ events: [], sessionStartTime: Date.now(), captureRedactionCount: 0 });
+  const result = await c.compress({
+    events: [],
+    sessionStartTime: Date.now(),
+    captureRedactionCount: 0,
+  });
   assert.equal(result, null);
 });
 
@@ -112,18 +120,16 @@ test('ContextCompressor — fallback produces valid session when no model availa
 
 test('ContextCompressor — LM happy path produces session with correct fields', async () => {
   mockModels.length = 0;
-  mockModels.push(makeLmResponse({
-    summary: 'Refactored authentication module to use JWT tokens.',
-    observationType: 'refactor',
-    keyFiles: ['src/auth.ts', 'src/middleware.ts'],
-    keyTopics: ['jwt', 'authentication'],
-    decisions: [
-      { text: 'Use short-lived access tokens (15 min)', evidence: ['E1', 'E2'] },
-    ],
-    problemsSolved: [
-      { text: 'Session expiry not handled', evidence: ['E1'] },
-    ],
-  }));
+  mockModels.push(
+    makeLmResponse({
+      summary: 'Refactored authentication module to use JWT tokens.',
+      observationType: 'refactor',
+      keyFiles: ['src/auth.ts', 'src/middleware.ts'],
+      keyTopics: ['jwt', 'authentication'],
+      decisions: [{ text: 'Use short-lived access tokens (15 min)', evidence: ['E1', 'E2'] }],
+      problemsSolved: [{ text: 'Session expiry not handled', evidence: ['E1'] }],
+    }),
+  );
   const c = new ContextCompressor();
   const session = await c.compress(makeInput());
   assert.ok(session);
@@ -142,7 +148,9 @@ test('ContextCompressor — falls back when LM returns invalid JSON', async () =
   mockModels.push({
     family: 'gpt-4o-mini',
     sendRequest: async () => ({
-      text: (async function* () { yield 'Sorry, I cannot help with that.'; })(),
+      text: (async function* () {
+        yield 'Sorry, I cannot help with that.';
+      })(),
     }),
   });
   const c = new ContextCompressor();
@@ -154,14 +162,16 @@ test('ContextCompressor — falls back when LM returns invalid JSON', async () =
 
 test('ContextCompressor — redacts secrets in LM output', async () => {
   mockModels.length = 0;
-  mockModels.push(makeLmResponse({
-    summary: 'Added AWS key AKIAIOSFODNN7EXAMPLE to config.',
-    observationType: 'config',
-    keyFiles: [],
-    keyTopics: ['aws'],
-    decisions: [],
-    problemsSolved: [],
-  }));
+  mockModels.push(
+    makeLmResponse({
+      summary: 'Added AWS key AKIAIOSFODNN7EXAMPLE to config.',
+      observationType: 'config',
+      keyFiles: [],
+      keyTopics: ['aws'],
+      decisions: [],
+      problemsSolved: [],
+    }),
+  );
   const c = new ContextCompressor();
   const session = await c.compress(makeInput());
   assert.ok(session);
@@ -172,10 +182,12 @@ test('ContextCompressor — redacts secrets in LM output', async () => {
 test('ContextCompressor — azure tags are appended to userTags', async () => {
   mockModels.length = 0;
   const c = new ContextCompressor();
-  const session = await c.compress(makeInput({
-    azureTags: ['azure', 'bicep'],
-    azureSubsystems: ['iac-bicep'],
-  }));
+  const session = await c.compress(
+    makeInput({
+      azureTags: ['azure', 'bicep'],
+      azureSubsystems: ['iac-bicep'],
+    }),
+  );
   assert.ok(session);
   assert.ok(session!.userTags.includes('azure'));
   assert.ok(session!.userTags.includes('bicep'));
@@ -184,19 +196,29 @@ test('ContextCompressor — azure tags are appended to userTags', async () => {
 test('ContextCompressor — observationType falls back to rule classifier when LM returns unknown', async () => {
   mockModels.length = 0;
   // LM says unknown, but events are test files — rule classifier should catch it.
-  const testEvents: SessionEvent[] = [{
-    timestamp: Date.now(),
-    type: 'file_edit',
-    data: { filePath: 'src/auth.test.ts', languageId: 'typescript', linesAdded: 10, linesRemoved: 0, changeCount: 1 },
-  }];
-  mockModels.push(makeLmResponse({
-    summary: 'Wrote tests.',
-    observationType: 'unknown',
-    keyFiles: ['src/auth.test.ts'],
-    keyTopics: ['testing'],
-    decisions: [],
-    problemsSolved: [],
-  }));
+  const testEvents: SessionEvent[] = [
+    {
+      timestamp: Date.now(),
+      type: 'file_edit',
+      data: {
+        filePath: 'src/auth.test.ts',
+        languageId: 'typescript',
+        linesAdded: 10,
+        linesRemoved: 0,
+        changeCount: 1,
+      },
+    },
+  ];
+  mockModels.push(
+    makeLmResponse({
+      summary: 'Wrote tests.',
+      observationType: 'unknown',
+      keyFiles: ['src/auth.test.ts'],
+      keyTopics: ['testing'],
+      decisions: [],
+      problemsSolved: [],
+    }),
+  );
   const c = new ContextCompressor();
   const session = await c.compress(makeInput({ events: testEvents }));
   assert.ok(session);

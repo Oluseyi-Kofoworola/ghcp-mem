@@ -27,18 +27,18 @@ import { getCausalNeighbors, CausalEdgeLabel } from './causalGraph';
  * diagram share a visual language.
  */
 const TYPE_FILL: Record<string, string> = {
-  feature:    '#1a4731',
-  bugfix:     '#4a1717',
-  refactor:   '#0d2e5c',
-  docs:       '#2c1e5c',
-  test:       '#3d2600',
-  chore:      '#2a2a2a',
-  research:   '#3a2700',
-  config:     '#002244',
-  security:   '#4a2900',
+  feature: '#1a4731',
+  bugfix: '#4a1717',
+  refactor: '#0d2e5c',
+  docs: '#2c1e5c',
+  test: '#3d2600',
+  chore: '#2a2a2a',
+  research: '#3a2700',
+  config: '#002244',
+  security: '#4a2900',
   deployment: '#1a3320',
-  infra:      '#2d1f3d',
-  unknown:    '#1c1c1c',
+  infra: '#2d1f3d',
+  unknown: '#1c1c1c',
 };
 
 /**
@@ -46,11 +46,7 @@ const TYPE_FILL: Record<string, string> = {
  * parser. Replaces `"` with `'`, strips backticks/braces, truncates.
  */
 function quoteLabel(text: string): string {
-  return (text ?? '')
-    .replace(/"/g, "'")
-    .replace(/[`{}]/g, '')
-    .replace(/\n/g, ' ')
-    .slice(0, 80);
+  return (text ?? '').replace(/"/g, "'").replace(/[`{}]/g, '').replace(/\n/g, ' ').slice(0, 80);
 }
 
 /**
@@ -80,7 +76,7 @@ export function buildMermaidGraph(sessions: CompressedSession[]): string {
     const labelType = s.observationType;
     const summary = quoteLabel(s.summary);
     const retractedFlag = s.retracted ? ' 🚫' : '';
-    const trustFlag = (typeof s.confidence === 'number' && s.confidence < 0.5) ? ' ⚠️' : '';
+    const trustFlag = typeof s.confidence === 'number' && s.confidence < 0.5 ? ' ⚠️' : '';
     lines.push(`  ${id}["[${labelType}] ${summary}${retractedFlag}${trustFlag}"]`);
   }
 
@@ -111,7 +107,7 @@ export function buildMermaidGraph(sessions: CompressedSession[]): string {
     const n = getCausalNeighbors(s.id, sessions);
     if (!n) continue;
     for (const p of n.predecessors) {
-      if (p.label === 'introduced_issue_fixed_by' as CausalEdgeLabel) {
+      if (p.label === ('introduced_issue_fixed_by' as CausalEdgeLabel)) {
         lines.push(`  ${nodeId(p.sessionId)} ==>|fixed by| ${nodeId(s.id)}`);
       }
     }

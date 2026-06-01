@@ -46,7 +46,9 @@ test('validator: missing files reduce freshness', async () => {
   (vscode.workspace as any).workspaceFolders = [{ uri: { fsPath: '/ws', path: '/ws' } }];
   // Stub stat: throw for every path so all files are "missing".
   const origStat = (vscode.workspace.fs as any).stat;
-  (vscode.workspace.fs as any).stat = async () => { throw new Error('not found'); };
+  (vscode.workspace.fs as any).stat = async () => {
+    throw new Error('not found');
+  };
   try {
     const r = await validateSession(makeSession({ id: 'c', keyFiles: ['src/a.ts', 'src/b.ts'] }));
     assert.equal(r.freshness, 0);
@@ -79,7 +81,10 @@ test('validator: results cached within TTL', async () => {
   (vscode.workspace as any).workspaceFolders = [{ uri: { fsPath: '/ws', path: '/ws' } }];
   let statCalls = 0;
   const origStat = (vscode.workspace.fs as any).stat;
-  (vscode.workspace.fs as any).stat = async () => { statCalls++; throw new Error('missing'); };
+  (vscode.workspace.fs as any).stat = async () => {
+    statCalls++;
+    throw new Error('missing');
+  };
   try {
     const s = makeSession({ id: 'cache-1', keyFiles: ['src/x.ts'] });
     await validateSession(s);
@@ -117,14 +122,16 @@ test('validator: multi-root resolves root from session.workspaceId', async () =>
     throw new Error('missing');
   };
   try {
-    const r = await validateSession(makeSession({
-      id: 'mr-1',
-      workspaceId: 'file:///ws-b',
-      keyFiles: ['src/ok.ts'],
-    }));
+    const r = await validateSession(
+      makeSession({
+        id: 'mr-1',
+        workspaceId: 'file:///ws-b',
+        keyFiles: ['src/ok.ts'],
+      }),
+    );
     assert.equal(r.freshness, 1);
-    assert.ok(seen.some(p => p.startsWith('/ws-b/')));
-    assert.ok(!seen.some(p => p.startsWith('/ws-a/')));
+    assert.ok(seen.some((p) => p.startsWith('/ws-b/')));
+    assert.ok(!seen.some((p) => p.startsWith('/ws-a/')));
   } finally {
     (vscode.workspace.fs as any).stat = origStat;
   }
@@ -144,11 +151,13 @@ test('validator: hash matches → verified, groundedFreshness 1.0', async () => 
   (vscode.workspace.fs as any).stat = async () => ({});
   (vscode.workspace.fs as any).readFile = async () => Buffer.from(fileText, 'utf-8');
   try {
-    const r = await validateSession(makeSession({
-      id: 'sha-verified',
-      keyFiles: ['src/g.ts'],
-      keyFileHashes: { 'src/g.ts': expected },
-    }));
+    const r = await validateSession(
+      makeSession({
+        id: 'sha-verified',
+        keyFiles: ['src/g.ts'],
+        keyFileHashes: { 'src/g.ts': expected },
+      }),
+    );
     assert.equal(r.verification['src/g.ts'], 'verified');
     assert.equal(r.verifiedFiles.length, 1);
     assert.equal(r.groundedFreshness, 1);
@@ -166,11 +175,13 @@ test('validator: hash mismatch → drifted, groundedFreshness 0.5', async () => 
   (vscode.workspace.fs as any).stat = async () => ({});
   (vscode.workspace.fs as any).readFile = async () => Buffer.from('changed content\n', 'utf-8');
   try {
-    const r = await validateSession(makeSession({
-      id: 'sha-drift',
-      keyFiles: ['src/g.ts'],
-      keyFileHashes: { 'src/g.ts': 'stale-hash-from-capture' },
-    }));
+    const r = await validateSession(
+      makeSession({
+        id: 'sha-drift',
+        keyFiles: ['src/g.ts'],
+        keyFileHashes: { 'src/g.ts': 'stale-hash-from-capture' },
+      }),
+    );
     assert.equal(r.verification['src/g.ts'], 'drifted');
     assert.deepEqual(r.driftedFiles, ['src/g.ts']);
     assert.equal(r.groundedFreshness, 0.5, 'drifted file should weight 0.5');
@@ -187,13 +198,17 @@ test('validator: missing file with stored hash collapses cleanly to missing', as
   _clearValidationCache();
   (vscode.workspace as any).workspaceFolders = [{ uri: { fsPath: '/ws', path: '/ws' } }];
   const origStat = (vscode.workspace.fs as any).stat;
-  (vscode.workspace.fs as any).stat = async () => { throw new Error('not found'); };
+  (vscode.workspace.fs as any).stat = async () => {
+    throw new Error('not found');
+  };
   try {
-    const r = await validateSession(makeSession({
-      id: 'sha-missing',
-      keyFiles: ['src/g.ts'],
-      keyFileHashes: { 'src/g.ts': 'whatever' },
-    }));
+    const r = await validateSession(
+      makeSession({
+        id: 'sha-missing',
+        keyFiles: ['src/g.ts'],
+        keyFileHashes: { 'src/g.ts': 'whatever' },
+      }),
+    );
     assert.equal(r.verification['src/g.ts'], 'missing');
     assert.equal(r.groundedFreshness, 0);
   } finally {
@@ -207,10 +222,12 @@ test('validator: legacy session without keyFileHashes keeps neutral status', asy
   const origStat = (vscode.workspace.fs as any).stat;
   (vscode.workspace.fs as any).stat = async () => ({});
   try {
-    const r = await validateSession(makeSession({
-      id: 'legacy',
-      keyFiles: ['src/g.ts'],
-    }));
+    const r = await validateSession(
+      makeSession({
+        id: 'legacy',
+        keyFiles: ['src/g.ts'],
+      }),
+    );
     assert.equal(r.verification['src/g.ts'], 'neutral');
     assert.equal(r.groundedFreshness, 1, 'legacy sessions must not be penalised');
   } finally {

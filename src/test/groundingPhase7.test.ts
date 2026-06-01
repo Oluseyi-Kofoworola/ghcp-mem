@@ -8,10 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { TOOLS } from '../mcpServer';
-import {
-  buildComplianceReport,
-  renderComplianceReport,
-} from '../compliance';
+import { buildComplianceReport, renderComplianceReport } from '../compliance';
 import { CompressedSession, Evidence, computeContentHash } from '../types';
 
 function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSession {
@@ -35,7 +32,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
     rawEventCount: overrides.rawEventCount ?? 10,
     userTags: overrides.userTags ?? [],
     redactionCount: overrides.redactionCount ?? 0,
-    contentHash: overrides.contentHash ?? computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
+    contentHash:
+      overrides.contentHash ??
+      computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
   };
   if (overrides.confidence !== undefined) base.confidence = overrides.confidence;
   if (overrides.compressorMode !== undefined) base.compressorMode = overrides.compressorMode;
@@ -46,7 +45,8 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
   if (overrides.decisionEvidence !== undefined) base.decisionEvidence = overrides.decisionEvidence;
   if (overrides.problemEvidence !== undefined) base.problemEvidence = overrides.problemEvidence;
   if (overrides.keyFileHashes !== undefined) base.keyFileHashes = overrides.keyFileHashes;
-  if (overrides.eventLogTruncated !== undefined) base.eventLogTruncated = overrides.eventLogTruncated;
+  if (overrides.eventLogTruncated !== undefined)
+    base.eventLogTruncated = overrides.eventLogTruncated;
   if (overrides.usage !== undefined) base.usage = { ...overrides.usage };
   return base;
 }
@@ -54,29 +54,37 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
 // ─── MCP catalog shape ───────────────────────────────────────────────────────
 
 test('mcpServer — Phase 7 tools declare object inputSchemas', () => {
-  const phase7 = ['ghcpMem_entity', 'ghcpMem_snippets', 'ghcpMem_conflicts',
-                  'ghcpMem_lineage', 'ghcpMem_explain', 'ghcpMem_graph'];
+  const phase7 = [
+    'ghcpMem_entity',
+    'ghcpMem_snippets',
+    'ghcpMem_conflicts',
+    'ghcpMem_lineage',
+    'ghcpMem_explain',
+    'ghcpMem_graph',
+  ];
   for (const name of phase7) {
-    const tool = TOOLS.find(t => t.name === name);
+    const tool = TOOLS.find((t) => t.name === name);
     assert.ok(tool, `tool ${name} must be declared in TOOLS`);
     assert.equal(tool!.inputSchema.type, 'object');
-    assert.ok(typeof tool!.description === 'string' && tool!.description.length > 20,
-      `tool ${name} must have a descriptive description (≥20 chars)`);
+    assert.ok(
+      typeof tool!.description === 'string' && tool!.description.length > 20,
+      `tool ${name} must have a descriptive description (≥20 chars)`,
+    );
   }
 });
 
 test('mcpServer — ghcpMem_entity requires `key`', () => {
-  const t = TOOLS.find(t => t.name === 'ghcpMem_entity')!;
+  const t = TOOLS.find((t) => t.name === 'ghcpMem_entity')!;
   assert.deepEqual(t.inputSchema.required, ['key']);
 });
 
 test('mcpServer — ghcpMem_snippets requires `query`', () => {
-  const t = TOOLS.find(t => t.name === 'ghcpMem_snippets')!;
+  const t = TOOLS.find((t) => t.name === 'ghcpMem_snippets')!;
   assert.deepEqual(t.inputSchema.required, ['query']);
 });
 
 test('mcpServer — ghcpMem_explain requires `query` and `id`', () => {
-  const t = TOOLS.find(t => t.name === 'ghcpMem_explain')!;
+  const t = TOOLS.find((t) => t.name === 'ghcpMem_explain')!;
   assert.deepEqual(t.inputSchema.required, ['query', 'id']);
 });
 
@@ -116,7 +124,10 @@ test('buildComplianceReport — evidence coverage is decisions-with-evidence / t
   assert.equal(r.decisionsWithEvidenceCount, 1);
   assert.equal(r.decisionsWithoutEvidenceCount, 2);
   // 1 of 3 = 33.3%
-  assert.ok(r.evidenceCoveragePct > 33 && r.evidenceCoveragePct < 34, `got ${r.evidenceCoveragePct}`);
+  assert.ok(
+    r.evidenceCoveragePct > 33 && r.evidenceCoveragePct < 34,
+    `got ${r.evidenceCoveragePct}`,
+  );
 });
 
 test('buildComplianceReport — compressorBreakdown reflects mode field', () => {
@@ -171,15 +182,19 @@ test('buildComplianceReport — custom entities propagate', () => {
 test('buildComplianceReport — pendingConflicts reflects heuristic detection', () => {
   const sessions = [
     makeSession({
-      id: 'old', summary: 'a',
+      id: 'old',
+      summary: 'a',
       decisions: ['use cookies'],
-      keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
       endTime: Date.now() - 60_000,
     }),
     makeSession({
-      id: 'new', summary: 'b',
+      id: 'new',
+      summary: 'b',
       decisions: ['use JWT instead of cookies'],
-      keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
       endTime: Date.now(),
     }),
   ];
@@ -188,9 +203,7 @@ test('buildComplianceReport — pendingConflicts reflects heuristic detection', 
 });
 
 test('renderComplianceReport — emits the major sections', () => {
-  const r = buildComplianceReport([
-    makeSession({ id: 'x', confidence: 0.8 }),
-  ]);
+  const r = buildComplianceReport([makeSession({ id: 'x', confidence: 0.8 })]);
   const md = renderComplianceReport(r);
   assert.match(md, /Compliance Report/);
   assert.match(md, /Store posture/);

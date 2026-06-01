@@ -59,10 +59,7 @@ export interface IntegrityRule {
 // up with package.json — which is the source of truth that vsce
 // publish reads.
 
-async function readFileFromWorkspace(
-  ws: vscode.Uri,
-  rel: string,
-): Promise<string | null> {
+async function readFileFromWorkspace(ws: vscode.Uri, rel: string): Promise<string | null> {
   try {
     const uri = vscode.Uri.joinPath(ws, rel);
     const bytes = await vscode.workspace.fs.readFile(uri);
@@ -99,7 +96,9 @@ export const versionDriftRule: IntegrityRule = {
       truth = extractSemver((JSON.parse(pkgRaw) as { version?: string }).version ?? '');
     } catch {
       issues.push({
-        rule: 'version-drift', severity: 'error', file: 'package.json',
+        rule: 'version-drift',
+        severity: 'error',
+        file: 'package.json',
         message: 'package.json is not valid JSON',
         fix: 'fix the syntax error before any version surface can be compared',
       });
@@ -107,7 +106,9 @@ export const versionDriftRule: IntegrityRule = {
     }
     if (!truth) {
       issues.push({
-        rule: 'version-drift', severity: 'error', file: 'package.json',
+        rule: 'version-drift',
+        severity: 'error',
+        file: 'package.json',
         message: '.version field is missing or not semver (X.Y.Z)',
         fix: 'add a "version": "X.Y.Z" line',
       });
@@ -117,23 +118,29 @@ export const versionDriftRule: IntegrityRule = {
     // ── README footer ──
     const readme = await readFileFromWorkspace(ws, 'README.md');
     if (readme) {
-      const refs = [...readme.matchAll(/\*\*v(\d+\.\d+\.\d+)\*\*/g)].map(m => m[1]);
+      const refs = [...readme.matchAll(/\*\*v(\d+\.\d+\.\d+)\*\*/g)].map((m) => m[1]);
       const distinct = [...new Set(refs)];
       if (distinct.length === 0) {
         issues.push({
-          rule: 'version-drift', severity: 'warning', file: 'README.md',
+          rule: 'version-drift',
+          severity: 'warning',
+          file: 'README.md',
           message: `no **vX.Y.Z** footer found; cannot verify against package.json ${truth}`,
           fix: `add **v${truth}** somewhere in README.md`,
         });
       } else if (distinct.length > 1) {
         issues.push({
-          rule: 'version-drift', severity: 'error', file: 'README.md',
+          rule: 'version-drift',
+          severity: 'error',
+          file: 'README.md',
           message: `README cites multiple versions: ${distinct.join(', ')}; only one can be the truth`,
           fix: `run: npm run bump:version -- ${truth}`,
         });
       } else if (distinct[0] !== truth) {
         issues.push({
-          rule: 'version-drift', severity: 'error', file: 'README.md',
+          rule: 'version-drift',
+          severity: 'error',
+          file: 'README.md',
           line: lineOf(readme, `**v${distinct[0]}**`) || undefined,
           message: `README footer says v${distinct[0]} but package.json is ${truth}`,
           fix: `run: npm run bump:version -- ${truth}`,
@@ -144,17 +151,21 @@ export const versionDriftRule: IntegrityRule = {
     // ── DEMO.md citations ──
     const demo = await readFileFromWorkspace(ws, 'docs/DEMO.md');
     if (demo) {
-      const refs = [...demo.matchAll(/v(\d+\.\d+\.\d+)/g)].map(m => m[1]);
+      const refs = [...demo.matchAll(/v(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
       const distinct = [...new Set(refs)];
       if (distinct.length > 1) {
         issues.push({
-          rule: 'version-drift', severity: 'error', file: 'docs/DEMO.md',
+          rule: 'version-drift',
+          severity: 'error',
+          file: 'docs/DEMO.md',
           message: `DEMO.md cites multiple versions: ${distinct.join(', ')}`,
           fix: `run: npm run bump:version -- ${truth}`,
         });
       } else if (distinct.length === 1 && distinct[0] !== truth) {
         issues.push({
-          rule: 'version-drift', severity: 'error', file: 'docs/DEMO.md',
+          rule: 'version-drift',
+          severity: 'error',
+          file: 'docs/DEMO.md',
           line: lineOf(demo, `v${distinct[0]}`) || undefined,
           message: `DEMO.md says v${distinct[0]} but package.json is ${truth}`,
           fix: `run: npm run bump:version -- ${truth}`,
@@ -168,13 +179,17 @@ export const versionDriftRule: IntegrityRule = {
       const top = changelog.match(/^## \[(\d+\.\d+\.\d+)\b/m);
       if (!top) {
         issues.push({
-          rule: 'version-drift', severity: 'warning', file: 'CHANGELOG.md',
+          rule: 'version-drift',
+          severity: 'warning',
+          file: 'CHANGELOG.md',
           message: 'no `## [X.Y.Z]` heading found; cannot verify',
           fix: `add a \`## [${truth}] — YYYY-MM-DD\` entry at the top`,
         });
       } else if (top[1] !== truth) {
         issues.push({
-          rule: 'version-drift', severity: 'error', file: 'CHANGELOG.md',
+          rule: 'version-drift',
+          severity: 'error',
+          file: 'CHANGELOG.md',
           line: lineOf(changelog, `## [${top[1]}]`) || undefined,
           message: `CHANGELOG top entry is [${top[1]}] but package.json is ${truth}`,
           fix: `add a new \`## [${truth}] — YYYY-MM-DD\` entry above the [${top[1]}] one`,
@@ -204,20 +219,18 @@ export async function runWorkspaceAudit(
       issues.push(...found);
     } catch (err) {
       issues.push({
-        rule: rule.name, severity: 'warning',
+        rule: rule.name,
+        severity: 'warning',
         file: '(rule error)',
         message: `rule '${rule.name}' threw: ${(err as Error).message}`,
       });
     }
   }
-  return { issues, rulesRun: rules.map(r => r.name) };
+  return { issues, rulesRun: rules.map((r) => r.name) };
 }
 
 /** Format the audit findings as a markdown document. */
-export function formatAuditReport(
-  issues: IntegrityIssue[],
-  rulesRun: string[],
-): string {
+export function formatAuditReport(issues: IntegrityIssue[], rulesRun: string[]): string {
   const lines: string[] = [];
   lines.push('# 🩺 GHCP-MEM Workspace Integrity Audit');
   lines.push('');
@@ -232,9 +245,9 @@ export function formatAuditReport(
   }
 
   // Group by severity
-  const errors = issues.filter(i => i.severity === 'error');
-  const warnings = issues.filter(i => i.severity === 'warning');
-  const infos = issues.filter(i => i.severity === 'info');
+  const errors = issues.filter((i) => i.severity === 'error');
+  const warnings = issues.filter((i) => i.severity === 'warning');
+  const infos = issues.filter((i) => i.severity === 'info');
 
   if (errors.length) {
     lines.push(`## ❌ Errors (${errors.length})`);
@@ -274,5 +287,5 @@ function formatFileRef(i: IntegrityIssue): string {
 
 /** Convenience: returns true if any error-severity issues were found. */
 export function hasBlockingIssues(issues: IntegrityIssue[]): boolean {
-  return issues.some(i => i.severity === 'error');
+  return issues.some((i) => i.severity === 'error');
 }

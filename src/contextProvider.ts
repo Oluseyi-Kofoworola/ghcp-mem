@@ -66,72 +66,190 @@ export class ContextProvider implements vscode.Disposable {
     const p = vscode.chat.createChatParticipant('ghcp-mem', this.handle.bind(this));
     p.iconPath = new vscode.ThemeIcon('history');
     p.followupProvider = {
-      provideFollowups(result: vscode.ChatResult, context: vscode.ChatContext): vscode.ChatFollowup[] {
+      provideFollowups(
+        result: vscode.ChatResult,
+        context: vscode.ChatContext,
+      ): vscode.ChatFollowup[] {
         const last = context.history[context.history.length - 1];
         const cmd = last instanceof vscode.ChatRequestTurn ? last.command : undefined;
         switch (cmd) {
           case 'whereami':
             return [
-              { prompt: '', command: 'debt', label: '$(warning) Show tech debt', participant: 'ghcp-mem' },
-              { prompt: '', command: 'standup', label: '$(calendar) Daily standup', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'debt',
+                label: '$(warning) Show tech debt',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'standup',
+                label: '$(calendar) Daily standup',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'debt':
             return [
-              { prompt: '', command: 'precommit', label: '$(git-commit) Pre-commit check', participant: 'ghcp-mem' },
-              { prompt: '', command: 'decisions', label: '$(list-ordered) Architecture decisions', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'precommit',
+                label: '$(git-commit) Pre-commit check',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'decisions',
+                label: '$(list-ordered) Architecture decisions',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'adr':
             return [
-              { prompt: '', command: 'decisions', label: '$(list-ordered) All decisions', participant: 'ghcp-mem' },
-              { prompt: '', command: 'precommit', label: '$(git-commit) Pre-commit check', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'decisions',
+                label: '$(list-ordered) All decisions',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'precommit',
+                label: '$(git-commit) Pre-commit check',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'precommit':
             return [
-              { prompt: '', command: 'commit', label: '$(git-commit) Generate commit message', participant: 'ghcp-mem' },
-              { prompt: '', command: 'debt', label: '$(warning) Show tech debt', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'commit',
+                label: '$(git-commit) Generate commit message',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'debt',
+                label: '$(warning) Show tech debt',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'pr':
             return [
-              { prompt: '', command: 'decisions', label: '$(list-ordered) Architecture decisions', participant: 'ghcp-mem' },
-              { prompt: '', command: 'search', label: '$(search) Search sessions', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'decisions',
+                label: '$(list-ordered) Architecture decisions',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'search',
+                label: '$(search) Search sessions',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'standup':
             return [
-              { prompt: '', command: 'recap', label: '$(book) Weekly recap', participant: 'ghcp-mem' },
-              { prompt: '', command: 'commit', label: '$(git-commit) Generate commit', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'recap',
+                label: '$(book) Weekly recap',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'commit',
+                label: '$(git-commit) Generate commit',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'commit':
             return [
-              { prompt: '', command: 'standup', label: '$(calendar) Daily standup', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'standup',
+                label: '$(calendar) Daily standup',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'ask':
           case 'recap':
             return [
-              { prompt: '', command: 'standup', label: '$(calendar) Daily standup', participant: 'ghcp-mem' },
-              { prompt: '', command: 'search', label: '$(search) Search sessions', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'standup',
+                label: '$(calendar) Daily standup',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'search',
+                label: '$(search) Search sessions',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'search':
             return [
-              { prompt: '', command: 'recent', label: '$(history) Show recent sessions', participant: 'ghcp-mem' },
-              { prompt: '', command: 'health', label: '$(pulse) Check memory health', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'recent',
+                label: '$(history) Show recent sessions',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'health',
+                label: '$(pulse) Check memory health',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'recent':
             return [
-              { prompt: '', command: 'search', label: '$(search) Search sessions…', participant: 'ghcp-mem' },
-              { prompt: '', command: 'timeline', label: '$(calendar) View timeline', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'search',
+                label: '$(search) Search sessions…',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'timeline',
+                label: '$(calendar) View timeline',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'timeline':
             return [
-              { prompt: '', command: 'search', label: '$(search) Search sessions…', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'search',
+                label: '$(search) Search sessions…',
+                participant: 'ghcp-mem',
+              },
             ];
           case 'health':
             return [
-              { prompt: '', command: 'status', label: '$(info) Show status', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'status',
+                label: '$(info) Show status',
+                participant: 'ghcp-mem',
+              },
             ];
           default:
             return [
-              { prompt: '', command: 'recent', label: '$(history) Recent sessions', participant: 'ghcp-mem' },
-              { prompt: '', command: 'health', label: '$(pulse) Memory health', participant: 'ghcp-mem' },
+              {
+                prompt: '',
+                command: 'recent',
+                label: '$(history) Recent sessions',
+                participant: 'ghcp-mem',
+              },
+              {
+                prompt: '',
+                command: 'health',
+                label: '$(pulse) Memory health',
+                participant: 'ghcp-mem',
+              },
             ];
         }
       },
@@ -143,47 +261,82 @@ export class ContextProvider implements vscode.Disposable {
     request: vscode.ChatRequest,
     _context: vscode.ChatContext,
     stream: vscode.ChatResponseStream,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<void> {
     const cmd = request.command;
     const query = request.prompt.trim();
 
     switch (cmd) {
-      case 'status':   return this.status(stream);
-      case 'recent':   return this.recent(stream);
-      case 'search':   return this.search(query, stream);
-      case 'timeline': return this.timeline(query, stream);
-      case 'detail':   return this.detail(query, stream);
-      case 'azure':    return this.azure(query, stream);
-      case 'health':   return this.health(stream);
-      case 'export':   return this.export(query, stream);
-      case 'standup':  return this.standup(query, stream, request, token);
-      case 'commit':   return this.commit(stream, request, token);
-      case 'ask':      return this.ask(query, stream, request, token);
-      case 'recap':    return this.recap(query, stream, request, token);
-      case 'savings':   return this.savings(stream);
-      case 'related':   return this.related(stream);
-      case 'decisions': return this.decisions(query, stream, request, token);
-      case 'whereami':  return this.whereami(stream, request, token);
-      case 'debt':      return this.debt(stream, request, token);
-      case 'adr':       return this.adr(query, stream, request, token);
-      case 'pr':        return this.pr(query, stream, request, token);
-      case 'precommit': return this.precommit(stream, request, token);
-      case 'audit':     return this.audit(stream);
-      case 'verify':    return this.verify(query, stream);
-      case 'correct':   return this.correct(query, stream);
-      case 'supersede': return this.supersede(query, stream);
-      case 'retract':   return this.retract(query, stream);
-      case 'accept':    return this.accept(query, stream);
-      case 'reject':    return this.reject(query, stream);
-      case 'entity':    return this.entity(query, stream);
-      case 'snippet':   return this.snippet(query, stream);
-      case 'conflicts': return this.conflicts(query, stream);
-      case 'lineage':   return this.lineage(query, stream);
-      case 'why':       return this.why(query, stream);
-      case 'graph':     return this.graph(query, stream);
-      case 'compliance':return this.compliance(stream);
-      case 'route':     return this.route(query, stream);
+      case 'status':
+        return this.status(stream);
+      case 'recent':
+        return this.recent(stream);
+      case 'search':
+        return this.search(query, stream);
+      case 'timeline':
+        return this.timeline(query, stream);
+      case 'detail':
+        return this.detail(query, stream);
+      case 'azure':
+        return this.azure(query, stream);
+      case 'health':
+        return this.health(stream);
+      case 'export':
+        return this.export(query, stream);
+      case 'standup':
+        return this.standup(query, stream, request, token);
+      case 'commit':
+        return this.commit(stream, request, token);
+      case 'ask':
+        return this.ask(query, stream, request, token);
+      case 'recap':
+        return this.recap(query, stream, request, token);
+      case 'savings':
+        return this.savings(stream);
+      case 'related':
+        return this.related(stream);
+      case 'decisions':
+        return this.decisions(query, stream, request, token);
+      case 'whereami':
+        return this.whereami(stream, request, token);
+      case 'debt':
+        return this.debt(stream, request, token);
+      case 'adr':
+        return this.adr(query, stream, request, token);
+      case 'pr':
+        return this.pr(query, stream, request, token);
+      case 'precommit':
+        return this.precommit(stream, request, token);
+      case 'audit':
+        return this.audit(stream);
+      case 'verify':
+        return this.verify(query, stream);
+      case 'correct':
+        return this.correct(query, stream);
+      case 'supersede':
+        return this.supersede(query, stream);
+      case 'retract':
+        return this.retract(query, stream);
+      case 'accept':
+        return this.accept(query, stream);
+      case 'reject':
+        return this.reject(query, stream);
+      case 'entity':
+        return this.entity(query, stream);
+      case 'snippet':
+        return this.snippet(query, stream);
+      case 'conflicts':
+        return this.conflicts(query, stream);
+      case 'lineage':
+        return this.lineage(query, stream);
+      case 'why':
+        return this.why(query, stream);
+      case 'graph':
+        return this.graph(query, stream);
+      case 'compliance':
+        return this.compliance(stream);
+      case 'route':
+        return this.route(query, stream);
       default:
         if (!query || query.toLowerCase() === 'status') return this.status(stream);
         if (query.toLowerCase() === 'recent') return this.recent(stream);
@@ -199,20 +352,24 @@ export class ContextProvider implements vscode.Disposable {
       return;
     }
     stream.markdown(`## 🩺 Workspace Integrity Audit\n\n`);
-    stream.markdown(`Ran **${rulesRun.length}** rule${rulesRun.length === 1 ? '' : 's'} (\`${rulesRun.join('`, `')}\`).\n\n`);
+    stream.markdown(
+      `Ran **${rulesRun.length}** rule${rulesRun.length === 1 ? '' : 's'} (\`${rulesRun.join('`, `')}\`).\n\n`,
+    );
 
     if (issues.length === 0) {
       stream.markdown('✅ **No issues found.** Every checked surface is consistent.\n');
       return;
     }
 
-    const errors = issues.filter(i => i.severity === 'error');
-    const warnings = issues.filter(i => i.severity === 'warning');
+    const errors = issues.filter((i) => i.severity === 'error');
+    const warnings = issues.filter((i) => i.severity === 'warning');
     if (errors.length) {
       stream.markdown(`### ❌ ${errors.length} error${errors.length === 1 ? '' : 's'}\n\n`);
       for (const i of errors) {
         const loc = i.line ? `\`${i.file}:${i.line}\`` : `\`${i.file}\``;
-        stream.markdown(`- **${i.rule}** · ${loc} — ${i.message}` + (i.fix ? `\n  > 💡 ${i.fix}` : '') + '\n');
+        stream.markdown(
+          `- **${i.rule}** · ${loc} — ${i.message}` + (i.fix ? `\n  > 💡 ${i.fix}` : '') + '\n',
+        );
       }
       stream.markdown('\n');
     }
@@ -220,12 +377,16 @@ export class ContextProvider implements vscode.Disposable {
       stream.markdown(`### ⚠️ ${warnings.length} warning${warnings.length === 1 ? '' : 's'}\n\n`);
       for (const i of warnings) {
         const loc = i.line ? `\`${i.file}:${i.line}\`` : `\`${i.file}\``;
-        stream.markdown(`- **${i.rule}** · ${loc} — ${i.message}` + (i.fix ? `\n  > 💡 ${i.fix}` : '') + '\n');
+        stream.markdown(
+          `- **${i.rule}** · ${loc} — ${i.message}` + (i.fix ? `\n  > 💡 ${i.fix}` : '') + '\n',
+        );
       }
       stream.markdown('\n');
     }
     if (hasBlockingIssues(issues)) {
-      stream.markdown('> These are blocking issues for the release-consistency gate. Either fix them before `vsce publish`, or run `npm run bump:version -- <version>` to realign every surface.\n');
+      stream.markdown(
+        '> These are blocking issues for the release-consistency gate. Either fix them before `vsce publish`, or run `npm run bump:version -- <version>` to realign every surface.\n',
+      );
     }
     stream.button({
       command: 'ghcpMem.runIntegrityAudit',
@@ -239,14 +400,24 @@ export class ContextProvider implements vscode.Disposable {
     stream.markdown(`- **Total sessions:** ${stats.totalSessions}\n`);
     stream.markdown(`- **This workspace:** ${stats.workspaceSessions}\n`);
     stream.markdown(`- **Today sessions:** ${stats.todaySessions}\n`);
-    stream.markdown(`- **Estimated tokens saved today:** ${stats.todayEstimatedTokensSaved.toLocaleString()}\n`);
-    stream.markdown(`- **Lifetime tokens saved:** ${stats.lifetimeEstimatedTokensSaved.toLocaleString()}\n`);
+    stream.markdown(
+      `- **Estimated tokens saved today:** ${stats.todayEstimatedTokensSaved.toLocaleString()}\n`,
+    );
+    stream.markdown(
+      `- **Lifetime tokens saved:** ${stats.lifetimeEstimatedTokensSaved.toLocaleString()}\n`,
+    );
     stream.markdown(`- **Avg compression ratio:** ${stats.avgCompressionRatio}×\n`);
     stream.markdown(`- **Redactions applied:** ${stats.totalRedactions}\n`);
-    if (stats.oldestSession) stream.markdown(`- **Oldest:** ${new Date(stats.oldestSession).toLocaleDateString()}\n`);
-    if (stats.newestSession) stream.markdown(`- **Newest:** ${new Date(stats.newestSession).toLocaleDateString()}\n`);
-    stream.markdown(`\n> 💡 Run \`@mem /savings\` for a full token-savings breakdown with cost estimates.\n`);
-    stream.markdown(`\n**Commands:** \`/search\`, \`/timeline\`, \`/detail <id>\`, \`/recent\`, \`/azure\`, \`/health\`, \`/export <id>\`, \`/savings\`\n`);
+    if (stats.oldestSession)
+      stream.markdown(`- **Oldest:** ${new Date(stats.oldestSession).toLocaleDateString()}\n`);
+    if (stats.newestSession)
+      stream.markdown(`- **Newest:** ${new Date(stats.newestSession).toLocaleDateString()}\n`);
+    stream.markdown(
+      `\n> 💡 Run \`@mem /savings\` for a full token-savings breakdown with cost estimates.\n`,
+    );
+    stream.markdown(
+      `\n**Commands:** \`/search\`, \`/timeline\`, \`/detail <id>\`, \`/recent\`, \`/azure\`, \`/health\`, \`/export <id>\`, \`/savings\`\n`,
+    );
   }
 
   private async health(stream: vscode.ChatResponseStream): Promise<void> {
@@ -268,7 +439,9 @@ export class ContextProvider implements vscode.Disposable {
   private async recent(stream: vscode.ChatResponseStream): Promise<void> {
     const recent = this.store.getRecentSessions(5);
     if (recent.length === 0) {
-      stream.markdown('_No sessions recorded yet. Keep coding and memory will populate automatically._\n');
+      stream.markdown(
+        '_No sessions recorded yet. Keep coding and memory will populate automatically._\n',
+      );
       return;
     }
     stream.markdown(`## Recent Sessions\n\n`);
@@ -303,14 +476,15 @@ export class ContextProvider implements vscode.Disposable {
       this.renderIndexRow(e.session, stream);
       // Lineage (≥2 entries means there's a real chain worth showing).
       if (e.lineage.length >= 2) {
-        const chain = e.lineage.map(s => `\`${s.id.substring(0, 8)}\``).join(' → ');
+        const chain = e.lineage.map((s) => `\`${s.id.substring(0, 8)}\``).join(' → ');
         stream.markdown(`  > 🧭 Lineage: ${chain} *(oldest → current)*\n\n`);
       }
       // "See also" pointers to related entities (max 2 each to keep tokens down).
       const seeAlso: string[] = [];
       for (const sym of e.relatedSymbols.slice(0, 2)) seeAlso.push(`\`@mem /entity ${sym}\``);
       for (const f of e.relatedFiles.slice(0, 2)) {
-        if (!e.relatedSymbols.some(sym => sym.startsWith(f + '#'))) seeAlso.push(`\`@mem /entity ${f}\``);
+        if (!e.relatedSymbols.some((sym) => sym.startsWith(f + '#')))
+          seeAlso.push(`\`@mem /entity ${f}\``);
       }
       if (seeAlso.length) {
         stream.markdown(`  > 🔗 See also: ${seeAlso.slice(0, 3).join(' · ')}\n\n`);
@@ -349,7 +523,9 @@ export class ContextProvider implements vscode.Disposable {
   /** Layer-2 detail — fetch full content only after filtering. */
   private async detail(idPrefix: string, stream: vscode.ChatResponseStream): Promise<void> {
     if (!idPrefix) {
-      stream.markdown('Provide a session ID (or prefix). Use `@mem /recent` or `/search` to find one.\n');
+      stream.markdown(
+        'Provide a session ID (or prefix). Use `@mem /recent` or `/search` to find one.\n',
+      );
       return;
     }
     const s = this.store.getById(idPrefix);
@@ -365,24 +541,32 @@ export class ContextProvider implements vscode.Disposable {
    * Accepts an optional filter (substring matched against summary/topics/files/resourceId).
    */
   private async azure(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const all = this.store.getAllSessions().filter(s => !!s.azureContext || s.userTags.includes('azure'));
+    const all = this.store
+      .getAllSessions()
+      .filter((s) => !!s.azureContext || s.userTags.includes('azure'));
     if (all.length === 0) {
-      stream.markdown('_No Azure-tagged sessions yet. Try `GHCP-MEM: Seed Azure Demo Sessions` to see examples, or edit a `.bicep`/`azure.yaml` file._\n');
+      stream.markdown(
+        '_No Azure-tagged sessions yet. Try `GHCP-MEM: Seed Azure Demo Sessions` to see examples, or edit a `.bicep`/`azure.yaml` file._\n',
+      );
       return;
     }
 
     const needle = query.trim().toLowerCase();
-    const filtered = !needle ? all : all.filter(s => {
-      const hay = [
-        s.summary,
-        s.keyTopics.join(' '),
-        s.keyFiles.join(' '),
-        s.azureContext?.resourceGroup ?? '',
-        s.azureContext?.subscriptionName ?? '',
-        (s.azureContext?.resourceIds ?? []).join(' '),
-      ].join(' ').toLowerCase();
-      return hay.includes(needle);
-    });
+    const filtered = !needle
+      ? all
+      : all.filter((s) => {
+          const hay = [
+            s.summary,
+            s.keyTopics.join(' '),
+            s.keyFiles.join(' '),
+            s.azureContext?.resourceGroup ?? '',
+            s.azureContext?.subscriptionName ?? '',
+            (s.azureContext?.resourceIds ?? []).join(' '),
+          ]
+            .join(' ')
+            .toLowerCase();
+          return hay.includes(needle);
+        });
 
     if (filtered.length === 0) {
       stream.markdown(`No Azure sessions matched "${query}".\n`);
@@ -398,7 +582,9 @@ export class ContextProvider implements vscode.Disposable {
       groups.set(key, arr);
     }
 
-    stream.markdown(`## Azure sessions (${filtered.length})${needle ? ` matching "${query}"` : ''}\n\n`);
+    stream.markdown(
+      `## Azure sessions (${filtered.length})${needle ? ` matching "${query}"` : ''}\n\n`,
+    );
     for (const [subsystem, sessions] of groups) {
       stream.markdown(`### ${subsystem} (${sessions.length})\n\n`);
       for (const s of sessions.slice(0, 6)) {
@@ -407,11 +593,15 @@ export class ContextProvider implements vscode.Disposable {
         const ctxLine = ac
           ? `  \n  _${[ac.subscriptionName && `sub=${ac.subscriptionName}`, ac.resourceGroup && `rg=${ac.resourceGroup}`].filter(Boolean).join(' · ') || 'azure'}_`
           : '';
-        stream.markdown(`- **[${s.observationType}]** \`${s.id.substring(0, 8)}\` · ${date}  \n  ${s.summary.substring(0, 180)}${ctxLine}\n`);
+        stream.markdown(
+          `- **[${s.observationType}]** \`${s.id.substring(0, 8)}\` · ${date}  \n  ${s.summary.substring(0, 180)}${ctxLine}\n`,
+        );
       }
     }
 
-    stream.markdown(`\n_Use \`@mem /detail <id>\` to expand one. Tip: \`#ghcpMemSearch\` in agent mode filters by Azure too._\n`);
+    stream.markdown(
+      `\n_Use \`@mem /detail <id>\` to expand one. Tip: \`#ghcpMemSearch\` in agent mode filters by Azure too._\n`,
+    );
   }
 
   // ── Phase 2 Slice A: trust + correction commands ────────────────────────
@@ -422,7 +612,9 @@ export class ContextProvider implements vscode.Disposable {
    * supported by the current code or has drifted/broken.
    */
   private async verify(idPrefix: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const session = idPrefix ? this.store.getById(idPrefix.trim()) : this.store.getRecentSessions(1)[0];
+    const session = idPrefix
+      ? this.store.getById(idPrefix.trim())
+      : this.store.getRecentSessions(1)[0];
     if (!session) {
       stream.markdown(`No session found${idPrefix ? ` for ID "${idPrefix}"` : ''}.\n`);
       return;
@@ -432,7 +624,9 @@ export class ContextProvider implements vscode.Disposable {
     stream.markdown(`**Summary:** ${session.summary}\n\n`);
     if (typeof session.confidence === 'number') {
       const emoji = session.confidence >= 0.75 ? '🟢' : session.confidence >= 0.5 ? '🟡' : '🔴';
-      stream.markdown(`**Confidence (at capture):** ${emoji} ${session.confidence.toFixed(2)} (${session.compressorMode ?? '?'} mode)\n\n`);
+      stream.markdown(
+        `**Confidence (at capture):** ${emoji} ${session.confidence.toFixed(2)} (${session.compressorMode ?? '?'} mode)\n\n`,
+      );
     }
     if (result.emptyKeyFiles) {
       stream.markdown(`_No key files to verify._\n`);
@@ -450,29 +644,37 @@ export class ContextProvider implements vscode.Disposable {
 
     if (groups.verified.length) {
       stream.markdown(`### ✅ Verified (${groups.verified.length})\n`);
-      for (const f of groups.verified) stream.markdown(`- \`${f}\` — content matches capture-time hash\n`);
+      for (const f of groups.verified)
+        stream.markdown(`- \`${f}\` — content matches capture-time hash\n`);
       stream.markdown('\n');
     }
     if (groups.drifted.length) {
       stream.markdown(`### 🟡 Drifted (${groups.drifted.length})\n`);
-      for (const f of groups.drifted) stream.markdown(`- \`${f}\` — file exists but content has changed since capture\n`);
+      for (const f of groups.drifted)
+        stream.markdown(`- \`${f}\` — file exists but content has changed since capture\n`);
       stream.markdown('\n');
     }
     if (groups.missing.length) {
       stream.markdown(`### 🔴 Missing (${groups.missing.length})\n`);
-      for (const f of groups.missing) stream.markdown(`- \`${f}\` — file no longer present in workspace\n`);
+      for (const f of groups.missing)
+        stream.markdown(`- \`${f}\` — file no longer present in workspace\n`);
       stream.markdown('\n');
     }
     if (neutral.length) {
       stream.markdown(`### ◌ Unverifiable (${neutral.length})\n`);
-      for (const f of neutral) stream.markdown(`- \`${f}\` — no stored hash to compare against (legacy session)\n`);
+      for (const f of neutral)
+        stream.markdown(`- \`${f}\` — no stored hash to compare against (legacy session)\n`);
       stream.markdown('\n');
     }
     if (session.supersededBy) {
-      stream.markdown(`> ⚠️ This session has been superseded by \`${session.supersededBy.substring(0, 8)}\` — \`@mem /detail ${session.supersededBy.substring(0, 8)}\` to view it.\n`);
+      stream.markdown(
+        `> ⚠️ This session has been superseded by \`${session.supersededBy.substring(0, 8)}\` — \`@mem /detail ${session.supersededBy.substring(0, 8)}\` to view it.\n`,
+      );
     }
     if (session.retracted) {
-      stream.markdown(`> 🚫 This session is retracted${session.retractedReason ? `: _${session.retractedReason}_` : ''}.\n`);
+      stream.markdown(
+        `> 🚫 This session is retracted${session.retractedReason ? `: _${session.retractedReason}_` : ''}.\n`,
+      );
     }
   }
 
@@ -520,8 +722,11 @@ export class ContextProvider implements vscode.Disposable {
       userTags: ['correction'],
       redactionCount: 0,
       contentHash: computeContentHash({
-        summary, keyFiles: original.keyFiles, keyTopics: [...original.keyTopics, 'correction'],
-        decisions: [cleanedText], problemsSolved: [],
+        summary,
+        keyFiles: original.keyFiles,
+        keyTopics: [...original.keyTopics, 'correction'],
+        decisions: [cleanedText],
+        problemsSolved: [],
       }),
       // Correction is a user-pinned source of truth — top confidence.
       confidence: 1.0,
@@ -539,13 +744,15 @@ export class ContextProvider implements vscode.Disposable {
         correction.repoScope = scope.id;
         correction.repoScopeLabel = scope.label;
       }
-    } catch { /* keep inherited values */ }
+    } catch {
+      /* keep inherited values */
+    }
 
     await this.store.addSession(correction);
     await this.store.addCorrection(original.id, newId);
     stream.markdown(
       `✅ Recorded correction \`${newId.substring(0, 8)}\` superseding \`${original.id.substring(0, 8)}\`.\n\n` +
-      `> ${cleanedText}\n`,
+        `> ${cleanedText}\n`,
     );
   }
 
@@ -563,7 +770,9 @@ export class ContextProvider implements vscode.Disposable {
     const newer = this.store.getById(newerPrefix);
     const older = this.store.getById(olderPrefix);
     if (!newer || !older) {
-      stream.markdown(`Could not resolve one of the IDs (newer=${newer ? '✓' : '✗'}, older=${older ? '✓' : '✗'}).\n`);
+      stream.markdown(
+        `Could not resolve one of the IDs (newer=${newer ? '✓' : '✗'}, older=${older ? '✓' : '✗'}).\n`,
+      );
       return;
     }
     if (newer.id === older.id) {
@@ -573,7 +782,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.store.setSupersedes(newer.id, older.id);
     stream.markdown(
       `✅ \`${newer.id.substring(0, 8)}\` now supersedes \`${older.id.substring(0, 8)}\`. ` +
-      `The older session stays on disk for audit but is excluded from injection and down-ranked in retrieval.\n`,
+        `The older session stays on disk for audit but is excluded from injection and down-ranked in retrieval.\n`,
     );
   }
 
@@ -584,13 +793,18 @@ export class ContextProvider implements vscode.Disposable {
   private async retract(query: string, stream: vscode.ChatResponseStream): Promise<void> {
     const trimmed = query.trim();
     if (!trimmed) {
-      stream.markdown(`Usage: \`/retract <session-id-prefix> [reason]\` or \`/retract undo <session-id-prefix>\`\n`);
+      stream.markdown(
+        `Usage: \`/retract <session-id-prefix> [reason]\` or \`/retract undo <session-id-prefix>\`\n`,
+      );
       return;
     }
     const parts = trimmed.split(/\s+/);
     if (parts[0]?.toLowerCase() === 'undo') {
       const target = this.store.getById(parts[1] ?? '');
-      if (!target) { stream.markdown(`No session found for ID "${parts[1] ?? ''}".\n`); return; }
+      if (!target) {
+        stream.markdown(`No session found for ID "${parts[1] ?? ''}".\n`);
+        return;
+      }
       await this.store.undoRetract(target.id);
       stream.markdown(`✅ Restored \`${target.id.substring(0, 8)}\` — back in retrieval pool.\n`);
       return;
@@ -604,7 +818,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.store.setRetracted(target.id, text || undefined);
     stream.markdown(
       `🚫 Retracted \`${target.id.substring(0, 8)}\`. It will not appear in retrieval, injection, or exports. ` +
-      `Run \`/retract undo ${target.id.substring(0, 8)}\` to restore.\n`,
+        `Run \`/retract undo ${target.id.substring(0, 8)}\` to restore.\n`,
     );
   }
 
@@ -622,7 +836,9 @@ export class ContextProvider implements vscode.Disposable {
     await this.store.recordAcceptance(target.id);
     const a = target.usage?.accepted ?? 1;
     const r = target.usage?.rejected ?? 0;
-    stream.markdown(`👍 Marked \`${target.id.substring(0, 8)}\` as useful. Score: ${a} accept / ${r} reject.\n`);
+    stream.markdown(
+      `👍 Marked \`${target.id.substring(0, 8)}\` as useful. Score: ${a} accept / ${r} reject.\n`,
+    );
   }
 
   /**
@@ -638,7 +854,9 @@ export class ContextProvider implements vscode.Disposable {
     await this.store.recordRejection(target.id);
     const a = target.usage?.accepted ?? 0;
     const r = target.usage?.rejected ?? 1;
-    stream.markdown(`👎 Marked \`${target.id.substring(0, 8)}\` as unhelpful. Score: ${a} accept / ${r} reject.\n`);
+    stream.markdown(
+      `👎 Marked \`${target.id.substring(0, 8)}\` as unhelpful. Score: ${a} accept / ${r} reject.\n`,
+    );
   }
 
   /**
@@ -656,8 +874,10 @@ export class ContextProvider implements vscode.Disposable {
       if (active) key = vscode.workspace.asRelativePath(active);
     }
     if (!key) {
-      stream.markdown(`Usage: \`/entity <file-path>\` or \`/entity <file-path>#<symbolName>\`. ` +
-        `Open a file in the editor to use \`/entity\` without an argument.\n`);
+      stream.markdown(
+        `Usage: \`/entity <file-path>\` or \`/entity <file-path>#<symbolName>\`. ` +
+          `Open a file in the editor to use \`/entity\` without an argument.\n`,
+      );
       return;
     }
     const all = this.store.getAllSessions();
@@ -679,7 +899,9 @@ export class ContextProvider implements vscode.Disposable {
    */
   private async snippet(query: string, stream: vscode.ChatResponseStream): Promise<void> {
     if (!query.trim()) {
-      stream.markdown(`Usage: \`/snippet <keywords>\` — returns the top matching decisions, problems, summaries, and topics across all sessions.\n`);
+      stream.markdown(
+        `Usage: \`/snippet <keywords>\` — returns the top matching decisions, problems, summaries, and topics across all sessions.\n`,
+      );
       return;
     }
     const cfg = getConfig();
@@ -691,9 +913,14 @@ export class ContextProvider implements vscode.Disposable {
       return;
     }
     stream.markdown(`## 🧩 Snippet Results (${hits.length})\n\n`);
-    stream.markdown(`_Chunk-level recall over all sessions. Click an ID for the full session._\n\n`);
+    stream.markdown(
+      `_Chunk-level recall over all sessions. Click an ID for the full session._\n\n`,
+    );
     const kindIcon: Record<string, string> = {
-      decision: '🧠', problem: '🛠', summary: '📝', topic: '🏷',
+      decision: '🧠',
+      problem: '🛠',
+      summary: '📝',
+      topic: '🏷',
     };
     for (const sn of hits) {
       const icon = kindIcon[sn.kind] ?? '·';
@@ -701,11 +928,13 @@ export class ContextProvider implements vscode.Disposable {
       const ts = new Date(sn.emittedAt).toLocaleDateString();
       const sessionLink = `\`${sn.sessionId.substring(0, 8)}\``;
       const files = (sn.evidence ?? [])
-        .map(e => e.filePath)
+        .map((e) => e.filePath)
         .filter((f): f is string => !!f)
         .slice(0, 2);
       const fileTail = files.length ? ` [📎 ${files.join(', ')}]` : '';
-      stream.markdown(`- ${icon} **${sn.kind}** · ${sessionLink} · ${ts}${conf}\n  ${sn.text}${fileTail}\n\n`);
+      stream.markdown(
+        `- ${icon} **${sn.kind}** · ${sessionLink} · ${ts}${conf}\n  ${sn.text}${fileTail}\n\n`,
+      );
     }
   }
 
@@ -731,7 +960,9 @@ export class ContextProvider implements vscode.Disposable {
         stream.markdown(`No pending conflict for \`${target.id.substring(0, 8)}\`.\n`);
         return;
       }
-      stream.markdown(`✅ Dismissed conflict for \`${target.id.substring(0, 8)}\` — reason: _${reason}_\n`);
+      stream.markdown(
+        `✅ Dismissed conflict for \`${target.id.substring(0, 8)}\` — reason: _${reason}_\n`,
+      );
       return;
     }
 
@@ -741,7 +972,9 @@ export class ContextProvider implements vscode.Disposable {
       return;
     }
     stream.markdown(`## ⚠️ Pending Conflicts (${warnings.length})\n\n`);
-    stream.markdown(`_Decisions that contained contradiction markers and overlap with older sessions. Review and \`/supersede\` (auto-acknowledges) or \`/conflicts dismiss <id> [reason]\` to ignore._\n\n`);
+    stream.markdown(
+      `_Decisions that contained contradiction markers and overlap with older sessions. Review and \`/supersede\` (auto-acknowledges) or \`/conflicts dismiss <id> [reason]\` to ignore._\n\n`,
+    );
     for (const w of warnings) {
       stream.markdown(renderConflictWarning(w));
     }
@@ -751,7 +984,9 @@ export class ContextProvider implements vscode.Disposable {
   private async lineage(query: string, stream: vscode.ChatResponseStream): Promise<void> {
     const idPrefix = query.trim();
     if (!idPrefix) {
-      stream.markdown(`Usage: \`/lineage <session-id-prefix>\` — shows predecessors and successors (sessions sharing files within ±30 days).\n`);
+      stream.markdown(
+        `Usage: \`/lineage <session-id-prefix>\` — shows predecessors and successors (sessions sharing files within ±30 days).\n`,
+      );
       return;
     }
     const target = this.store.getById(idPrefix);
@@ -778,7 +1013,9 @@ export class ContextProvider implements vscode.Disposable {
   private async why(query: string, stream: vscode.ChatResponseStream): Promise<void> {
     const trimmed = (query ?? '').trim();
     if (!trimmed) {
-      stream.markdown(`Usage: \`/why <query terms> :: <session-id-prefix>\` — breaks down why a session ranked where it did.\n`);
+      stream.markdown(
+        `Usage: \`/why <query terms> :: <session-id-prefix>\` — breaks down why a session ranked where it did.\n`,
+      );
       return;
     }
     let q: string;
@@ -820,16 +1057,20 @@ export class ContextProvider implements vscode.Disposable {
     let sessions = this.store.getAllSessions();
     if (fileFilter) {
       const want = fileFilter.toLowerCase();
-      sessions = sessions.filter(s => s.keyFiles.some(f => f.toLowerCase().includes(want)));
+      sessions = sessions.filter((s) => s.keyFiles.some((f) => f.toLowerCase().includes(want)));
     }
     if (sessions.length === 0) {
-      stream.markdown(`_No sessions to graph${fileFilter ? ` for filter "${fileFilter}"` : ''}._\n`);
+      stream.markdown(
+        `_No sessions to graph${fileFilter ? ` for filter "${fileFilter}"` : ''}._\n`,
+      );
       return;
     }
     const mermaid = buildMermaidGraph(sessions);
     stream.markdown(`## 🕸 Decision Graph${fileFilter ? ` — \`${fileFilter}\`` : ''}\n\n`);
     stream.markdown(`\`\`\`mermaid\n${mermaid}\n\`\`\`\n`);
-    stream.markdown(`\n_${sessions.length} session(s). Solid arrows = supersession, dashed = correction, dotted = causal (bugfix follows feature)._\n`);
+    stream.markdown(
+      `\n_${sessions.length} session(s). Solid arrows = supersession, dashed = correction, dotted = causal (bugfix follows feature)._\n`,
+    );
   }
 
   /**
@@ -856,7 +1097,9 @@ export class ContextProvider implements vscode.Disposable {
   private async route(query: string, stream: vscode.ChatResponseStream): Promise<void> {
     const q = (query ?? '').trim();
     if (!q) {
-      stream.markdown(`Usage: \`/route <your question>\` — returns the cheapest way to satisfy it (MCP vs file open).\n`);
+      stream.markdown(
+        `Usage: \`/route <your question>\` — returns the cheapest way to satisfy it (MCP vs file open).\n`,
+      );
       return;
     }
     // Look up file sizes for any path the query mentions so the cost
@@ -871,7 +1114,9 @@ export class ContextProvider implements vscode.Disposable {
           const uri = vscode.Uri.joinPath(ws, path);
           const stat = await vscode.workspace.fs.stat(uri);
           fileSizes[path] = stat.size;
-        } catch { /* file may not exist; default kicks in */ }
+        } catch {
+          /* file may not exist; default kicks in */
+        }
       }
     }
     const rec = recommend(q, { fileSizes, mcpAvailable: true });
@@ -915,11 +1160,14 @@ export class ContextProvider implements vscode.Disposable {
       const branch = s.branchName ? ` · branch:\`${s.branchName}\`` : '';
       const workspace = s.workspaceName ? ` · workspace:\`${s.workspaceName}\`` : '';
       const trust = renderTrustBadge(s);
-      lines.push(`### ${when} · ${s.observationType} · id:\`${s.id.substring(0, 8)}\`${trust}${branch}${workspace}`);
+      lines.push(
+        `### ${when} · ${s.observationType} · id:\`${s.id.substring(0, 8)}\`${trust}${branch}${workspace}`,
+      );
       lines.push(s.summary);
       if (s.keyFiles.length) {
         const shown = s.keyFiles.slice(0, 8);
-        const extra = s.keyFiles.length > shown.length ? ` (+${s.keyFiles.length - shown.length} more)` : '';
+        const extra =
+          s.keyFiles.length > shown.length ? ` (+${s.keyFiles.length - shown.length} more)` : '';
         lines.push(`Files: ${shown.join(', ')}`);
         if (extra) lines[lines.length - 1] += extra;
       }
@@ -979,23 +1227,31 @@ export class ContextProvider implements vscode.Disposable {
     const windowStart = isYesterday ? dayStart - 86_400_000 : now - 86_400_000;
     const windowEnd = isYesterday ? dayStart : now;
 
-    const sessions = this.store.getAllSessions().filter(
-      s => s.endTime >= windowStart && s.endTime <= windowEnd && !s.userTags.includes('private'),
-    );
+    const sessions = this.store
+      .getAllSessions()
+      .filter(
+        (s) =>
+          s.endTime >= windowStart && s.endTime <= windowEnd && !s.userTags.includes('private'),
+      );
 
     if (sessions.length === 0) {
-      stream.markdown('_No sessions found for this time window. Keep coding and try again later!_\n');
+      stream.markdown(
+        '_No sessions found for this time window. Keep coding and try again later!_\n',
+      );
       return;
     }
 
-    const sessionBlocks = sessions.map(s =>
-      `[${s.observationType.toUpperCase()}] ${new Date(s.startTime).toLocaleTimeString()}\n` +
-      `Summary: ${s.summary}\n` +
-      (s.keyFiles.length ? `Files: ${s.keyFiles.slice(0, 5).join(', ')}\n` : '') +
-      (s.decisions.length ? `Decisions: ${s.decisions.join('; ')}\n` : '') +
-      (s.problemsSolved.length ? `Solved: ${s.problemsSolved.join('; ')}\n` : '') +
-      (s.keyTopics.length ? `Topics: ${s.keyTopics.join(', ')}\n` : ''),
-    ).join('\n---\n');
+    const sessionBlocks = sessions
+      .map(
+        (s) =>
+          `[${s.observationType.toUpperCase()}] ${new Date(s.startTime).toLocaleTimeString()}\n` +
+          `Summary: ${s.summary}\n` +
+          (s.keyFiles.length ? `Files: ${s.keyFiles.slice(0, 5).join(', ')}\n` : '') +
+          (s.decisions.length ? `Decisions: ${s.decisions.join('; ')}\n` : '') +
+          (s.problemsSolved.length ? `Solved: ${s.problemsSolved.join('; ')}\n` : '') +
+          (s.keyTopics.length ? `Topics: ${s.keyTopics.join(', ')}\n` : ''),
+      )
+      .join('\n---\n');
 
     const dateLabel = isYesterday
       ? new Date(dayStart - 1).toLocaleDateString()
@@ -1014,11 +1270,15 @@ export class ContextProvider implements vscode.Disposable {
     ].join('\n');
 
     stream.markdown(`## 📋 Standup · ${dateLabel}\n\n`);
-    stream.markdown(`_Based on ${sessions.length} session(s) · Copy and paste into your team channel._\n\n---\n\n`);
+    stream.markdown(
+      `_Based on ${sessions.length} session(s) · Copy and paste into your team channel._\n\n---\n\n`,
+    );
 
     await this.streamLm(prompt, stream, request, token);
 
-    stream.markdown(`\n\n---\n_Powered by GHCP-MEM · [@mem /recap](command:) for a weekly narrative · [@mem /commit](command:) for a commit message_\n`);
+    stream.markdown(
+      `\n\n---\n_Powered by GHCP-MEM · [@mem /recap](command:) for a weekly narrative · [@mem /commit](command:) for a commit message_\n`,
+    );
   }
 
   /**
@@ -1059,16 +1319,25 @@ export class ContextProvider implements vscode.Disposable {
     }
 
     // Find sessions whose key files overlap with staged files
-    const relatedSessions = this.store.getAllSessions().filter(s =>
-      s.keyFiles.some(f => stagedFiles.some(sf => sf.includes(f) || f.includes(sf))),
-    ).slice(0, 5);
+    const relatedSessions = this.store
+      .getAllSessions()
+      .filter((s) =>
+        s.keyFiles.some((f) => stagedFiles.some((sf) => sf.includes(f) || f.includes(sf))),
+      )
+      .slice(0, 5);
 
     const sessionContext = relatedSessions.length
-      ? '\n\nRelated coding sessions:\n' + relatedSessions.map(s =>
-          `- [${s.observationType}] ${s.summary.substring(0, 150)}\n` +
-          (s.decisions.length ? `  Decisions: ${s.decisions.slice(0, 2).join('; ')}\n` : '') +
-          (s.problemsSolved.length ? `  Solved: ${s.problemsSolved.slice(0, 2).join('; ')}\n` : ''),
-        ).join('')
+      ? '\n\nRelated coding sessions:\n' +
+        relatedSessions
+          .map(
+            (s) =>
+              `- [${s.observationType}] ${s.summary.substring(0, 150)}\n` +
+              (s.decisions.length ? `  Decisions: ${s.decisions.slice(0, 2).join('; ')}\n` : '') +
+              (s.problemsSolved.length
+                ? `  Solved: ${s.problemsSolved.slice(0, 2).join('; ')}\n`
+                : ''),
+          )
+          .join('')
       : '';
 
     const prompt = [
@@ -1091,7 +1360,9 @@ export class ContextProvider implements vscode.Disposable {
     ].join('\n');
 
     stream.markdown(`## $(git-commit) Commit Message\n\n`);
-    stream.markdown(`_Staged: \`${stagedFiles.slice(0, 3).join('`, `')}${stagedFiles.length > 3 ? `\` +${stagedFiles.length - 3} more` : '`'}_\n\n`);
+    stream.markdown(
+      `_Staged: \`${stagedFiles.slice(0, 3).join('`, `')}${stagedFiles.length > 3 ? `\` +${stagedFiles.length - 3} more` : '`'}_\n\n`,
+    );
     stream.markdown('```\n');
 
     await this.streamLm(prompt, stream, request, token);
@@ -1112,7 +1383,9 @@ export class ContextProvider implements vscode.Disposable {
     token: vscode.CancellationToken,
   ): Promise<void> {
     if (!question) {
-      stream.markdown('Ask me anything about your coding history. Example: `@mem /ask why did we change the scoring algorithm?`\n');
+      stream.markdown(
+        'Ask me anything about your coding history. Example: `@mem /ask why did we change the scoring algorithm?`\n',
+      );
       return;
     }
 
@@ -1120,20 +1393,25 @@ export class ContextProvider implements vscode.Disposable {
     const hits = this.store.search(cleaned || question, filters, 8);
 
     if (hits.length === 0) {
-      stream.markdown(`_No sessions found matching your question. Try \`@mem /search ${question}\` for a broader look._\n`);
+      stream.markdown(
+        `_No sessions found matching your question. Try \`@mem /search ${question}\` for a broader look._\n`,
+      );
       return;
     }
 
-    const contextBlocks = hits.map((s, i) =>
-      `[${i + 1}] Session ${s.id.substring(0, 8)} · ${new Date(s.startTime).toLocaleDateString()} · [${s.observationType}]\n` +
-      `${s.summary}\n` +
-      (s.keyFiles.length ? `Files: ${s.keyFiles.slice(0, 5).join(', ')}\n` : '') +
-      (s.decisions.length ? `Decisions: ${s.decisions.join('; ')}\n` : '') +
-      (s.problemsSolved.length ? `Solved: ${s.problemsSolved.join('; ')}\n` : ''),
-    ).join('\n\n');
+    const contextBlocks = hits
+      .map(
+        (s, i) =>
+          `[${i + 1}] Session ${s.id.substring(0, 8)} · ${new Date(s.startTime).toLocaleDateString()} · [${s.observationType}]\n` +
+          `${s.summary}\n` +
+          (s.keyFiles.length ? `Files: ${s.keyFiles.slice(0, 5).join(', ')}\n` : '') +
+          (s.decisions.length ? `Decisions: ${s.decisions.join('; ')}\n` : '') +
+          (s.problemsSolved.length ? `Solved: ${s.problemsSolved.join('; ')}\n` : ''),
+      )
+      .join('\n\n');
 
     const prompt = [
-      'You are answering a developer\'s question about their own coding history.',
+      "You are answering a developer's question about their own coding history.",
       'Answer concisely and factually based ONLY on the session context below.',
       'When citing a session, use its short ID like: (session abc12345)',
       'If the answer is not in the sessions, say so honestly.',
@@ -1150,7 +1428,9 @@ export class ContextProvider implements vscode.Disposable {
 
     await this.streamLm(prompt, stream, request, token);
 
-    stream.markdown(`\n\n---\n_Cited from ${hits.length} session(s). Use \`@mem /detail <id>\` to expand any session._\n`);
+    stream.markdown(
+      `\n\n---\n_Cited from ${hits.length} session(s). Use \`@mem /detail <id>\` to expand any session._\n`,
+    );
   }
 
   /**
@@ -1170,8 +1450,9 @@ export class ContextProvider implements vscode.Disposable {
     else if (/quarter|90d/i.test(query)) days = 90;
 
     const since = Date.now() - days * 86_400_000;
-    const sessions = this.store.getAllSessions()
-      .filter(s => s.endTime >= since && !s.userTags.includes('private'))
+    const sessions = this.store
+      .getAllSessions()
+      .filter((s) => s.endTime >= since && !s.userTags.includes('private'))
       .sort((a, b) => a.startTime - b.startTime);
 
     if (sessions.length === 0) {
@@ -1187,18 +1468,22 @@ export class ContextProvider implements vscode.Disposable {
       byType.set(s.observationType, arr);
     }
 
-    const allDecisions = Array.from(new Set(sessions.flatMap(s => s.decisions))).slice(0, 15);
-    const allProblems = Array.from(new Set(sessions.flatMap(s => s.problemsSolved))).slice(0, 10);
-    const allTopics = Array.from(new Set(sessions.flatMap(s => s.keyTopics))).slice(0, 20);
-    const allFiles = Array.from(new Set(sessions.flatMap(s => s.keyFiles))).slice(0, 15);
+    const allDecisions = Array.from(new Set(sessions.flatMap((s) => s.decisions))).slice(0, 15);
+    const allProblems = Array.from(new Set(sessions.flatMap((s) => s.problemsSolved))).slice(0, 10);
+    const allTopics = Array.from(new Set(sessions.flatMap((s) => s.keyTopics))).slice(0, 20);
+    const allFiles = Array.from(new Set(sessions.flatMap((s) => s.keyFiles))).slice(0, 15);
 
     const typeBreakdown = Array.from(byType.entries())
       .map(([t, ss]) => `${t}: ${ss.length} session(s)`)
       .join(', ');
 
-    const summaries = sessions.slice(0, 20).map(s =>
-      `[${s.observationType}] ${new Date(s.startTime).toLocaleDateString()}: ${s.summary.substring(0, 200)}`,
-    ).join('\n');
+    const summaries = sessions
+      .slice(0, 20)
+      .map(
+        (s) =>
+          `[${s.observationType}] ${new Date(s.startTime).toLocaleDateString()}: ${s.summary.substring(0, 200)}`,
+      )
+      .join('\n');
 
     const prompt = [
       `Write an engaging engineering recap for the last ${days} days of coding work.`,
@@ -1225,11 +1510,15 @@ export class ContextProvider implements vscode.Disposable {
     ].join('\n');
 
     stream.markdown(`## 📰 ${days}-Day Engineering Recap\n\n`);
-    stream.markdown(`_${sessions.length} sessions · ${new Date(since).toLocaleDateString()} → today_\n\n---\n\n`);
+    stream.markdown(
+      `_${sessions.length} sessions · ${new Date(since).toLocaleDateString()} → today_\n\n---\n\n`,
+    );
 
     await this.streamLm(prompt, stream, request, token);
 
-    stream.markdown(`\n\n---\n_${sessions.length} sessions analysed · Use \`@mem /standup\` for a daily note or \`@mem /export <id>\` to share a session._\n`);
+    stream.markdown(
+      `\n\n---\n_${sessions.length} sessions analysed · Use \`@mem /standup\` for a daily note or \`@mem /export <id>\` to share a session._\n`,
+    );
   }
 
   // ── Token Savings ──
@@ -1244,11 +1533,13 @@ export class ContextProvider implements vscode.Disposable {
   private async whereami(
     stream: vscode.ChatResponseStream,
     request: vscode.ChatRequest,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<void> {
     const all = this.store.getAllSessions();
     if (all.length === 0) {
-      stream.markdown('_No sessions found. Start coding and GHCP-MEM will track your work automatically._\n');
+      stream.markdown(
+        '_No sessions found. Start coding and GHCP-MEM will track your work automatically._\n',
+      );
       return;
     }
 
@@ -1282,9 +1573,16 @@ export class ContextProvider implements vscode.Disposable {
     for (const s of recent.slice(0, 3)) {
       const when = this.formatAgo(s.endTime);
       const br = s.branchName ? ` · \`${s.branchName}\`` : '';
-      stream.markdown(`**${when}** [${s.observationType}]${br}\n${s.summary.substring(0, 200)}\n\n`);
+      stream.markdown(
+        `**${when}** [${s.observationType}]${br}\n${s.summary.substring(0, 200)}\n\n`,
+      );
       if (s.keyFiles.length) {
-        stream.markdown(`_Files: ${s.keyFiles.slice(0, 4).map(f => `\`${f}\``).join(', ')}_\n\n`);
+        stream.markdown(
+          `_Files: ${s.keyFiles
+            .slice(0, 4)
+            .map((f) => `\`${f}\``)
+            .join(', ')}_\n\n`,
+        );
       }
     }
 
@@ -1295,9 +1593,13 @@ export class ContextProvider implements vscode.Disposable {
 
     // AI re-entry brief
     stream.markdown(`### 🤖 Re-entry Brief\n\n`);
-    const recentContext = recent.slice(0, 3).map(s =>
-      `[${new Date(s.startTime).toLocaleDateString()} · ${s.observationType}] ${s.summary}\nFiles: ${s.keyFiles.slice(0, 5).join(', ')}\nDecisions: ${s.decisions.slice(0, 3).join('; ')}`
-    ).join('\n\n');
+    const recentContext = recent
+      .slice(0, 3)
+      .map(
+        (s) =>
+          `[${new Date(s.startTime).toLocaleDateString()} · ${s.observationType}] ${s.summary}\nFiles: ${s.keyFiles.slice(0, 5).join(', ')}\nDecisions: ${s.decisions.slice(0, 3).join('; ')}`,
+      )
+      .join('\n\n');
 
     const prompt = [
       'A developer is returning to work after a break. Based on their recent coding sessions below, write a concise re-entry brief (4-6 sentences):',
@@ -1312,7 +1614,9 @@ export class ContextProvider implements vscode.Disposable {
 
     await this.streamLm(prompt, stream, request, token);
 
-    stream.markdown(`\n\n---\n_Use \`@mem /standup\` for a daily summary or \`@mem /debt\` to see open technical debt._\n`);
+    stream.markdown(
+      `\n\n---\n_Use \`@mem /standup\` for a daily summary or \`@mem /debt\` to see open technical debt._\n`,
+    );
   }
 
   // ── Technical Debt Ledger ──
@@ -1325,19 +1629,34 @@ export class ContextProvider implements vscode.Disposable {
   private async debt(
     stream: vscode.ChatResponseStream,
     request: vscode.ChatRequest,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<void> {
     const all = this.store.getAllSessions();
     if (all.length === 0) {
-      stream.markdown('_No sessions found yet — GHCP-MEM will detect debt signals automatically as you code._\n');
+      stream.markdown(
+        '_No sessions found yet — GHCP-MEM will detect debt signals automatically as you code._\n',
+      );
       return;
     }
 
     const DEBT_PATTERNS = [
-      /TODO/i, /FIXME/i, /HACK/i, /XXX/i, /WORKAROUND/i,
-      /quick.?fix/i, /shortcut/i, /tech.?debt/i, /temporary/i,
-      /revisit/i, /clean.?up/i, /refactor/i, /not.?ideal/i,
-      /should.?be/i, /needs?.to/i, /broken/i, /fragile/i,
+      /TODO/i,
+      /FIXME/i,
+      /HACK/i,
+      /XXX/i,
+      /WORKAROUND/i,
+      /quick.?fix/i,
+      /shortcut/i,
+      /tech.?debt/i,
+      /temporary/i,
+      /revisit/i,
+      /clean.?up/i,
+      /refactor/i,
+      /not.?ideal/i,
+      /should.?be/i,
+      /needs?.to/i,
+      /broken/i,
+      /fragile/i,
     ];
 
     interface DebtItem {
@@ -1354,17 +1673,17 @@ export class ContextProvider implements vscode.Disposable {
 
     for (const s of [...all].sort((a, b) => a.startTime - b.startTime)) {
       const allTexts = [
-        ...s.problemsSolved.map(t => ({ text: t, file: s.keyFiles[0] })),
-        ...s.decisions.map(t => ({ text: t, file: s.keyFiles[0] })),
+        ...s.problemsSolved.map((t) => ({ text: t, file: s.keyFiles[0] })),
+        ...s.decisions.map((t) => ({ text: t, file: s.keyFiles[0] })),
         ...(s.summary ? [{ text: s.summary, file: s.keyFiles[0] }] : []),
       ];
 
       for (const { text, file } of allTexts) {
-        if (DEBT_PATTERNS.some(p => p.test(text))) {
+        if (DEBT_PATTERNS.some((p) => p.test(text))) {
           // Extract the specific sentence with the debt signal
-          const sentences = text.split(/[.!?\n]/).filter(t => t.trim());
+          const sentences = text.split(/[.!?\n]/).filter((t) => t.trim());
           for (const sentence of sentences) {
-            if (DEBT_PATTERNS.some(p => p.test(sentence))) {
+            if (DEBT_PATTERNS.some((p) => p.test(sentence))) {
               const key = sentence.trim().toLowerCase().substring(0, 80);
               if (!seen.has(key) && sentence.trim().length > 10) {
                 seen.add(key);
@@ -1386,7 +1705,9 @@ export class ContextProvider implements vscode.Disposable {
     if (debtItems.length === 0) {
       stream.markdown('## 🏆 Technical Debt Ledger\n\n');
       stream.markdown('_No debt signals detected in session history. Keep it clean!_\n\n');
-      stream.markdown('_GHCP-MEM looks for: TODO, FIXME, HACK, workaround, quick fix, refactor, fragile, and similar signals._\n');
+      stream.markdown(
+        '_GHCP-MEM looks for: TODO, FIXME, HACK, workaround, quick fix, refactor, fragile, and similar signals._\n',
+      );
       return;
     }
 
@@ -1394,9 +1715,9 @@ export class ContextProvider implements vscode.Disposable {
     debtItems.sort((a, b) => b.age - a.age);
 
     // Group by age buckets
-    const old = debtItems.filter(d => d.age > 30);
-    const medium = debtItems.filter(d => d.age > 7 && d.age <= 30);
-    const fresh = debtItems.filter(d => d.age <= 7);
+    const old = debtItems.filter((d) => d.age > 30);
+    const medium = debtItems.filter((d) => d.age > 7 && d.age <= 30);
+    const fresh = debtItems.filter((d) => d.age <= 7);
 
     stream.markdown(`## ⚠️ Technical Debt Ledger\n\n`);
     stream.markdown(`_${debtItems.length} debt signal(s) found across ${all.length} sessions_\n\n`);
@@ -1406,7 +1727,9 @@ export class ContextProvider implements vscode.Disposable {
       stream.markdown(`### ${icon} ${label} (${items.length})\n\n`);
       for (const d of items.slice(0, 10)) {
         const file = d.file ? ` · \`${d.file}\`` : '';
-        stream.markdown(`- **${d.text.substring(0, 120)}**  \n  _${d.date} · ${d.age}d ago${file} · session \`${d.sessionId}\`_\n`);
+        stream.markdown(
+          `- **${d.text.substring(0, 120)}**  \n  _${d.date} · ${d.age}d ago${file} · session \`${d.sessionId}\`_\n`,
+        );
       }
       if (items.length > 10) stream.markdown(`_...and ${items.length - 10} more_\n`);
       stream.markdown('\n');
@@ -1418,9 +1741,12 @@ export class ContextProvider implements vscode.Disposable {
 
     // AI prioritisation
     stream.markdown('---\n\n### 🤖 AI Prioritisation\n\n');
-    const topDebt = debtItems.slice(0, 15).map(d => `- [${d.age}d old] ${d.text}`).join('\n');
+    const topDebt = debtItems
+      .slice(0, 15)
+      .map((d) => `- [${d.age}d old] ${d.text}`)
+      .join('\n');
     const prompt = [
-      'Below is a list of technical debt items extracted from a developer\'s coding session history.',
+      "Below is a list of technical debt items extracted from a developer's coding session history.",
       'Write a prioritised action plan (max 5 items) focusing on:',
       '1. Items that are oldest and most likely to cause problems',
       '2. Items that are blocking other work',
@@ -1432,7 +1758,9 @@ export class ContextProvider implements vscode.Disposable {
     ].join('\n');
 
     await this.streamLm(prompt, stream, request, token);
-    stream.markdown(`\n\n---\n_Use \`@mem /precommit\` before your next commit to check for architectural regressions._\n`);
+    stream.markdown(
+      `\n\n---\n_Use \`@mem /precommit\` before your next commit to check for architectural regressions._\n`,
+    );
   }
 
   // ── Auto-generated ADRs ──
@@ -1446,39 +1774,51 @@ export class ContextProvider implements vscode.Disposable {
     query: string,
     stream: vscode.ChatResponseStream,
     request: vscode.ChatRequest,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<void> {
-    let sessions = this.store.getAllSessions().filter(s => s.decisions.length > 0 || s.keyTopics.length > 0);
+    let sessions = this.store
+      .getAllSessions()
+      .filter((s) => s.decisions.length > 0 || s.keyTopics.length > 0);
 
     if (query) {
       const q = query.toLowerCase();
-      sessions = sessions.filter(s =>
-        s.decisions.some(d => d.toLowerCase().includes(q))
-        || s.keyTopics.some(t => t.toLowerCase().includes(q))
-        || s.summary.toLowerCase().includes(q)
+      sessions = sessions.filter(
+        (s) =>
+          s.decisions.some((d) => d.toLowerCase().includes(q)) ||
+          s.keyTopics.some((t) => t.toLowerCase().includes(q)) ||
+          s.summary.toLowerCase().includes(q),
       );
     }
 
     if (sessions.length === 0) {
-      stream.markdown(query
-        ? `_No sessions found matching "${query}". Try a broader term or run \`@mem /decisions\` to see all recorded decisions._\n`
-        : '_No sessions with decisions found yet. GHCP-MEM extracts decisions automatically as you code._\n');
+      stream.markdown(
+        query
+          ? `_No sessions found matching "${query}". Try a broader term or run \`@mem /decisions\` to see all recorded decisions._\n`
+          : '_No sessions with decisions found yet. GHCP-MEM extracts decisions automatically as you code._\n',
+      );
       return;
     }
 
     // Collect all decisions and topics
-    const allDecisions = sessions.flatMap(s => s.decisions);
-    const allTopics = sessions.flatMap(s => s.keyTopics);
-    const allSummaries = sessions.map(s => s.summary);
-    const allFiles = [...new Set(sessions.flatMap(s => s.keyFiles))].slice(0, 20);
-    const dateRange = sessions.length > 0
-      ? `${new Date(Math.min(...sessions.map(s => s.startTime))).toLocaleDateString()} – ${new Date(Math.max(...sessions.map(s => s.endTime))).toLocaleDateString()}`
-      : 'unknown';
+    const allDecisions = sessions.flatMap((s) => s.decisions);
+    const allTopics = sessions.flatMap((s) => s.keyTopics);
+    const allSummaries = sessions.map((s) => s.summary);
+    const allFiles = [...new Set(sessions.flatMap((s) => s.keyFiles))].slice(0, 20);
+    const dateRange =
+      sessions.length > 0
+        ? `${new Date(Math.min(...sessions.map((s) => s.startTime))).toLocaleDateString()} – ${new Date(Math.max(...sessions.map((s) => s.endTime))).toLocaleDateString()}`
+        : 'unknown';
 
     stream.markdown(`## 📄 Architecture Decision Record\n\n`);
-    if (query) stream.markdown(`_Topic: "${query}" · ${sessions.length} session(s) · ${dateRange}_\n\n`);
+    if (query)
+      stream.markdown(`_Topic: "${query}" · ${sessions.length} session(s) · ${dateRange}_\n\n`);
     else stream.markdown(`_${sessions.length} session(s) with decisions · ${dateRange}_\n\n`);
-    stream.markdown(`_Affected files: ${allFiles.slice(0, 8).map(f => `\`${f}\``).join(', ')}_\n\n`);
+    stream.markdown(
+      `_Affected files: ${allFiles
+        .slice(0, 8)
+        .map((f) => `\`${f}\``)
+        .join(', ')}_\n\n`,
+    );
     stream.markdown('---\n\n');
 
     const prompt = [
@@ -1510,7 +1850,10 @@ export class ContextProvider implements vscode.Disposable {
       '',
       'Base the ADR on these session insights:',
       '',
-      `Decisions recorded:\n${allDecisions.slice(0, 20).map(d => `- ${d}`).join('\n')}`,
+      `Decisions recorded:\n${allDecisions
+        .slice(0, 20)
+        .map((d) => `- ${d}`)
+        .join('\n')}`,
       '',
       `Topics:\n${allTopics.slice(0, 15).join(', ')}`,
       '',
@@ -1519,7 +1862,9 @@ export class ContextProvider implements vscode.Disposable {
 
     await this.streamLm(prompt, stream, request, token);
 
-    stream.markdown(`\n\n---\n_Run \`@mem /decisions\` to see all decisions · \`@mem /adr <topic>\` to generate a focused ADR_\n`);
+    stream.markdown(
+      `\n\n---\n_Run \`@mem /decisions\` to see all decisions · \`@mem /adr <topic>\` to generate a focused ADR_\n`,
+    );
   }
 
   // ── PR Review Context Injection ──
@@ -1533,7 +1878,7 @@ export class ContextProvider implements vscode.Disposable {
     query: string,
     stream: vscode.ChatResponseStream,
     request: vscode.ChatRequest,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<void> {
     stream.markdown(`## 🔍 PR Review Context\n\n`);
 
@@ -1560,19 +1905,26 @@ export class ContextProvider implements vscode.Disposable {
         try {
           // execFile (no shell) with args as an array — `prNum` cannot
           // break out of the arg vector to inject extra commands.
-          const { stdout } = await execFileAsync('gh',
+          const { stdout } = await execFileAsync(
+            'gh',
             ['pr', 'view', prNum, '--json', 'files', '--jq', '.files[].path'],
-            { cwd });
-          changedFiles = stdout.split('\n').map(f => f.trim()).filter(Boolean);
+            { cwd },
+          );
+          changedFiles = stdout
+            .split('\n')
+            .map((f) => f.trim())
+            .filter(Boolean);
         } catch {
           // gh CLI missing / not authenticated / network error — fall through to active-file fallback below.
         }
         branchLabel = `PR #${prNum}`;
       } else {
         // Branch name or default: diff against the user-supplied ref or HEAD~1.
-        const base = (query.trim() || 'HEAD~1');
+        const base = query.trim() || 'HEAD~1';
         if (!isSafeGitRef(base)) {
-          stream.markdown(`Branch / ref contains disallowed characters. Use letters, digits, \`._/-~^@\` only.\n`);
+          stream.markdown(
+            `Branch / ref contains disallowed characters. Use letters, digits, \`._/-~^@\` only.\n`,
+          );
           return;
         }
         try {
@@ -1581,15 +1933,23 @@ export class ContextProvider implements vscode.Disposable {
           // the user-supplied ref first; if that fails (e.g. unknown ref)
           // we fall back to HEAD~1 in a separate spawn rather than via
           // shell `||` chaining.
-          const { stdout } = await execFileAsync('git',
-            ['diff', '--name-only', base], { cwd });
-          changedFiles = stdout.split('\n').map(f => f.trim()).filter(Boolean);
+          const { stdout } = await execFileAsync('git', ['diff', '--name-only', base], { cwd });
+          changedFiles = stdout
+            .split('\n')
+            .map((f) => f.trim())
+            .filter(Boolean);
         } catch {
           try {
-            const { stdout } = await execFileAsync('git',
-              ['diff', '--name-only', 'HEAD~1'], { cwd });
-            changedFiles = stdout.split('\n').map(f => f.trim()).filter(Boolean);
-          } catch { /* nothing to show */ }
+            const { stdout } = await execFileAsync('git', ['diff', '--name-only', 'HEAD~1'], {
+              cwd,
+            });
+            changedFiles = stdout
+              .split('\n')
+              .map((f) => f.trim())
+              .filter(Boolean);
+          } catch {
+            /* nothing to show */
+          }
         }
         if (query) branchLabel = query;
       }
@@ -1603,23 +1963,35 @@ export class ContextProvider implements vscode.Disposable {
     }
 
     if (changedFiles.length === 0) {
-      stream.markdown('_No changed files detected. Specify a branch: `@mem /pr main` or open a file and run `@mem /related`._\n');
+      stream.markdown(
+        '_No changed files detected. Specify a branch: `@mem /pr main` or open a file and run `@mem /related`._\n',
+      );
       return;
     }
 
     stream.markdown(`_Analysing ${changedFiles.length} changed file(s) in **${branchLabel}**_\n\n`);
-    stream.markdown(`Changed: ${changedFiles.slice(0, 10).map(f => `\`${f}\``).join(', ')}${changedFiles.length > 10 ? ` _+${changedFiles.length - 10} more_` : ''}\n\n`);
+    stream.markdown(
+      `Changed: ${changedFiles
+        .slice(0, 10)
+        .map((f) => `\`${f}\``)
+        .join(', ')}${changedFiles.length > 10 ? ` _+${changedFiles.length - 10} more_` : ''}\n\n`,
+    );
 
     // Find sessions that touched any of these files
     const all = this.store.getAllSessions();
-    const matchMap = new Map<string, { session: typeof all[0]; matchedFiles: string[] }>();
+    const matchMap = new Map<string, { session: (typeof all)[0]; matchedFiles: string[] }>();
 
     for (const s of all) {
-      const matched = s.keyFiles.filter(sf => {
+      const matched = s.keyFiles.filter((sf) => {
         const sfl = sf.toLowerCase();
-        return changedFiles.some(cf => {
+        return changedFiles.some((cf) => {
           const cfl = cf.toLowerCase();
-          return sfl === cfl || sfl.endsWith('/' + cfl) || cfl.endsWith('/' + sfl) || sfl.split('/').pop() === cfl.split('/').pop();
+          return (
+            sfl === cfl ||
+            sfl.endsWith('/' + cfl) ||
+            cfl.endsWith('/' + sfl) ||
+            sfl.split('/').pop() === cfl.split('/').pop()
+          );
         });
       });
       if (matched.length > 0) {
@@ -1630,7 +2002,9 @@ export class ContextProvider implements vscode.Disposable {
     const matches = [...matchMap.values()].sort((a, b) => b.session.endTime - a.session.endTime);
 
     if (matches.length === 0) {
-      stream.markdown(`_No session history found for these files. They may be new files or not yet captured._\n`);
+      stream.markdown(
+        `_No session history found for these files. They may be new files or not yet captured._\n`,
+      );
       return;
     }
 
@@ -1640,19 +2014,27 @@ export class ContextProvider implements vscode.Disposable {
       const ago = this.formatAgo(s.endTime);
       const branch = s.branchName ? ` · \`${s.branchName}\`` : '';
       stream.markdown(`#### [${s.observationType}] ${ago}${branch}\n\n`);
-      stream.markdown(`_Matching files: ${matchedFiles.map(f => `\`${f}\``).join(', ')}_\n\n`);
+      stream.markdown(`_Matching files: ${matchedFiles.map((f) => `\`${f}\``).join(', ')}_\n\n`);
       stream.markdown(`${s.summary.substring(0, 250)}\n\n`);
-      if (s.decisions.length) stream.markdown(`**Decisions:** ${s.decisions.slice(0, 3).join(' · ')}\n\n`);
-      if (s.problemsSolved.length) stream.markdown(`**Solved:** ${s.problemsSolved.slice(0, 2).join(' · ')}\n\n`);
-      stream.markdown(`\`${s.id.substring(0, 8)}\` · _\`@mem /detail ${s.id.substring(0, 8)}\` for full context_\n\n---\n\n`);
+      if (s.decisions.length)
+        stream.markdown(`**Decisions:** ${s.decisions.slice(0, 3).join(' · ')}\n\n`);
+      if (s.problemsSolved.length)
+        stream.markdown(`**Solved:** ${s.problemsSolved.slice(0, 2).join(' · ')}\n\n`);
+      stream.markdown(
+        `\`${s.id.substring(0, 8)}\` · _\`@mem /detail ${s.id.substring(0, 8)}\` for full context_\n\n---\n\n`,
+      );
     }
 
     // AI reviewer briefing
     if (matches.length > 0) {
       stream.markdown('### 🤖 Reviewer Briefing\n\n');
-      const historyContext = matches.slice(0, 5).map(({ session: s, matchedFiles }) =>
-        `Files: ${matchedFiles.join(', ')}\n[${s.observationType}] ${s.summary}\nDecisions: ${s.decisions.slice(0, 3).join('; ')}`
-      ).join('\n\n');
+      const historyContext = matches
+        .slice(0, 5)
+        .map(
+          ({ session: s, matchedFiles }) =>
+            `Files: ${matchedFiles.join(', ')}\n[${s.observationType}] ${s.summary}\nDecisions: ${s.decisions.slice(0, 3).join('; ')}`,
+        )
+        .join('\n\n');
 
       const prompt = [
         `A developer is reviewing a PR that changes: ${changedFiles.slice(0, 10).join(', ')}.`,
@@ -1669,7 +2051,9 @@ export class ContextProvider implements vscode.Disposable {
       await this.streamLm(prompt, stream, request, token);
     }
 
-    stream.markdown(`\n\n---\n_Use \`@mem /pr <branch>\` for a different branch or \`@mem /decisions\` for architectural context._\n`);
+    stream.markdown(
+      `\n\n---\n_Use \`@mem /pr <branch>\` for a different branch or \`@mem /decisions\` for architectural context._\n`,
+    );
   }
 
   // ── Pre-commit Architectural Consistency Check ──
@@ -1681,7 +2065,7 @@ export class ContextProvider implements vscode.Disposable {
   private async precommit(
     stream: vscode.ChatResponseStream,
     request: vscode.ChatRequest,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<void> {
     stream.markdown(`## 🔎 Pre-commit Architectural Check\n\n`);
 
@@ -1693,46 +2077,81 @@ export class ContextProvider implements vscode.Disposable {
       const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (!cwd) throw new Error('No workspace open');
 
-      const { stdout: filesOut } = await execAsync('git diff --cached --name-only 2>/dev/null || echo ""', { cwd });
-      stagedFiles = filesOut.split('\n').map(f => f.trim()).filter(Boolean);
+      const { stdout: filesOut } = await execAsync(
+        'git diff --cached --name-only 2>/dev/null || echo ""',
+        { cwd },
+      );
+      stagedFiles = filesOut
+        .split('\n')
+        .map((f) => f.trim())
+        .filter(Boolean);
 
       if (stagedFiles.length === 0) {
-        stream.markdown('_No staged changes found. Run `git add <files>` first, then `@mem /precommit`._\n');
+        stream.markdown(
+          '_No staged changes found. Run `git add <files>` first, then `@mem /precommit`._\n',
+        );
         return;
       }
 
-      const { stdout: diffOut } = await execAsync('git diff --cached --stat 2>/dev/null || echo ""', { cwd });
+      const { stdout: diffOut } = await execAsync(
+        'git diff --cached --stat 2>/dev/null || echo ""',
+        { cwd },
+      );
       stagedDiff = diffOut.substring(0, 2000); // Keep it manageable
     } catch (err) {
-      stream.markdown('_Could not read staged diff. Ensure you are in a git repository with staged changes._\n');
+      stream.markdown(
+        '_Could not read staged diff. Ensure you are in a git repository with staged changes._\n',
+      );
       return;
     }
 
-    stream.markdown(`_Checking ${stagedFiles.length} staged file(s): ${stagedFiles.slice(0, 5).map(f => `\`${f}\``).join(', ')}${stagedFiles.length > 5 ? ` +${stagedFiles.length - 5} more` : ''}_\n\n`);
+    stream.markdown(
+      `_Checking ${stagedFiles.length} staged file(s): ${stagedFiles
+        .slice(0, 5)
+        .map((f) => `\`${f}\``)
+        .join(', ')}${stagedFiles.length > 5 ? ` +${stagedFiles.length - 5} more` : ''}_\n\n`,
+    );
 
     // Find sessions related to staged files
     const all = this.store.getAllSessions();
-    const relatedSessions = all.filter(s =>
-      s.keyFiles.some(sf => stagedFiles.some(pf => {
-        const sfl = sf.toLowerCase();
-        const pfl = pf.toLowerCase();
-        return sfl === pfl || sfl.endsWith('/' + pfl) || pfl.endsWith('/' + sfl)
-          || sfl.split('/').pop() === pfl.split('/').pop();
-      }))
-    ).sort((a, b) => b.endTime - a.endTime);
+    const relatedSessions = all
+      .filter((s) =>
+        s.keyFiles.some((sf) =>
+          stagedFiles.some((pf) => {
+            const sfl = sf.toLowerCase();
+            const pfl = pf.toLowerCase();
+            return (
+              sfl === pfl ||
+              sfl.endsWith('/' + pfl) ||
+              pfl.endsWith('/' + sfl) ||
+              sfl.split('/').pop() === pfl.split('/').pop()
+            );
+          }),
+        ),
+      )
+      .sort((a, b) => b.endTime - a.endTime);
 
     // Collect all decisions from related sessions
-    const relevantDecisions = relatedSessions.flatMap(s => s.decisions).slice(0, 20);
-    const allDecisions = all.filter(s => s.decisions.length > 0).flatMap(s => s.decisions).slice(0, 30);
+    const relevantDecisions = relatedSessions.flatMap((s) => s.decisions).slice(0, 20);
+    const allDecisions = all
+      .filter((s) => s.decisions.length > 0)
+      .flatMap((s) => s.decisions)
+      .slice(0, 30);
 
     if (relevantDecisions.length === 0 && allDecisions.length === 0) {
-      stream.markdown('_No architectural decisions found in session history to check against. Keep capturing sessions to build up the decision history._\n');
+      stream.markdown(
+        '_No architectural decisions found in session history to check against. Keep capturing sessions to build up the decision history._\n',
+      );
       return;
     }
 
-    const decisionsContext = relevantDecisions.length > 0
-      ? `Decisions about these specific files:\n${relevantDecisions.map(d => `- ${d}`).join('\n')}`
-      : `General architectural decisions:\n${allDecisions.slice(0, 15).map(d => `- ${d}`).join('\n')}`;
+    const decisionsContext =
+      relevantDecisions.length > 0
+        ? `Decisions about these specific files:\n${relevantDecisions.map((d) => `- ${d}`).join('\n')}`
+        : `General architectural decisions:\n${allDecisions
+            .slice(0, 15)
+            .map((d) => `- ${d}`)
+            .join('\n')}`;
 
     stream.markdown('### 🤖 Consistency Analysis\n\n');
 
@@ -1755,10 +2174,10 @@ export class ContextProvider implements vscode.Disposable {
 
     await this.streamLm(prompt, stream, request, token);
 
-    stream.markdown(`\n\n---\n_Run \`@mem /commit\` to generate a conventional commit message for these changes._\n`);
+    stream.markdown(
+      `\n\n---\n_Run \`@mem /commit\` to generate a conventional commit message for these changes._\n`,
+    );
   }
-
-
 
   // ── Related files ──
 
@@ -1769,7 +2188,9 @@ export class ContextProvider implements vscode.Disposable {
   private async related(stream: vscode.ChatResponseStream): Promise<void> {
     const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
     if (!activeFile) {
-      stream.markdown('_Open a file in the editor first, then run `@mem /related` to find sessions that touched it._\n');
+      stream.markdown(
+        '_Open a file in the editor first, then run `@mem /related` to find sessions that touched it._\n',
+      );
       return;
     }
 
@@ -1778,16 +2199,20 @@ export class ContextProvider implements vscode.Disposable {
 
     // Match by suffix or basename — sessions store relative paths
     const all = this.store.getAllSessions();
-    const matches = all.filter(s =>
-      s.keyFiles.some(f => {
-        const fl = f.toLowerCase();
-        const al = rel.toLowerCase();
-        return fl === al
-          || al.endsWith('/' + fl)
-          || fl.endsWith('/' + al)
-          || fl === fileName.toLowerCase();
-      })
-    ).sort((a, b) => b.endTime - a.endTime);
+    const matches = all
+      .filter((s) =>
+        s.keyFiles.some((f) => {
+          const fl = f.toLowerCase();
+          const al = rel.toLowerCase();
+          return (
+            fl === al ||
+            al.endsWith('/' + fl) ||
+            fl.endsWith('/' + al) ||
+            fl === fileName.toLowerCase()
+          );
+        }),
+      )
+      .sort((a, b) => b.endTime - a.endTime);
 
     if (matches.length === 0) {
       stream.markdown(`_No sessions found that touched \`${rel}\`._\n\n`);
@@ -1801,15 +2226,21 @@ export class ContextProvider implements vscode.Disposable {
     for (const s of matches.slice(0, 15)) {
       const ago = this.formatAgo(s.endTime);
       const branch = s.branchName ? ` · \`${s.branchName}\`` : '';
-      stream.markdown(`### [${s.observationType}] ${new Date(s.startTime).toLocaleDateString()} (${ago}${branch})\n\n`);
+      stream.markdown(
+        `### [${s.observationType}] ${new Date(s.startTime).toLocaleDateString()} (${ago}${branch})\n\n`,
+      );
       stream.markdown(`${s.summary}\n\n`);
       if (s.decisions.length) {
         stream.markdown(`**Decisions:** ${s.decisions.slice(0, 3).join(' · ')}\n\n`);
       }
-      stream.markdown(`\`${s.id.substring(0, 8)}\` · _\`@mem /detail ${s.id.substring(0, 8)}\` for full detail_\n\n---\n\n`);
+      stream.markdown(
+        `\`${s.id.substring(0, 8)}\` · _\`@mem /detail ${s.id.substring(0, 8)}\` for full detail_\n\n---\n\n`,
+      );
     }
     if (matches.length > 15) {
-      stream.markdown(`_... and ${matches.length - 15} more. Use \`@mem /search ${fileName}\` to see all._\n`);
+      stream.markdown(
+        `_... and ${matches.length - 15} more. Use \`@mem /search ${fileName}\` to see all._\n`,
+      );
     }
   }
 
@@ -1832,28 +2263,37 @@ export class ContextProvider implements vscode.Disposable {
     query: string,
     stream: vscode.ChatResponseStream,
     request: vscode.ChatRequest,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
   ): Promise<void> {
-    let sessions = this.store.getAllSessions().filter(s => s.decisions.length > 0);
+    let sessions = this.store.getAllSessions().filter((s) => s.decisions.length > 0);
 
     if (query) {
       const q = query.toLowerCase();
-      sessions = sessions.filter(s =>
-        s.decisions.some(d => d.toLowerCase().includes(q))
-        || s.keyTopics.some(t => t.toLowerCase().includes(q))
-        || s.summary.toLowerCase().includes(q)
+      sessions = sessions.filter(
+        (s) =>
+          s.decisions.some((d) => d.toLowerCase().includes(q)) ||
+          s.keyTopics.some((t) => t.toLowerCase().includes(q)) ||
+          s.summary.toLowerCase().includes(q),
       );
     }
 
     if (sessions.length === 0) {
-      stream.markdown(query
-        ? `_No decisions found matching "${query}"._\n`
-        : '_No decisions recorded yet. GHCP-MEM will extract decisions automatically as you code._\n');
+      stream.markdown(
+        query
+          ? `_No decisions found matching "${query}"._\n`
+          : '_No decisions recorded yet. GHCP-MEM will extract decisions automatically as you code._\n',
+      );
       return;
     }
 
     // Deduplicate decisions, keeping track of when each was made
-    type DecisionEntry = { decision: string; date: string; type: string; sessionId: string; branch?: string };
+    type DecisionEntry = {
+      decision: string;
+      date: string;
+      type: string;
+      sessionId: string;
+      branch?: string;
+    };
     const seen = new Set<string>();
     const allDecisions: DecisionEntry[] = [];
 
@@ -1880,7 +2320,9 @@ export class ContextProvider implements vscode.Disposable {
 
     const title = query ? `Decisions matching "${query}"` : 'All Architecture Decisions';
     stream.markdown(`## 📋 ${title}\n\n`);
-    stream.markdown(`_${allDecisions.length} unique decision(s) across ${sessions.length} session(s)_\n\n`);
+    stream.markdown(
+      `_${allDecisions.length} unique decision(s) across ${sessions.length} session(s)_\n\n`,
+    );
 
     // Group by type for scannability
     const byType = new Map<string, DecisionEntry[]>();
@@ -1894,7 +2336,9 @@ export class ContextProvider implements vscode.Disposable {
       stream.markdown(`### ${type.charAt(0).toUpperCase() + type.slice(1)}\n\n`);
       for (const e of entries) {
         const branch = e.branch ? ` · \`${e.branch}\`` : '';
-        stream.markdown(`- **${e.decision}**  \n  _${e.date}${branch} · session \`${e.sessionId}\`_\n`);
+        stream.markdown(
+          `- **${e.decision}**  \n  _${e.date}${branch} · session \`${e.sessionId}\`_\n`,
+        );
       }
       stream.markdown('\n');
     }
@@ -1902,11 +2346,14 @@ export class ContextProvider implements vscode.Disposable {
     // Use LM to synthesise a brief narrative if there are enough decisions
     if (allDecisions.length >= 5) {
       stream.markdown('---\n\n### 🤖 AI Summary\n\n');
-      const decisionList = allDecisions.slice(0, 30).map(d => `- ${d.decision}`).join('\n');
+      const decisionList = allDecisions
+        .slice(0, 30)
+        .map((d) => `- ${d.decision}`)
+        .join('\n');
       const prompt = [
-        'Below is a list of architecture and implementation decisions extracted from a developer\'s coding sessions.',
+        "Below is a list of architecture and implementation decisions extracted from a developer's coding sessions.",
         'Write a brief (3-5 sentence) narrative that identifies the key themes, patterns, and architectural direction these decisions reflect.',
-        'Focus on what they reveal about the codebase\'s design philosophy. Be concise and insightful.',
+        "Focus on what they reveal about the codebase's design philosophy. Be concise and insightful.",
         '',
         'Decisions:',
         decisionList,
@@ -1914,7 +2361,9 @@ export class ContextProvider implements vscode.Disposable {
       await this.streamLm(prompt, stream, request, token);
     }
 
-    stream.markdown(`\n\n---\n_Use \`@mem /decisions <keyword>\` to filter · \`@mem /detail <id>\` for session context_\n`);
+    stream.markdown(
+      `\n\n---\n_Use \`@mem /decisions <keyword>\` to filter · \`@mem /detail <id>\` for session context_\n`,
+    );
   }
 
   /**
@@ -1925,27 +2374,39 @@ export class ContextProvider implements vscode.Disposable {
     const stats = this.store.getStats();
 
     if (stats.totalSessions === 0) {
-      stream.markdown('_No sessions stored yet. Keep coding — GHCP-MEM will start tracking context savings automatically._\n');
+      stream.markdown(
+        '_No sessions stored yet. Keep coding — GHCP-MEM will start tracking context savings automatically._\n',
+      );
       return;
     }
 
     const usd = (tokens: number) => `$${estimateTokenSavingsUsd(tokens).toFixed(4)}`;
     const fmt = (n: number) => n.toLocaleString();
-    const sessionRow = (s: { summary?: string; keyFiles?: string[]; keyTopics?: string[]; decisions?: string[]; problemsSolved?: string[] }) => estimateSessionTokenSavings(s);
+    const sessionRow = (s: {
+      summary?: string;
+      keyFiles?: string[];
+      keyTopics?: string[];
+      decisions?: string[];
+      problemsSolved?: string[];
+    }) => estimateSessionTokenSavings(s);
 
     // Today's sessions
-    const todaySessions = this.store.getAllSessions().filter(s => {
+    const todaySessions = this.store.getAllSessions().filter((s) => {
       const d = new Date(s.endTime);
       const now = new Date();
-      return d.getFullYear() === now.getFullYear()
-        && d.getMonth() === now.getMonth()
-        && d.getDate() === now.getDate();
+      return (
+        d.getFullYear() === now.getFullYear() &&
+        d.getMonth() === now.getMonth() &&
+        d.getDate() === now.getDate()
+      );
     });
 
     stream.markdown(`## 💰 GHCP-MEM Token Savings Report\n\n`);
 
     // ── Today ──
-    stream.markdown(`### Today (${stats.todaySessions} session${stats.todaySessions !== 1 ? 's' : ''})\n\n`);
+    stream.markdown(
+      `### Today (${stats.todaySessions} session${stats.todaySessions !== 1 ? 's' : ''})\n\n`,
+    );
     if (todaySessions.length === 0) {
       stream.markdown('_No sessions captured today yet._\n\n');
     } else {
@@ -1954,10 +2415,16 @@ export class ContextProvider implements vscode.Disposable {
       for (const s of todaySessions.slice(-10)) {
         const r = sessionRow(s);
         const label = (s.summary ?? 'Session').substring(0, 35).replace(/\|/g, '/');
-        stream.markdown(`| ${label}… | ${fmt(r.rawTokens)} | ${fmt(r.compactTokens)} | **${fmt(r.tokensSaved)}** | ${r.compressionRatio}× |\n`);
+        stream.markdown(
+          `| ${label}… | ${fmt(r.rawTokens)} | ${fmt(r.compactTokens)} | **${fmt(r.tokensSaved)}** | ${r.compressionRatio}× |\n`,
+        );
       }
-      stream.markdown(`\n**Today total saved:** ${fmt(stats.todayEstimatedTokensSaved)} tokens ≈ ${usd(stats.todayEstimatedTokensSaved)} (GPT-4o pricing)\n`);
-      stream.markdown(`**Today raw vs compact:** ${fmt(stats.todayEstimatedRawTokens)} raw tokens → ${fmt(stats.todayEstimatedCompactTokens)} compact tokens\n\n`);
+      stream.markdown(
+        `\n**Today total saved:** ${fmt(stats.todayEstimatedTokensSaved)} tokens ≈ ${usd(stats.todayEstimatedTokensSaved)} (GPT-4o pricing)\n`,
+      );
+      stream.markdown(
+        `**Today raw vs compact:** ${fmt(stats.todayEstimatedRawTokens)} raw tokens → ${fmt(stats.todayEstimatedCompactTokens)} compact tokens\n\n`,
+      );
     }
 
     // ── Lifetime ──
@@ -1966,26 +2433,43 @@ export class ContextProvider implements vscode.Disposable {
     stream.markdown(`|--------|-------|\n`);
     stream.markdown(`| Total tokens saved | **${fmt(stats.lifetimeEstimatedTokensSaved)}** |\n`);
     stream.markdown(`| Raw tokens represented | **${fmt(stats.lifetimeEstimatedRawTokens)}** |\n`);
-    stream.markdown(`| Compact tokens retained | **${fmt(stats.lifetimeEstimatedCompactTokens)}** |\n`);
-    stream.markdown(`| Dollar equivalent | **${usd(stats.lifetimeEstimatedTokensSaved)}** (GPT-4o) |\n`);
+    stream.markdown(
+      `| Compact tokens retained | **${fmt(stats.lifetimeEstimatedCompactTokens)}** |\n`,
+    );
+    stream.markdown(
+      `| Dollar equivalent | **${usd(stats.lifetimeEstimatedTokensSaved)}** (GPT-4o) |\n`,
+    );
     stream.markdown(`| Avg compression ratio | **${stats.avgCompressionRatio}×** |\n`);
-    stream.markdown(`| Compact knowledge in memory | **${fmt(stats.totalCompactTokens)} tokens** |\n`);
+    stream.markdown(
+      `| Compact knowledge in memory | **${fmt(stats.totalCompactTokens)} tokens** |\n`,
+    );
     stream.markdown(`| Redactions applied | **${fmt(stats.totalRedactions)}** |\n`);
 
     // ── Interpretation ──
-    const perConvSaved = stats.totalSessions > 0
-      ? Math.round(stats.lifetimeEstimatedTokensSaved / stats.totalSessions)
-      : 0;
+    const perConvSaved =
+      stats.totalSessions > 0
+        ? Math.round(stats.lifetimeEstimatedTokensSaved / stats.totalSessions)
+        : 0;
     stream.markdown(`\n### 💡 What This Means\n\n`);
-    stream.markdown(`- Each new Copilot chat saves you ~**${fmt(perConvSaved)} tokens** on average — context GHCP-MEM already knows.\n`);
-    stream.markdown(`- You have **${fmt(stats.totalCompactTokens)} tokens** of knowledge compressed and ready to auto-inject — without re-explaining anything.\n`);
-    stream.markdown(`- The **${stats.avgCompressionRatio}× avg compression ratio** means every 1 token injected replaces ${stats.avgCompressionRatio} tokens you would otherwise have typed.\n`);
+    stream.markdown(
+      `- Each new Copilot chat saves you ~**${fmt(perConvSaved)} tokens** on average — context GHCP-MEM already knows.\n`,
+    );
+    stream.markdown(
+      `- You have **${fmt(stats.totalCompactTokens)} tokens** of knowledge compressed and ready to auto-inject — without re-explaining anything.\n`,
+    );
+    stream.markdown(
+      `- The **${stats.avgCompressionRatio}× avg compression ratio** means every 1 token injected replaces ${stats.avgCompressionRatio} tokens you would otherwise have typed.\n`,
+    );
 
     if (stats.lifetimeEstimatedTokensSaved > 10_000) {
-      stream.markdown(`\n> 🏆 You've crossed **${fmt(Math.round(stats.lifetimeEstimatedTokensSaved / 1000))}K tokens saved** — that's roughly ${Math.round(stats.lifetimeEstimatedTokensSaved / 750)} pages of context you never had to re-explain!\n`);
+      stream.markdown(
+        `\n> 🏆 You've crossed **${fmt(Math.round(stats.lifetimeEstimatedTokensSaved / 1000))}K tokens saved** — that's roughly ${Math.round(stats.lifetimeEstimatedTokensSaved / 750)} pages of context you never had to re-explain!\n`,
+      );
     }
 
-    stream.markdown(`\n---\n_Estimates: 4 chars/token heuristic · GPT-4o May 2025 input pricing ($5/1M tokens) · Run \`@mem /status\` for a quick summary._\n`);
+    stream.markdown(
+      `\n---\n_Estimates: 4 chars/token heuristic · GPT-4o May 2025 input pricing ($5/1M tokens) · Run \`@mem /status\` for a quick summary._\n`,
+    );
   }
 
   /** Stream a language model response into the chat stream. */
@@ -2007,7 +2491,9 @@ export class ContextProvider implements vscode.Disposable {
         }
       }
     } catch (err) {
-      stream.markdown(`\n\n_Error calling language model: ${err instanceof Error ? err.message : String(err)}_\n`);
+      stream.markdown(
+        `\n\n_Error calling language model: ${err instanceof Error ? err.message : String(err)}_\n`,
+      );
     }
   }
 
@@ -2018,15 +2504,25 @@ export class ContextProvider implements vscode.Disposable {
     const tags = s.userTags.length ? ` · 🏷️ ${s.userTags.join(',')}` : '';
     const branch = s.branchName ? ` · \`${s.branchName}\`` : '';
     const confidence = this.memoryConfidence(s);
-    stream.markdown(`- **[${s.observationType}]** \`${s.id.substring(0, 8)}\` · ${date}${branch}${tags} · ${confidence.label}  \n  ${s.summary.substring(0, 180)}\n`);
+    stream.markdown(
+      `- **[${s.observationType}]** \`${s.id.substring(0, 8)}\` · ${date}${branch}${tags} · ${confidence.label}  \n  ${s.summary.substring(0, 180)}\n`,
+    );
   }
 
   private renderCompact(s: CompressedSession, stream: vscode.ChatResponseStream): void {
     const start = new Date(s.startTime).toLocaleString();
     const dur = Math.round((s.endTime - s.startTime) / 60000);
     const confidence = this.memoryConfidence(s);
-    stream.markdown(`### [${s.observationType}] ${start} (${dur} min) · \`${s.id.substring(0, 8)}\` · ${confidence.label}\n\n${s.summary}\n\n`);
-    if (s.keyFiles.length) stream.markdown(`**Files:** ${s.keyFiles.slice(0, 5).map(f => `\`${f}\``).join(', ')}\n\n`);
+    stream.markdown(
+      `### [${s.observationType}] ${start} (${dur} min) · \`${s.id.substring(0, 8)}\` · ${confidence.label}\n\n${s.summary}\n\n`,
+    );
+    if (s.keyFiles.length)
+      stream.markdown(
+        `**Files:** ${s.keyFiles
+          .slice(0, 5)
+          .map((f) => `\`${f}\``)
+          .join(', ')}\n\n`,
+      );
     if (s.keyTopics.length) stream.markdown(`**Topics:** ${s.keyTopics.join(', ')}\n\n`);
   }
 
@@ -2038,7 +2534,8 @@ export class ContextProvider implements vscode.Disposable {
       (s.keyTopics.length ? 1 : 0) +
       (s.keyFiles.length ? 1 : 0) +
       (s.observationType !== 'unknown' ? 1 : 0);
-    if (score >= 6) return { label: 'high confidence', reason: 'tagged, typed, and decision-bearing' };
+    if (score >= 6)
+      return { label: 'high confidence', reason: 'tagged, typed, and decision-bearing' };
     if (score >= 4) return { label: 'medium confidence', reason: 'multi-signal match' };
     return { label: 'low confidence', reason: 'lightly supported context' };
   }
@@ -2052,9 +2549,13 @@ export class ContextProvider implements vscode.Disposable {
     stream.markdown(`- **Workspace:** ${s.workspaceName}\n`);
     if (s.branchName) stream.markdown(`- **Branch:** \`${s.branchName}\`\n`);
     stream.markdown(`- **Started:** ${start}\n- **Ended:** ${end} (${dur} min)\n`);
-    stream.markdown(`- **Events captured:** ${s.rawEventCount} · **Redactions:** ${s.redactionCount}\n`);
+    stream.markdown(
+      `- **Events captured:** ${s.rawEventCount} · **Redactions:** ${s.redactionCount}\n`,
+    );
     const savings = estimateSessionTokenSavings(s);
-    stream.markdown(`- **Estimated token savings:** ${savings.tokensSaved} tokens (${savings.rawTokens} raw → ${savings.compactTokens} compact, ${savings.compressionRatio}×)\n`);
+    stream.markdown(
+      `- **Estimated token savings:** ${savings.tokensSaved} tokens (${savings.rawTokens} raw → ${savings.compactTokens} compact, ${savings.compressionRatio}×)\n`,
+    );
     if (s.userTags.length) stream.markdown(`- **User tags:** ${s.userTags.join(', ')}\n`);
     if (s.azureContext) {
       const ac = s.azureContext;
@@ -2063,17 +2564,30 @@ export class ContextProvider implements vscode.Disposable {
         ac.resourceGroup && `rg=${ac.resourceGroup}`,
         ac.defaultLocation && `loc=${ac.defaultLocation}`,
         ac.subsystems?.length && `subsystems=${ac.subsystems.join(',')}`,
-      ].filter(Boolean).join(' · ');
+      ]
+        .filter(Boolean)
+        .join(' · ');
       if (bits) stream.markdown(`- **Azure:** ${bits}\n`);
       if (ac.resourceIds?.length) {
-        stream.markdown(`- **Resource IDs (${ac.resourceIds.length}):**\n${ac.resourceIds.slice(0, 10).map(r => `  - \`${r}\``).join('\n')}\n`);
+        stream.markdown(
+          `- **Resource IDs (${ac.resourceIds.length}):**\n${ac.resourceIds
+            .slice(0, 10)
+            .map((r) => `  - \`${r}\``)
+            .join('\n')}\n`,
+        );
       }
     }
     stream.markdown(`\n### Summary\n\n${s.summary}\n\n`);
-    if (s.keyFiles.length) stream.markdown(`### Files\n${s.keyFiles.map(f => `- \`${f}\``).join('\n')}\n\n`);
-    if (s.keyTopics.length) stream.markdown(`### Topics\n${s.keyTopics.map(t => `- ${t}`).join('\n')}\n\n`);
-    if (s.decisions.length) stream.markdown(`### Decisions\n${s.decisions.map(d => `- ${d}`).join('\n')}\n\n`);
-    if (s.problemsSolved.length) stream.markdown(`### Problems Solved\n${s.problemsSolved.map(p => `- ${p}`).join('\n')}\n\n`);
+    if (s.keyFiles.length)
+      stream.markdown(`### Files\n${s.keyFiles.map((f) => `- \`${f}\``).join('\n')}\n\n`);
+    if (s.keyTopics.length)
+      stream.markdown(`### Topics\n${s.keyTopics.map((t) => `- ${t}`).join('\n')}\n\n`);
+    if (s.decisions.length)
+      stream.markdown(`### Decisions\n${s.decisions.map((d) => `- ${d}`).join('\n')}\n\n`);
+    if (s.problemsSolved.length)
+      stream.markdown(
+        `### Problems Solved\n${s.problemsSolved.map((p) => `- ${p}`).join('\n')}\n\n`,
+      );
   }
 
   dispose(): void {
@@ -2124,15 +2638,17 @@ export function renderClaimList(
   texts: string[],
   evidence?: import('./types').Evidence[][],
 ): string {
-  return texts.map((text, i) => {
-    const ev = evidence?.[i];
-    if (!ev || ev.length === 0) return text;
-    const files = Array.from(new Set(
-      ev.map(e => e.filePath).filter((f): f is string => !!f),
-    )).slice(0, 3);
-    if (files.length === 0) return text;
-    return `${text} [📎 ${files.join(', ')}]`;
-  }).join('; ');
+  return texts
+    .map((text, i) => {
+      const ev = evidence?.[i];
+      if (!ev || ev.length === 0) return text;
+      const files = Array.from(
+        new Set(ev.map((e) => e.filePath).filter((f): f is string => !!f)),
+      ).slice(0, 3);
+      if (files.length === 0) return text;
+      return `${text} [📎 ${files.join(', ')}]`;
+    })
+    .join('; ');
 }
 
 /**
@@ -2162,7 +2678,10 @@ function parseInlineFilters(q: string): {
   const remaining: string[] = [];
   for (const tok of tokens) {
     const [k, v] = tok.split(':');
-    if (!v) { remaining.push(tok); continue; }
+    if (!v) {
+      remaining.push(tok);
+      continue;
+    }
     switch (k.toLowerCase()) {
       case 'type':
         filters.type = v as ObservationType;
@@ -2173,7 +2692,8 @@ function parseInlineFilters(q: string): {
         let ms = 0;
 
         if (normalizedV === 'yesterday') ms = 24 * 3600000;
-        else if (normalizedV === 'today') ms = 0; // not filtered by time
+        else if (normalizedV === 'today')
+          ms = 0; // not filtered by time
         else if (normalizedV === 'last-week') ms = 7 * 86400000;
         else if (normalizedV === 'last-month') ms = 30 * 86400000;
         else {
@@ -2187,9 +2707,14 @@ function parseInlineFilters(q: string): {
         if (ms > 0) filters.sinceTs = Date.now() - ms;
         break;
       }
-      case 'tag': filters.tag = v; break;
-      case 'workspace': filters.workspaceOnly = v === 'true'; break;
-      default: remaining.push(tok);
+      case 'tag':
+        filters.tag = v;
+        break;
+      case 'workspace':
+        filters.workspaceOnly = v === 'true';
+        break;
+      default:
+        remaining.push(tok);
     }
   }
   return { cleaned: remaining.join(' '), filters };
@@ -2201,14 +2726,20 @@ function synthesize(sessions: CompressedSession[], query: string): string {
   const decisions: string[] = [];
   const problems: string[] = [];
   for (const s of sessions) {
-    s.keyTopics.forEach(t => topics.add(t));
-    s.keyFiles.forEach(f => files.add(f));
+    s.keyTopics.forEach((t) => topics.add(t));
+    s.keyFiles.forEach((f) => files.add(f));
     decisions.push(...s.decisions);
     problems.push(...s.problemsSolved);
   }
   const out: string[] = [`Based on ${sessions.length} session(s) matching "${query}":\n`];
   if (topics.size) out.push(`**Known topics:** ${Array.from(topics).join(', ')}\n`);
-  if (files.size) out.push(`**Active files:** ${Array.from(files).slice(0, 8).map(f => `\`${f}\``).join(', ')}\n`);
+  if (files.size)
+    out.push(
+      `**Active files:** ${Array.from(files)
+        .slice(0, 8)
+        .map((f) => `\`${f}\``)
+        .join(', ')}\n`,
+    );
   if (decisions.length) {
     out.push('**Decisions:**');
     for (const d of decisions.slice(0, 5)) out.push(`- ${d}`);

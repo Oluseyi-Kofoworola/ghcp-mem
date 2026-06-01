@@ -33,10 +33,15 @@ function cacheKey(opts?: { includeResources?: boolean; resourceGroup?: string })
 function runAz(args: string[], timeoutMs = 4000): Promise<string | undefined> {
   return new Promise((resolve) => {
     try {
-      const cp = execFile('az', args, { timeout: timeoutMs, windowsHide: true, shell: false }, (err, stdout) => {
-        if (err) resolve(undefined);
-        else resolve(stdout);
-      });
+      const cp = execFile(
+        'az',
+        args,
+        { timeout: timeoutMs, windowsHide: true, shell: false },
+        (err, stdout) => {
+          if (err) resolve(undefined);
+          else resolve(stdout);
+        },
+      );
       cp.on('error', () => resolve(undefined));
     } catch {
       resolve(undefined);
@@ -48,7 +53,10 @@ function runAz(args: string[], timeoutMs = 4000): Promise<string | undefined> {
  * Take a snapshot of the current Azure context. Never throws.
  * Returns a skeleton snapshot (with notes) even if `az` is unavailable.
  */
-export async function captureAzureContext(opts?: { includeResources?: boolean; resourceGroup?: string }): Promise<AzureContextSnapshot> {
+export async function captureAzureContext(opts?: {
+  includeResources?: boolean;
+  resourceGroup?: string;
+}): Promise<AzureContextSnapshot> {
   const now = Date.now();
   const key = cacheKey(opts);
   const cached = cache.get(key);
@@ -80,17 +88,34 @@ export async function captureAzureContext(opts?: { includeResources?: boolean; r
         if (d.name === 'group' && !opts?.resourceGroup) snapshot.resourceGroup = d.value;
         if (d.name === 'location') snapshot.defaultLocation = d.value;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
   if (opts?.resourceGroup) snapshot.resourceGroup = opts.resourceGroup;
 
   if (opts?.includeResources && snapshot.resourceGroup) {
-    const resJson = await runAz(['resource', 'list', '--resource-group', snapshot.resourceGroup, '--query', '[].id', '--output', 'json'], 6000);
+    const resJson = await runAz(
+      [
+        'resource',
+        'list',
+        '--resource-group',
+        snapshot.resourceGroup,
+        '--query',
+        '[].id',
+        '--output',
+        'json',
+      ],
+      6000,
+    );
     if (resJson) {
       try {
         const ids = JSON.parse(resJson);
-        if (Array.isArray(ids)) snapshot.resourceIds = ids.filter((x): x is string => typeof x === 'string').slice(0, 50);
-      } catch { /* ignore */ }
+        if (Array.isArray(ids))
+          snapshot.resourceIds = ids.filter((x): x is string => typeof x === 'string').slice(0, 50);
+      } catch {
+        /* ignore */
+      }
     }
   }
 

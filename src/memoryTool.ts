@@ -27,7 +27,7 @@ export class MemorySearchTool implements vscode.LanguageModelTool<SearchToolInpu
 
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<SearchToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
     const input = options.input;
     const filters: SearchFilters = {
@@ -48,10 +48,7 @@ export class MemorySearchTool implements vscode.LanguageModelTool<SearchToolInpu
       ]);
     }
 
-    const lines: string[] = [
-      `Found ${results.length} session(s) for "${input.query}":`,
-      '',
-    ];
+    const lines: string[] = [`Found ${results.length} session(s) for "${input.query}":`, ''];
     for (const s of results) {
       const date = new Date(s.startTime).toISOString().slice(0, 10);
       const tags = s.userTags.length ? ` tags=[${s.userTags.join(',')}]` : '';
@@ -59,17 +56,16 @@ export class MemorySearchTool implements vscode.LanguageModelTool<SearchToolInpu
       lines.push(`  summary: ${s.summary}`);
       if (s.keyFiles.length) lines.push(`  files: ${s.keyFiles.slice(0, 5).join(', ')}`);
       if (s.decisions.length) lines.push(`  decisions: ${s.decisions.slice(0, 3).join('; ')}`);
-      if (s.problemsSolved.length) lines.push(`  solved: ${s.problemsSolved.slice(0, 3).join('; ')}`);
+      if (s.problemsSolved.length)
+        lines.push(`  solved: ${s.problemsSolved.slice(0, 3).join('; ')}`);
     }
 
-    return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(lines.join('\n')),
-    ]);
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(lines.join('\n'))]);
   }
 
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<SearchToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.PreparedToolInvocation> {
     return {
       invocationMessage: `Searching GHCP-MEM for "${options.input.query}"…`,
@@ -97,7 +93,7 @@ export class MemoryStoreTool implements vscode.LanguageModelTool<StoreToolInput>
 
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<StoreToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
     const input = options.input;
     if (!input.summary || input.summary.trim().length < 4) {
@@ -136,7 +132,7 @@ export class MemoryStoreTool implements vscode.LanguageModelTool<StoreToolInput>
       decisions,
       problemsSolved,
       rawEventCount: 0,
-      userTags: (input.tags ?? []).map(t => t.trim()).filter(Boolean),
+      userTags: (input.tags ?? []).map((t) => t.trim()).filter(Boolean),
       redactionCount: totalRedactions,
       contentHash: computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
     };
@@ -144,13 +140,15 @@ export class MemoryStoreTool implements vscode.LanguageModelTool<StoreToolInput>
     await this.store.addSession(session);
 
     return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(`Stored session ${session.id.substring(0, 8)} (${session.observationType}).`),
+      new vscode.LanguageModelTextPart(
+        `Stored session ${session.id.substring(0, 8)} (${session.observationType}).`,
+      ),
     ]);
   }
 
   async prepareInvocation(
     _options: vscode.LanguageModelToolInvocationPrepareOptions<StoreToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.PreparedToolInvocation> {
     return { invocationMessage: 'Saving a note to GHCP-MEM…' };
   }
@@ -173,7 +171,7 @@ interface AuditToolInput {
 export class MemoryAuditTool implements vscode.LanguageModelTool<AuditToolInput> {
   async invoke(
     _options: vscode.LanguageModelToolInvocationOptions<AuditToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
     const { runWorkspaceAudit } = await import('./integrityChecker');
     const { issues, rulesRun } = await runWorkspaceAudit();
@@ -202,14 +200,12 @@ export class MemoryAuditTool implements vscode.LanguageModelTool<AuditToolInput>
       lines.push(`${sev} [${i.rule}] ${loc} — ${i.message}`);
       if (i.fix) lines.push(`     fix: ${i.fix}`);
     }
-    return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(lines.join('\n')),
-    ]);
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(lines.join('\n'))]);
   }
 
   async prepareInvocation(
     _options: vscode.LanguageModelToolInvocationPrepareOptions<AuditToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.PreparedToolInvocation> {
     return { invocationMessage: 'Running GHCP-MEM workspace integrity audit…' };
   }

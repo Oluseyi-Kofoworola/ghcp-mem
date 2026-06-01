@@ -54,7 +54,10 @@ const FIXTURES: Fixture[] = (() => {
   const stripe = PREF.sklive + 'c'.repeat(30);
   const google = PREF.aiza + 'SyA' + 'B'.repeat(32);
   const slack = PREF.xoxb + '12345-67890-abcdefghij';
-  const jwt = 'eyJhbGciOiJIUzI1NiJ9.' + 'eyJzdWIiOiIxMjM0NTY3ODkwIn0.' + 'dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
+  const jwt =
+    'eyJhbGciOiJIUzI1NiJ9.' +
+    'eyJzdWIiOiIxMjM0NTY3ODkwIn0.' +
+    'dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
   const bearer = PREF.bearer + 'abcdefghijklmnopqrstuvwxyz0123456789==';
   // Use reserved/test-only hostnames so neither URL is mistaken for a real
   // service endpoint. Passwords are obviously synthetic.
@@ -155,25 +158,32 @@ const FIXTURES: Fixture[] = (() => {
     },
     {
       label: 'Azure storage conn string',
-      input: 'AZ_CONN=DefaultEndpointsProtocol=https;AccountName=myacct;AccountKey=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHE=;EndpointSuffix=core.windows.net',
-      forbidden: 'AccountKey=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHE=',
+      input:
+        'AZ_CONN=DefaultEndpointsProtocol=https;AccountName=myacct;AccountKey=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHE=;EndpointSuffix=core.windows.net',
+      forbidden:
+        'AccountKey=YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHE=',
       expectedCategory: 'azure-storage-conn',
     },
     {
       label: 'Azure Service Bus conn string',
-      input: 'SB=Endpoint=sb://mybus.servicebus.windows.net/;SharedAccessKeyName=RootKey;SharedAccessKey=abcDEFghiJKLmnoPQRstuVWXyz1234567890abcd=',
+      input:
+        'SB=Endpoint=sb://mybus.servicebus.windows.net/;SharedAccessKeyName=RootKey;SharedAccessKey=abcDEFghiJKLmnoPQRstuVWXyz1234567890abcd=',
       forbidden: 'SharedAccessKey=abcDEFghiJKLmnoPQRstuVWXyz1234567890abcd=',
       expectedCategory: 'azure-sb-conn',
     },
     {
       label: 'Azure Cosmos conn string',
-      input: 'COSMOS=AccountEndpoint=https://x.documents.azure.com:443/;AccountKey=Zm9vYmFyYmF6cXV4Y29ycXVldWZmbHU=',
+      input:
+        'COSMOS=AccountEndpoint=https://x.documents.azure.com:443/;AccountKey=Zm9vYmFyYmF6cXV4Y29ycXVldWZmbHU=',
       forbidden: 'AccountKey=Zm9vYmFyYmF6cXV4Y29ycXVldWZmbHU=',
       expectedCategory: 'azure-cosmos-conn',
     },
     {
       label: 'Azure SQL conn string',
-      input: 'SQL=Server=tcp:srv.database.windows.net,1433;User ID=adm;Password=' + pwdAssignVal + '!23;Database=db',
+      input:
+        'SQL=Server=tcp:srv.database.windows.net,1433;User ID=adm;Password=' +
+        pwdAssignVal +
+        '!23;Database=db',
       forbidden: 'Password=' + pwdAssignVal + '!23',
       expectedCategory: 'azure-sql-conn',
     },
@@ -239,7 +249,18 @@ test('redactor corpus — multiple secrets in one blob all redacted', () => {
   const ghp = 'g' + 'h' + 'p_' + 'abcdefghijklmnopqrstuvwxyz0123456789AB';
   const openai = 's' + 'k' + '-' + 'B'.repeat(40);
   const pgPwd = 'EXAMPLE_TEST_PASSWORD_NOT_REAL';
-  const pgUrl = 'p' + 'o' + 's' + 't' + 'g' + 'r' + 'e' + 's' + '://app:' + pgPwd + '@db.example.invalid:5432/prod';
+  const pgUrl =
+    'p' +
+    'o' +
+    's' +
+    't' +
+    'g' +
+    'r' +
+    'e' +
+    's' +
+    '://app:' +
+    pgPwd +
+    '@db.example.invalid:5432/prod';
   const blob = [
     'AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE',
     'GITHUB_TOKEN=' + ghp,

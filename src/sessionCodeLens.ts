@@ -58,12 +58,20 @@ export class SessionCodeLensProvider implements vscode.CodeLensProvider, vscode.
     const rel = relPath.toLowerCase();
     const abs = absPath.toLowerCase();
 
-    return this.store.getAllSessions()
-      .filter(s => s.keyFiles.some(f => {
-        const fl = f.toLowerCase();
-        return fl === rel || fl === abs || abs.endsWith('/' + fl) || rel.endsWith('/' + fl)
-          || fl.split('/').pop() === basename;
-      }))
+    return this.store
+      .getAllSessions()
+      .filter((s) =>
+        s.keyFiles.some((f) => {
+          const fl = f.toLowerCase();
+          return (
+            fl === rel ||
+            fl === abs ||
+            abs.endsWith('/' + fl) ||
+            rel.endsWith('/' + fl) ||
+            fl.split('/').pop() === basename
+          );
+        }),
+      )
       .sort((a, b) => b.endTime - a.endTime);
   }
 

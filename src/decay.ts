@@ -43,7 +43,10 @@ export const DECAY_HALF_LIFE_MS = 60 * 24 * 60 * 60 * 1000; // 60 days
  *   - usage.lastRetrievedAt
  *   - usage.lastInteractionAt (set by accept/reject)
  */
-export function effectiveConfidence(s: CompressedSession, now: number = Date.now()): number | undefined {
+export function effectiveConfidence(
+  s: CompressedSession,
+  now: number = Date.now(),
+): number | undefined {
   if (typeof s.confidence !== 'number') return undefined;
   const last = lastInteractionTimestamp(s);
   const ageMs = Math.max(0, now - last);

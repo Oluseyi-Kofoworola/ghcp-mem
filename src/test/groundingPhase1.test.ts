@@ -27,18 +27,26 @@ const vscodeMock = {
   lm: {
     selectChatModels: async (opts?: { family?: string }) => {
       if (!opts?.family) return mockModels;
-      return mockModels.filter(m => m.family === opts.family);
+      return mockModels.filter((m) => m.family === opts.family);
     },
   },
   LanguageModelChatMessage: { User: (text: string) => ({ role: 'user', content: text }) },
   CancellationTokenSource: class {
     token = { isCancellationRequested: false };
-    cancel() { this.token.isCancellationRequested = true; }
+    cancel() {
+      this.token.isCancellationRequested = true;
+    }
     dispose() {}
   },
 };
 require.cache[require.resolve('vscode')] = {
-  id: 'vscode', filename: 'vscode', loaded: true, exports: vscodeMock, paths: [], children: [], parent: null,
+  id: 'vscode',
+  filename: 'vscode',
+  loaded: true,
+  exports: vscodeMock,
+  paths: [],
+  children: [],
+  parent: null,
 } as any;
 
 import {
@@ -75,11 +83,15 @@ function makeEditEvent(
   };
 }
 
-function lmReturning(json: object): typeof mockModels[0] {
+function lmReturning(json: object): (typeof mockModels)[0] {
   const text = JSON.stringify(json);
   return {
     family: 'gpt-4o-mini',
-    sendRequest: async () => ({ text: (async function* () { yield text; })() }),
+    sendRequest: async () => ({
+      text: (async function* () {
+        yield text;
+      })(),
+    }),
   };
 }
 
@@ -102,7 +114,11 @@ test('evidenceIdForIndex — 1-based stable IDs', () => {
 test('buildEvidenceMap — every event gets a unique ID and resolves to a path', () => {
   const events: SessionEvent[] = [
     makeEditEvent('src/auth.ts', 0, 'hashA'),
-    { timestamp: Date.now(), type: 'diagnostic_change', data: { filePath: 'src/auth.ts', errorCount: 1, warningCount: 0, topMessages: ['boom'] } },
+    {
+      timestamp: Date.now(),
+      type: 'diagnostic_change',
+      data: { filePath: 'src/auth.ts', errorCount: 1, warningCount: 0, topMessages: ['boom'] },
+    },
   ];
   const map = buildEvidenceMap(events);
   assert.equal(map.size, 2);
@@ -117,7 +133,7 @@ test('buildEvidenceMap — every event gets a unique ID and resolves to a path',
 test('groundClaims — drops legacy string decisions (no grounding possible)', () => {
   const events = [makeEditEvent('src/a.ts', 0)];
   const table = buildEvidenceMap(events);
-  const out = groundClaims(['legacy decision'] as any, table, s => s);
+  const out = groundClaims(['legacy decision'] as any, table, (s) => s);
   assert.deepEqual(out.texts, []);
   assert.deepEqual(out.evidence, []);
 });
@@ -128,7 +144,7 @@ test('groundClaims — drops decisions whose cited IDs do not exist', () => {
   const out = groundClaims(
     [{ text: 'invented rationale', evidence: ['E99', 'EX'] }],
     table,
-    s => s,
+    (s) => s,
   );
   assert.deepEqual(out.texts, [], 'invented citations must be dropped');
 });
@@ -136,11 +152,7 @@ test('groundClaims — drops decisions whose cited IDs do not exist', () => {
 test('groundClaims — keeps decisions with at least one valid citation', () => {
   const events = [makeEditEvent('src/a.ts', 0), makeEditEvent('src/b.ts', 1)];
   const table = buildEvidenceMap(events);
-  const out = groundClaims(
-    [{ text: 'real decision', evidence: ['E2', 'BOGUS'] }],
-    table,
-    s => s,
-  );
+  const out = groundClaims([{ text: 'real decision', evidence: ['E2', 'BOGUS'] }], table, (s) => s);
   assert.deepEqual(out.texts, ['real decision']);
   assert.equal(out.evidence[0].length, 1, 'only the resolvable citation should survive');
   assert.equal(out.evidence[0][0].filePath, 'src/b.ts');
@@ -152,7 +164,7 @@ test('groundClaims — sanitizer is applied to claim text', () => {
   const out = groundClaims(
     [{ text: 'TOKEN: AKIAIOSFODNN7EXAMPLE rotated', evidence: ['E1'] }],
     table,
-    s => s.replace(/AKIA[A-Z0-9]+/g, '[REDACTED]'),
+    (s) => s.replace(/AKIA[A-Z0-9]+/g, '[REDACTED]'),
   );
   assert.match(out.texts[0], /\[REDACTED\]/);
 });
@@ -161,19 +173,30 @@ test('groundClaims — sanitizer is applied to claim text', () => {
 
 test('computeConfidence — base lm path with multi-file evidence + rule agree → 0.9', () => {
   const ev: Evidence[][] = [
-    [{ kind: 'file_edit', filePath: 'src/a.ts' }, { kind: 'file_edit', filePath: 'src/b.ts' }],
+    [
+      { kind: 'file_edit', filePath: 'src/a.ts' },
+      { kind: 'file_edit', filePath: 'src/b.ts' },
+    ],
   ];
   const c = computeConfidence({
-    mode: 'lm', redactionCount: 0, eventLogTruncated: false,
-    decisionEvidence: ev, problemEvidence: [], ruleAgrees: true,
+    mode: 'lm',
+    redactionCount: 0,
+    eventLogTruncated: false,
+    decisionEvidence: ev,
+    problemEvidence: [],
+    ruleAgrees: true,
   });
   assert.ok(c >= 0.89 && c <= 0.91, `expected ~0.9, got ${c}`);
 });
 
 test('computeConfidence — fallback mode + truncation + heavy redaction floors near zero', () => {
   const c = computeConfidence({
-    mode: 'fallback', redactionCount: 20, eventLogTruncated: true,
-    decisionEvidence: [], problemEvidence: [], ruleAgrees: false,
+    mode: 'fallback',
+    redactionCount: 20,
+    eventLogTruncated: true,
+    decisionEvidence: [],
+    problemEvidence: [],
+    ruleAgrees: false,
   });
   // base 0.5 − 0.2 (red) − 0.1 (trunc) = 0.2
   assert.ok(c <= 0.21 && c >= 0.0, `expected ~0.2, got ${c}`);
@@ -181,8 +204,12 @@ test('computeConfidence — fallback mode + truncation + heavy redaction floors 
 
 test('computeConfidence — clamps within [0, 1]', () => {
   const c = computeConfidence({
-    mode: 'fallback', redactionCount: 999, eventLogTruncated: true,
-    decisionEvidence: [], problemEvidence: [], ruleAgrees: false,
+    mode: 'fallback',
+    redactionCount: 999,
+    eventLogTruncated: true,
+    decisionEvidence: [],
+    problemEvidence: [],
+    ruleAgrees: false,
   });
   assert.ok(c >= 0 && c <= 1);
 });
@@ -191,18 +218,20 @@ test('computeConfidence — clamps within [0, 1]', () => {
 
 test('compressor — drops decisions/problems the LM emits without evidence', async () => {
   mockModels.length = 0;
-  mockModels.push(lmReturning({
-    summary: 'work',
-    observationType: 'refactor',
-    keyFiles: ['src/a.ts'],
-    keyTopics: ['refactor'],
-    // E99 doesn't exist in our 2-event input. Should be dropped.
-    decisions: [
-      { text: 'fabricated decision', evidence: ['E99'] },
-      { text: 'real decision', evidence: ['E1'] },
-    ],
-    problemsSolved: [{ text: 'also fabricated', evidence: [] }],
-  }));
+  mockModels.push(
+    lmReturning({
+      summary: 'work',
+      observationType: 'refactor',
+      keyFiles: ['src/a.ts'],
+      keyTopics: ['refactor'],
+      // E99 doesn't exist in our 2-event input. Should be dropped.
+      decisions: [
+        { text: 'fabricated decision', evidence: ['E99'] },
+        { text: 'real decision', evidence: ['E1'] },
+      ],
+      problemsSolved: [{ text: 'also fabricated', evidence: [] }],
+    }),
+  );
   const c = new ContextCompressor();
   const s = await c.compress(makeInput());
   assert.ok(s);
@@ -235,7 +264,12 @@ test('compressor — reservoir sampler keeps diagnostics + drops file_open under
     events.push({
       timestamp: Date.now() - 100 * (i + 1),
       type: 'diagnostic_change',
-      data: { filePath: `src/diag${i}.ts`, errorCount: 1, warningCount: 0, topMessages: [`CRITICAL_DIAG_${i}`] },
+      data: {
+        filePath: `src/diag${i}.ts`,
+        errorCount: 1,
+        warningCount: 0,
+        topMessages: [`CRITICAL_DIAG_${i}`],
+      },
     });
   }
   let promptSeen = '';
@@ -244,16 +278,28 @@ test('compressor — reservoir sampler keeps diagnostics + drops file_open under
     family: 'gpt-4o-mini',
     sendRequest: async (msgs: any[]) => {
       promptSeen = msgs[0].content;
-      return { text: (async function* () { yield JSON.stringify({
-        summary: 'x', observationType: 'unknown', keyFiles: [],
-        keyTopics: [], decisions: [], problemsSolved: [],
-      }); })() };
+      return {
+        text: (async function* () {
+          yield JSON.stringify({
+            summary: 'x',
+            observationType: 'unknown',
+            keyFiles: [],
+            keyTopics: [],
+            decisions: [],
+            problemsSolved: [],
+          });
+        })(),
+      };
     },
   });
   const c = new ContextCompressor();
   await c.compress({ events, sessionStartTime: Date.now() - 60_000, captureRedactionCount: 0 });
   for (let i = 0; i < 5; i++) {
-    assert.match(promptSeen, new RegExp(`CRITICAL_DIAG_${i}`), `diagnostic ${i} must survive sampling`);
+    assert.match(
+      promptSeen,
+      new RegExp(`CRITICAL_DIAG_${i}`),
+      `diagnostic ${i} must survive sampling`,
+    );
   }
 });
 
@@ -271,4 +317,3 @@ test('collectKeyFileHashes — picks the most recent contentHash per key file', 
   assert.equal(out['src/b.ts'], 'hashB');
   assert.equal(out['src/c.ts'], undefined);
 });
-

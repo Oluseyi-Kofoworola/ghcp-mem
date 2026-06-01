@@ -59,7 +59,8 @@ const MAX_QUERIES = 50;
  * Caller can override via `max` (used by tests).
  */
 export function buildSelfQueries(sessions: CompressedSession[], max?: number): EvalQuery[] {
-  const target = max ?? Math.max(MIN_QUERIES, Math.min(MAX_QUERIES, Math.floor(sessions.length / 2)));
+  const target =
+    max ?? Math.max(MIN_QUERIES, Math.min(MAX_QUERIES, Math.floor(sessions.length / 2)));
   const queries: EvalQuery[] = [];
   for (const s of sessions.slice(0, target)) {
     const topic = (s.keyTopics[0] || s.problemsSolved[0] || s.decisions[0] || '').trim();
@@ -85,11 +86,11 @@ function keywordOnlyRun(store: ContextStore, query: string, limit: number): Comp
   const all = store.getAllSessions();
   const avgDocLen = computeAvgDocLen(all);
   return all
-    .map(s => ({ s, score: keywordScore(s, terms, wsId, avgDocLen) }))
-    .filter(e => e.score > 0)
+    .map((s) => ({ s, score: keywordScore(s, terms, wsId, avgDocLen) }))
+    .filter((e) => e.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(e => e.s);
+    .map((e) => e.s);
 }
 
 function recallAtK(top: CompressedSession[], relevant: Set<string>, k: number): number {
@@ -99,7 +100,10 @@ function recallAtK(top: CompressedSession[], relevant: Set<string>, k: number): 
   return hit / Math.min(relevant.size, k);
 }
 
-function reciprocalRank(top: CompressedSession[], relevant: Set<string>): { mrr: number; rank: number | null } {
+function reciprocalRank(
+  top: CompressedSession[],
+  relevant: Set<string>,
+): { mrr: number; rank: number | null } {
   for (let i = 0; i < top.length; i++) {
     if (relevant.has(top[i].id)) return { mrr: 1 / (i + 1), rank: i + 1 };
   }
@@ -179,9 +183,11 @@ export async function runGoldEval(store: ContextStore, queries: EvalQuery[]): Pr
       generatedAt: new Date().toISOString(),
     };
   }
-  runs.push(await evalRun('keyword-only', queries, q => keywordOnlyRun(store, q, 20)));
-  runs.push(await evalRun('hybrid (default)', queries, q => store.search(q, filters, 20)));
-  runs.push(await evalRun('hybrid + freshness', queries, q => store.searchWithEmbedding(q, filters, 20)));
+  runs.push(await evalRun('keyword-only', queries, (q) => keywordOnlyRun(store, q, 20)));
+  runs.push(await evalRun('hybrid (default)', queries, (q) => store.search(q, filters, 20)));
+  runs.push(
+    await evalRun('hybrid + freshness', queries, (q) => store.searchWithEmbedding(q, filters, 20)),
+  );
   return {
     totalSessions: all.length,
     totalQueries: queries.length,
@@ -203,9 +209,13 @@ export async function runEvalSuite(store: ContextStore): Promise<EvalReport> {
   const runs: EvalRunStats[] = [];
 
   if (all.length >= 3 && queries.length > 0) {
-    runs.push(await evalRun('keyword-only', queries, q => keywordOnlyRun(store, q, 20)));
-    runs.push(await evalRun('hybrid (default)', queries, q => store.search(q, filters, 20)));
-    runs.push(await evalRun('hybrid + freshness', queries, q => store.searchWithEmbedding(q, filters, 20)));
+    runs.push(await evalRun('keyword-only', queries, (q) => keywordOnlyRun(store, q, 20)));
+    runs.push(await evalRun('hybrid (default)', queries, (q) => store.search(q, filters, 20)));
+    runs.push(
+      await evalRun('hybrid + freshness', queries, (q) =>
+        store.searchWithEmbedding(q, filters, 20),
+      ),
+    );
   }
 
   return {
@@ -228,13 +238,17 @@ export function formatEvalReport(r: EvalReport): string {
   lines.push(`- k: ${r.k}`);
   lines.push('');
   if (r.runs.length === 0) {
-    lines.push('_Not enough sessions or queries to run an evaluation (need ≥3 sessions with topics)._');
+    lines.push(
+      '_Not enough sessions or queries to run an evaluation (need ≥3 sessions with topics)._',
+    );
     return lines.join('\n');
   }
   lines.push('| Config | Recall@k | MRR | nDCG@k |');
   lines.push('| --- | ---:| ---:| ---:|');
   for (const run of r.runs) {
-    lines.push(`| ${run.label} | ${run.recall.toFixed(3)} | ${run.mrr.toFixed(3)} | ${run.ndcg.toFixed(3)} |`);
+    lines.push(
+      `| ${run.label} | ${run.recall.toFixed(3)} | ${run.mrr.toFixed(3)} | ${run.ndcg.toFixed(3)} |`,
+    );
   }
   lines.push('');
   for (const run of r.runs) {

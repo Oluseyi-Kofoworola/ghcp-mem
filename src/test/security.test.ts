@@ -65,7 +65,9 @@ test('parsePack — rejects payloads exceeding MAX_PACK_BYTES', () => {
 });
 
 test('parsePack — rejects packs with too many sessions', () => {
-  const many = Array.from({ length: MAX_SESSIONS_PER_PACK + 1 }, (_, i) => validSession({ id: uuid(i + 1) }));
+  const many = Array.from({ length: MAX_SESSIONS_PER_PACK + 1 }, (_, i) =>
+    validSession({ id: uuid(i + 1) }),
+  );
   assert.throws(() => parsePack(packEnvelope(many)), /exceeds the .* per-pack limit/);
 });
 
@@ -165,9 +167,18 @@ test('shell-inj — git ref regex rejects semicolons / pipes / backticks', () =>
 
 test('shell-inj — git ref regex accepts real-world git ref shapes', () => {
   for (const ok of [
-    'main', 'develop', 'release/1.6.0', 'feat/auth-refactor',
-    'HEAD', 'HEAD~1', 'HEAD^', 'HEAD^2', 'origin/main', 'v1.6.0',
-    'user.email@example', 'fix-issue-#42'.replace('#', '_'),  // # not allowed; underscore variant ok
+    'main',
+    'develop',
+    'release/1.6.0',
+    'feat/auth-refactor',
+    'HEAD',
+    'HEAD~1',
+    'HEAD^',
+    'HEAD^2',
+    'origin/main',
+    'v1.6.0',
+    'user.email@example',
+    'fix-issue-#42'.replace('#', '_'), // # not allowed; underscore variant ok
   ]) {
     assert.equal(GIT_REF_SAFE.test(ok), true, `must accept: ${ok}`);
   }

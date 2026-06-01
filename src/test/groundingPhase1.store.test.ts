@@ -34,7 +34,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
     rawEventCount: overrides.rawEventCount ?? 10,
     userTags: overrides.userTags ?? [],
     redactionCount: overrides.redactionCount ?? 0,
-    contentHash: overrides.contentHash ?? computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
+    contentHash:
+      overrides.contentHash ??
+      computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
   };
   if (overrides.confidence !== undefined) base.confidence = overrides.confidence;
   if (overrides.embedding !== undefined) base.embedding = overrides.embedding;
@@ -46,10 +48,12 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
 test('ContextStore.search — soft union returns matches even when one term is rare', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({
-    summary: 'auth refactor session',
-    keyTopics: ['authentication'],
-  }));
+  await store.addSession(
+    makeSession({
+      summary: 'auth refactor session',
+      keyTopics: ['authentication'],
+    }),
+  );
   // Old hard-intersection behaviour: this would return [] because the rare
   // term zeroes the set. Soft union should still surface the auth session.
   const results = store.search('auth supercalifragilistic', {}, 5);
@@ -60,12 +64,22 @@ test('ContextStore.search — match ratio rewards higher term coverage', async (
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
   const now = Date.now();
-  await store.addSession(makeSession({
-    id: 'A', summary: 'auth jwt rework', keyTopics: ['authentication', 'jwt'], endTime: now,
-  }));
-  await store.addSession(makeSession({
-    id: 'B', summary: 'auth tweak only', keyTopics: ['authentication'], endTime: now,
-  }));
+  await store.addSession(
+    makeSession({
+      id: 'A',
+      summary: 'auth jwt rework',
+      keyTopics: ['authentication', 'jwt'],
+      endTime: now,
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'B',
+      summary: 'auth tweak only',
+      keyTopics: ['authentication'],
+      endTime: now,
+    }),
+  );
   const results = store.search('auth jwt', {}, 5);
   assert.equal(results[0].id, 'A', 'session matching more query terms must rank first');
 });
@@ -75,12 +89,24 @@ test('ContextStore.search — confidence nudges ranking when other signals tie',
   const store = new ContextStore(mem);
   const now = Date.now();
   // Two sessions, identical on every retrieval signal except confidence.
-  await store.addSession(makeSession({
-    id: 'high', summary: 'auth refactor', keyTopics: ['authentication'], endTime: now, confidence: 0.95,
-  }));
-  await store.addSession(makeSession({
-    id: 'low',  summary: 'auth refactor', keyTopics: ['authentication'], endTime: now, confidence: 0.10,
-  }));
+  await store.addSession(
+    makeSession({
+      id: 'high',
+      summary: 'auth refactor',
+      keyTopics: ['authentication'],
+      endTime: now,
+      confidence: 0.95,
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'low',
+      summary: 'auth refactor',
+      keyTopics: ['authentication'],
+      endTime: now,
+      confidence: 0.1,
+    }),
+  );
   const results = store.search('auth', {}, 5);
   assert.equal(results[0].id, 'high', 'higher-confidence session must outrank lower');
 });
@@ -101,7 +127,10 @@ test('renderTrustBadge — legacy session without confidence renders empty (no b
 
 test('renderClaimList — appends evidence file paths when present', () => {
   const ev: Evidence[][] = [
-    [{ kind: 'file_edit', filePath: 'src/a.ts' }, { kind: 'file_edit', filePath: 'src/b.ts' }],
+    [
+      { kind: 'file_edit', filePath: 'src/a.ts' },
+      { kind: 'file_edit', filePath: 'src/b.ts' },
+    ],
   ];
   const out = renderClaimList(['real decision'], ev);
   assert.match(out, /real decision \[📎 src\/a\.ts, src\/b\.ts\]/);

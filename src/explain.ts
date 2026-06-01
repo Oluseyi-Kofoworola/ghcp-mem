@@ -82,19 +82,22 @@ export function explainScore(
 
   // Reconstruct the candidate pool: retracted excluded, everything else
   // visible at scoring time.
-  const candidates = all.filter(s => !s.retracted);
+  const candidates = all.filter((s) => !s.retracted);
 
   // ── keyword rank ──────────────────────────────────────────────────────────
   const avgDocLen = computeAvgDocLen(candidates);
-  const kScores = candidates.map(s => ({ id: s.id, k: keywordScore(s, terms, ctx.activeWorkspaceId, avgDocLen) }));
+  const kScores = candidates.map((s) => ({
+    id: s.id,
+    k: keywordScore(s, terms, ctx.activeWorkspaceId, avgDocLen),
+  }));
   kScores.sort((a, b) => b.k - a.k);
-  const kRank = kScores.findIndex(e => e.id === session.id);
+  const kRank = kScores.findIndex((e) => e.id === session.id);
   const kRrf = kRank >= 0 ? 1 / (60 + kRank) : 1 / (60 + 60 * 10);
   const keywordContribution = kRrf * weights.keywordWeight * learned.keyword;
 
   // ── recency rank + decay ──────────────────────────────────────────────────
   const rSorted = [...candidates].sort((a, b) => b.endTime - a.endTime);
-  const rRank = rSorted.findIndex(s => s.id === session.id);
+  const rRank = rSorted.findIndex((s) => s.id === session.id);
   const rRrf = rRank >= 0 ? 1 / (60 + rRank) : 1 / (60 + 60 * 10);
   const HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000;
   const ageMs = Math.max(0, Date.now() - session.endTime);
@@ -119,7 +122,9 @@ export function explainScore(
       ...session.decisions,
       ...session.problemsSolved,
       ...session.userTags,
-    ].join(' ').toLowerCase();
+    ]
+      .join(' ')
+      .toLowerCase();
     for (const t of termsArr) if (sessText.includes(t)) termMatchCount++;
   }
   const matchRatio = terms.size > 0 ? termMatchCount / terms.size : 0;
@@ -130,10 +135,10 @@ export function explainScore(
   const confBoost = (confValue - 0.5) * 0.1 * learned.confidence;
 
   // ── intent-driven boosts ──────────────────────────────────────────────────
-  const decisionBoost = (weights.decisionBoost > 0 && session.decisions.length > 0)
-    ? weights.decisionBoost : 0;
-  const problemBoost = (weights.problemBoost > 0 && session.problemsSolved.length > 0)
-    ? weights.problemBoost : 0;
+  const decisionBoost =
+    weights.decisionBoost > 0 && session.decisions.length > 0 ? weights.decisionBoost : 0;
+  const problemBoost =
+    weights.problemBoost > 0 && session.problemsSolved.length > 0 ? weights.problemBoost : 0;
 
   // ── supersession penalty ──────────────────────────────────────────────────
   const supersededPenalty = session.supersededBy ? -0.3 : 0;
@@ -155,35 +160,69 @@ export function explainScore(
   const feedback = feedbackValue * 0.05 * learned.feedback;
 
   const contributions: ScoreContribution[] = [
-    { label: 'keyword',       value: keywordContribution,
-      detail: `rank ${kRank + 1}/${candidates.length}${learned.keyword !== 1 ? `, learned ×${learned.keyword.toFixed(2)}` : ''}${weights.keywordWeight !== 1 ? `, intent ×${weights.keywordWeight.toFixed(2)}` : ''}` },
-    { label: 'recency',       value: decayContribution,
-      detail: `7-day half-life${weights.recencyMultiplier !== 1 ? `, intent ×${weights.recencyMultiplier.toFixed(1)}` : ''}${learned.recency !== 1 ? `, learned ×${learned.recency.toFixed(2)}` : ''}` },
-    { label: 'workspace',     value: wsBoost,
-      detail: wsBoost > 0 ? 'matches active workspace' : 'different workspace' },
-    { label: 'match-ratio',   value: matchBoost,
-      detail: `${termMatchCount} of ${terms.size} query terms` },
-    { label: 'confidence',    value: confBoost,
-      detail: `effective ${confValue.toFixed(2)}${learned.confidence !== 1 ? `, learned ×${learned.confidence.toFixed(2)}` : ''}` },
-    { label: 'decision-boost', value: decisionBoost,
-      detail: decisionBoost > 0 ? `intent=${intent}, has decisions` : '—' },
-    { label: 'problem-boost',  value: problemBoost,
-      detail: problemBoost > 0 ? `intent=${intent}, has problems` : '—' },
-    { label: 'reinforcement', value: reinforcement,
-      detail: `${retrieved} retrievals${learned.reinforcement !== 1 ? `, learned ×${learned.reinforcement.toFixed(2)}` : ''}` },
-    { label: 'feedback',      value: feedback,
-      detail: `${accepted} accepts − ${rejected} rejects${learned.feedback !== 1 ? `, learned ×${learned.feedback.toFixed(2)}` : ''}` },
-    { label: 'superseded',    value: supersededPenalty,
-      detail: supersededPenalty < 0 ? `superseded by ${session.supersededBy!.substring(0, 8)}` : 'live' },
+    {
+      label: 'keyword',
+      value: keywordContribution,
+      detail: `rank ${kRank + 1}/${candidates.length}${learned.keyword !== 1 ? `, learned ×${learned.keyword.toFixed(2)}` : ''}${weights.keywordWeight !== 1 ? `, intent ×${weights.keywordWeight.toFixed(2)}` : ''}`,
+    },
+    {
+      label: 'recency',
+      value: decayContribution,
+      detail: `7-day half-life${weights.recencyMultiplier !== 1 ? `, intent ×${weights.recencyMultiplier.toFixed(1)}` : ''}${learned.recency !== 1 ? `, learned ×${learned.recency.toFixed(2)}` : ''}`,
+    },
+    {
+      label: 'workspace',
+      value: wsBoost,
+      detail: wsBoost > 0 ? 'matches active workspace' : 'different workspace',
+    },
+    {
+      label: 'match-ratio',
+      value: matchBoost,
+      detail: `${termMatchCount} of ${terms.size} query terms`,
+    },
+    {
+      label: 'confidence',
+      value: confBoost,
+      detail: `effective ${confValue.toFixed(2)}${learned.confidence !== 1 ? `, learned ×${learned.confidence.toFixed(2)}` : ''}`,
+    },
+    {
+      label: 'decision-boost',
+      value: decisionBoost,
+      detail: decisionBoost > 0 ? `intent=${intent}, has decisions` : '—',
+    },
+    {
+      label: 'problem-boost',
+      value: problemBoost,
+      detail: problemBoost > 0 ? `intent=${intent}, has problems` : '—',
+    },
+    {
+      label: 'reinforcement',
+      value: reinforcement,
+      detail: `${retrieved} retrievals${learned.reinforcement !== 1 ? `, learned ×${learned.reinforcement.toFixed(2)}` : ''}`,
+    },
+    {
+      label: 'feedback',
+      value: feedback,
+      detail: `${accepted} accepts − ${rejected} rejects${learned.feedback !== 1 ? `, learned ×${learned.feedback.toFixed(2)}` : ''}`,
+    },
+    {
+      label: 'superseded',
+      value: supersededPenalty,
+      detail:
+        supersededPenalty < 0 ? `superseded by ${session.supersededBy!.substring(0, 8)}` : 'live',
+    },
   ];
 
   const total = contributions.reduce((acc, c) => acc + c.value, 0);
 
   // Final rank within the pool — compute by scoring everyone once.
   const fullyScored = candidates
-    .map(s => ({ id: s.id, score: scoreOne(s, terms, ctx, weights, learned, candidates, avgDocLen) }))
+    .map((s) => ({
+      id: s.id,
+      score: scoreOne(s, terms, ctx, weights, learned, candidates, avgDocLen),
+    }))
     .sort((a, b) => b.score - a.score);
-  const rank = fullyScored.findIndex(x => x.id === session.id) + 1;
+  const rank = fullyScored.findIndex((x) => x.id === session.id) + 1;
 
   return {
     sessionId: session.id,
@@ -206,35 +245,68 @@ function scoreOne(
   candidates: CompressedSession[],
   avgDocLen: number,
 ): number {
-  const kScores = candidates.map(c => ({ id: c.id, k: keywordScore(c, terms, ctx.activeWorkspaceId, avgDocLen) }));
+  const kScores = candidates.map((c) => ({
+    id: c.id,
+    k: keywordScore(c, terms, ctx.activeWorkspaceId, avgDocLen),
+  }));
   kScores.sort((a, b) => b.k - a.k);
-  const kRank = kScores.findIndex(e => e.id === s.id);
+  const kRank = kScores.findIndex((e) => e.id === s.id);
   const kRrf = kRank >= 0 ? 1 / (60 + kRank) : 1 / (60 + 60 * 10);
   const keywordC = kRrf * weights.keywordWeight * learned.keyword;
   const rSorted = [...candidates].sort((a, b) => b.endTime - a.endTime);
-  const rRank = rSorted.findIndex(c => c.id === s.id);
+  const rRank = rSorted.findIndex((c) => c.id === s.id);
   const rRrf = rRank >= 0 ? 1 / (60 + rRank) : 1 / (60 + 60 * 10);
   const ageMs = Math.max(0, Date.now() - s.endTime);
-  const decay = Math.pow(2, -ageMs / (7 * 24 * 60 * 60 * 1000)) * 0.3 * weights.recencyMultiplier * learned.recency;
+  const decay =
+    Math.pow(2, -ageMs / (7 * 24 * 60 * 60 * 1000)) *
+    0.3 *
+    weights.recencyMultiplier *
+    learned.recency;
   const wsBoost = ctx.activeWorkspaceId && s.workspaceId === ctx.activeWorkspaceId ? 0.15 : 0;
   let termMatchCount = 0;
   if (terms.size > 0) {
-    const text = [s.summary, ...s.keyFiles, ...s.keyTopics, ...s.decisions, ...s.problemsSolved, ...s.userTags].join(' ').toLowerCase();
+    const text = [
+      s.summary,
+      ...s.keyFiles,
+      ...s.keyTopics,
+      ...s.decisions,
+      ...s.problemsSolved,
+      ...s.userTags,
+    ]
+      .join(' ')
+      .toLowerCase();
     for (const t of terms) if (text.includes(t)) termMatchCount++;
   }
   const matchBoost = (terms.size > 0 ? termMatchCount / terms.size : 0) * 0.25;
   const confBoost = ((effectiveConfidence(s) ?? 0.5) - 0.5) * 0.1 * learned.confidence;
-  const decisionBoost = (weights.decisionBoost > 0 && s.decisions.length > 0) ? weights.decisionBoost : 0;
-  const problemBoost = (weights.problemBoost > 0 && s.problemsSolved.length > 0) ? weights.problemBoost : 0;
+  const decisionBoost =
+    weights.decisionBoost > 0 && s.decisions.length > 0 ? weights.decisionBoost : 0;
+  const problemBoost =
+    weights.problemBoost > 0 && s.problemsSolved.length > 0 ? weights.problemBoost : 0;
   const supersededPenalty = s.supersededBy ? -0.3 : 0;
   let maxR = 1;
   for (const c of candidates) {
     const r = c.usage?.retrieved ?? 0;
     if (r > maxR) maxR = r;
   }
-  const reinforcement = Math.log(1 + (s.usage?.retrieved ?? 0)) / (Math.log(1 + maxR) || 1) * 0.1 * learned.reinforcement;
+  const reinforcement =
+    (Math.log(1 + (s.usage?.retrieved ?? 0)) / (Math.log(1 + maxR) || 1)) *
+    0.1 *
+    learned.reinforcement;
   const feedback = ((s.usage?.accepted ?? 0) - (s.usage?.rejected ?? 0)) * 0.05 * learned.feedback;
-  return keywordC + rRrf + decay + wsBoost + matchBoost + confBoost + decisionBoost + problemBoost + supersededPenalty + reinforcement + feedback;
+  return (
+    keywordC +
+    rRrf +
+    decay +
+    wsBoost +
+    matchBoost +
+    confBoost +
+    decisionBoost +
+    problemBoost +
+    supersededPenalty +
+    reinforcement +
+    feedback
+  );
 }
 
 /**

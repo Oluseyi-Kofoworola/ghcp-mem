@@ -2,7 +2,16 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { SessionEvent, CompressedSession, ObservationType, computeContentHash, AzureContextMeta, Evidence, FileEditData, getConfig } from './types';
+import {
+  SessionEvent,
+  CompressedSession,
+  ObservationType,
+  computeContentHash,
+  AzureContextMeta,
+  Evidence,
+  FileEditData,
+  getConfig,
+} from './types';
 import { redact } from './redactor';
 import { AzureSubsystem, inferAzureObservationType } from './azureDetect';
 import { captureAzureContext } from './azureContext';
@@ -52,9 +61,10 @@ export class ContextCompressor {
 
     // Rule-based pre-classification — stable, cheap, runs before the LM.
     const ruleType = classifyByRules(events, azureSubsystems);
-    const ruleHint = ruleType !== 'unknown'
-      ? `\n\nRULE CLASSIFIER SUGGESTS: observationType="${ruleType}". Use this unless the event log strongly indicates otherwise.`
-      : '';
+    const ruleHint =
+      ruleType !== 'unknown'
+        ? `\n\nRULE CLASSIFIER SUGGESTS: observationType="${ruleType}". Use this unless the event log strongly indicates otherwise.`
+        : '';
 
     const azureHint = azureSubsystems.length
       ? `\n\nAZURE SIGNALS DETECTED: ${azureSubsystems.join(', ')}. Prefer observationType "deployment" (azd/az CLI activity) or "infra" (Bicep/Terraform/ARM authoring) when appropriate.`
@@ -100,9 +110,27 @@ ${eventLog}`;
       }
       let session: CompressedSession | null;
       if (!model) {
-        session = this.fallbackCompress(events, sessionStartTime, workspaceId, workspaceName, captureRedactionCount, azureSubsystems, eventLogTruncated);
+        session = this.fallbackCompress(
+          events,
+          sessionStartTime,
+          workspaceId,
+          workspaceName,
+          captureRedactionCount,
+          azureSubsystems,
+          eventLogTruncated,
+        );
       } else {
-        session = await this.runCompression(model, prompt, events, sessionStartTime, workspaceId, workspaceName, captureRedactionCount, azureSubsystems, eventLogTruncated);
+        session = await this.runCompression(
+          model,
+          prompt,
+          events,
+          sessionStartTime,
+          workspaceId,
+          workspaceName,
+          captureRedactionCount,
+          azureSubsystems,
+          eventLogTruncated,
+        );
       }
       if (session) {
         for (const t of azureTags) if (!session.userTags.includes(t)) session.userTags.push(t);
@@ -111,7 +139,9 @@ ${eventLog}`;
             const az = await captureAzureContext();
             const meta: AzureContextMeta = { ...az, subsystems: azureSubsystems };
             session.azureContext = meta;
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
         // Best-effort repo-scope tagging. Mirrors GitHub agentic memory's
         // repository-specific scoping so retrieval can be partitioned later.
@@ -119,16 +149,28 @@ ${eventLog}`;
           const scope = await getRepoScope();
           session.repoScope = scope.id;
           session.repoScopeLabel = scope.label;
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
         // Stamp the git branch name so sessions can be filtered by branch.
         try {
           session.branchName = await getCurrentBranch();
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       }
       return session;
     } catch (err) {
       console.warn('[GHCP-MEM] LM compression failed:', err);
-      return this.fallbackCompress(events, sessionStartTime, workspaceId, workspaceName, captureRedactionCount, azureSubsystems, eventLogTruncated);
+      return this.fallbackCompress(
+        events,
+        sessionStartTime,
+        workspaceId,
+        workspaceName,
+        captureRedactionCount,
+        azureSubsystems,
+        eventLogTruncated,
+      );
     }
   }
 
@@ -157,7 +199,15 @@ ${eventLog}`;
 
     const parsed = this.parseResponse(responseText);
     if (!parsed) {
-      return this.fallbackCompress(events, sessionStartTime, workspaceId, workspaceName, captureRedactionCount, azureSubsystems, eventLogTruncated);
+      return this.fallbackCompress(
+        events,
+        sessionStartTime,
+        workspaceId,
+        workspaceName,
+        captureRedactionCount,
+        azureSubsystems,
+        eventLogTruncated,
+      );
     }
 
     // Defense-in-depth: redact LM output in case it echoed anything sensitive.
@@ -165,12 +215,13 @@ ${eventLog}`;
     const cfg = getConfig();
     const customRules = cfg.customRedactionRules;
     const customSensitiveEntities = cfg.customSensitiveEntities;
-    const sanitize = (s: string) => redact(s, {
-      redactSecrets: true,
-      honorPrivateTags: true,
-      customRules,
-      customSensitiveEntities,
-    }).text;
+    const sanitize = (s: string) =>
+      redact(s, {
+        redactSecrets: true,
+        honorPrivateTags: true,
+        customRules,
+        customSensitiveEntities,
+      }).text;
 
     const summary = sanitize(parsed.summary ?? '');
     const keyFiles = (parsed.keyFiles ?? []).map(sanitize);
@@ -236,7 +287,20 @@ ${eventLog}`;
   }
 
   private normalizeType(raw: unknown): ObservationType {
-    const allowed: ObservationType[] = ['feature', 'bugfix', 'refactor', 'docs', 'test', 'chore', 'research', 'config', 'security', 'deployment', 'infra', 'unknown'];
+    const allowed: ObservationType[] = [
+      'feature',
+      'bugfix',
+      'refactor',
+      'docs',
+      'test',
+      'chore',
+      'research',
+      'config',
+      'security',
+      'deployment',
+      'infra',
+      'unknown',
+    ];
     if (typeof raw === 'string' && (allowed as string[]).includes(raw)) {
       return raw as ObservationType;
     }
@@ -263,7 +327,11 @@ ${eventLog}`;
     } catch {
       const m = text.match(/\{[\s\S]*\}/);
       if (m) {
-        try { return JSON.parse(m[0]); } catch { return null; }
+        try {
+          return JSON.parse(m[0]);
+        } catch {
+          return null;
+        }
       }
       return null;
     }
@@ -278,9 +346,9 @@ ${eventLog}`;
     azureSubsystems: AzureSubsystem[] = [],
     eventLogTruncated = false,
   ): CompressedSession {
-    const fileEdits = events.filter(e => e.type === 'file_edit');
-    const diagnostics = events.filter(e => e.type === 'diagnostic_change');
-    const fileCreates = events.filter(e => e.type === 'file_create');
+    const fileEdits = events.filter((e) => e.type === 'file_edit');
+    const diagnostics = events.filter((e) => e.type === 'diagnostic_change');
+    const fileCreates = events.filter((e) => e.type === 'file_create');
 
     const files = new Set<string>();
     for (const e of events) {
@@ -332,7 +400,13 @@ ${eventLog}`;
       rawEventCount: events.length,
       userTags: [],
       redactionCount: captureRedactionCount,
-      contentHash: computeContentHash({ summary, keyFiles, keyTopics: [], decisions: [], problemsSolved: [] }),
+      contentHash: computeContentHash({
+        summary,
+        keyFiles,
+        keyTopics: [],
+        decisions: [],
+        problemsSolved: [],
+      }),
       keyFileHashes: Object.keys(keyFileHashes).length ? keyFileHashes : undefined,
       eventLogTruncated: eventLogTruncated || undefined,
       compressorMode: 'fallback',
@@ -380,9 +454,9 @@ ${eventLog}`;
 
     // Stable sort by priority then original order so output remains
     // chronological within each tier — keeps causal chains readable.
-    const tier1 = allLines.filter(l => HIGH_SIGNAL.has(l.type));
-    const tier2 = allLines.filter(l => l.type === 'file_edit');
-    const tier3 = allLines.filter(l => LOW_SIGNAL.has(l.type));
+    const tier1 = allLines.filter((l) => HIGH_SIGNAL.has(l.type));
+    const tier2 = allLines.filter((l) => l.type === 'file_edit');
+    const tier3 = allLines.filter((l) => LOW_SIGNAL.has(l.type));
 
     // For file_edit (tier2), order by change count desc so we keep the
     // most impactful edits when we have to drop some.
@@ -397,7 +471,10 @@ ${eventLog}`;
     let truncated = false;
     const pushIfFits = (entry: { idx: number; line: string }): boolean => {
       const lineBytes = entry.line.length + 1;
-      if (bytes + lineBytes > MAX) { truncated = true; return false; }
+      if (bytes + lineBytes > MAX) {
+        truncated = true;
+        return false;
+      }
       kept.push(entry);
       bytes += lineBytes;
       return true;
@@ -414,7 +491,7 @@ ${eventLog}`;
     // priority sorting was only about *which* entries survive, not how
     // they're presented.
     kept.sort((a, b) => a.idx - b.idx);
-    return { text: kept.map(k => k.line).join('\n'), truncated };
+    return { text: kept.map((k) => k.line).join('\n'), truncated };
   }
 }
 
@@ -453,18 +530,28 @@ export function buildEvidenceMap(events: SessionEvent[]): Map<string, Evidence> 
 
 function mapEventKind(t: SessionEvent['type']): Evidence['kind'] {
   switch (t) {
-    case 'file_edit': return 'file_edit';
-    case 'file_create': return 'file_create';
-    case 'file_delete': return 'file_delete';
-    case 'file_rename': return 'file_rename';
-    case 'diagnostic_change': return 'diagnostic';
-    case 'terminal_command': return 'terminal';
-    case 'git_operation': return 'git';
-    case 'task_run': return 'task';
-    case 'debug_session': return 'debug';
+    case 'file_edit':
+      return 'file_edit';
+    case 'file_create':
+      return 'file_create';
+    case 'file_delete':
+      return 'file_delete';
+    case 'file_rename':
+      return 'file_rename';
+    case 'diagnostic_change':
+      return 'diagnostic';
+    case 'terminal_command':
+      return 'terminal';
+    case 'git_operation':
+      return 'git';
+    case 'task_run':
+      return 'task';
+    case 'debug_session':
+      return 'debug';
     // file_open/file_close still need an evidence kind for the map — bucket
     // them with file_edit since that's the closest semantic neighbour.
-    default: return 'file_edit';
+    default:
+      return 'file_edit';
   }
 }
 
@@ -585,14 +672,18 @@ function formatEventLine(event: SessionEvent): string {
       if (d.snippet) line += `\n  snippet: ${d.snippet.substring(0, 100)}`;
       return line;
     }
-    case 'file_create': return `[${time}] CREATE ${(event.data as any).filePath}`;
-    case 'file_delete': return `[${time}] DELETE ${(event.data as any).filePath}`;
+    case 'file_create':
+      return `[${time}] CREATE ${(event.data as any).filePath}`;
+    case 'file_delete':
+      return `[${time}] DELETE ${(event.data as any).filePath}`;
     case 'file_rename': {
       const d = event.data as import('./types').FileLifecycleData;
       return `[${time}] RENAME ${d.oldPath} -> ${d.filePath}`;
     }
-    case 'file_open': return `[${time}] OPEN ${(event.data as any).filePath}`;
-    case 'file_close': return `[${time}] CLOSE ${(event.data as any).filePath}`;
+    case 'file_open':
+      return `[${time}] OPEN ${(event.data as any).filePath}`;
+    case 'file_close':
+      return `[${time}] CLOSE ${(event.data as any).filePath}`;
     case 'diagnostic_change': {
       const d = event.data as import('./types').DiagnosticData;
       let line = `[${time}] DIAG ${d.filePath} errors=${d.errorCount} warnings=${d.warningCount}`;
@@ -615,6 +706,7 @@ function formatEventLine(event: SessionEvent): string {
       const d = event.data as import('./types').TerminalData;
       return `[${time}] CMD ${d.command}`;
     }
-    default: return `[${time}] ${event.type}`;
+    default:
+      return `[${time}] ${event.type}`;
   }
 }

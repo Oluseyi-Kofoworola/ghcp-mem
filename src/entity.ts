@@ -79,28 +79,25 @@ export interface EntityRecord {
  * entry carries a matching `symbolId`. Symbols never match by key file alone
  * because key files are too coarse.
  */
-export function sessionTouchesEntity(
-  s: CompressedSession,
-  key: string,
-  kind: EntityKind,
-): boolean {
+export function sessionTouchesEntity(s: CompressedSession, key: string, kind: EntityKind): boolean {
   if (!key) return false;
   if (kind === 'file') {
     const normalized = key.replace(/\\/g, '/').toLowerCase();
-    return s.keyFiles.some(f =>
-      f.replace(/\\/g, '/').toLowerCase() === normalized
-      || f.replace(/\\/g, '/').toLowerCase().endsWith('/' + normalized)
-      || f.replace(/\\/g, '/').toLowerCase().endsWith(normalized),
+    return s.keyFiles.some(
+      (f) =>
+        f.replace(/\\/g, '/').toLowerCase() === normalized ||
+        f
+          .replace(/\\/g, '/')
+          .toLowerCase()
+          .endsWith('/' + normalized) ||
+        f.replace(/\\/g, '/').toLowerCase().endsWith(normalized),
     );
   }
   // symbol
   const target = key.toLowerCase();
-  const allEvidence: Evidence[][] = [
-    ...(s.decisionEvidence ?? []),
-    ...(s.problemEvidence ?? []),
-  ];
-  return allEvidence.some(evList =>
-    evList.some(ev => (ev.symbolId ?? '').toLowerCase() === target),
+  const allEvidence: Evidence[][] = [...(s.decisionEvidence ?? []), ...(s.problemEvidence ?? [])];
+  return allEvidence.some((evList) =>
+    evList.some((ev) => (ev.symbolId ?? '').toLowerCase() === target),
   );
 }
 
@@ -118,7 +115,7 @@ export function buildEntityRecord(
   // a symbol ID, otherwise treat as a file path.
   const kind: EntityKind = opts.kind ?? (key.includes('#') ? 'symbol' : 'file');
 
-  const matches = allSessions.filter(s => sessionTouchesEntity(s, key, kind));
+  const matches = allSessions.filter((s) => sessionTouchesEntity(s, key, kind));
   if (matches.length === 0) return undefined;
 
   const decisions: EntityClaim[] = [];
@@ -168,18 +165,18 @@ export function buildEntityRecord(
   const sessionsByIdLocal = new Map<string, CompressedSession>();
   for (const s of allSessions) sessionsByIdLocal.set(s.id, s);
   const liveDecisionBearing = [...matches]
-    .filter(s => !s.retracted && !s.supersededBy && s.decisions.length > 0)
+    .filter((s) => !s.retracted && !s.supersededBy && s.decisions.length > 0)
     .sort((a, b) => b.endTime - a.endTime)[0];
   const decisionLineage = liveDecisionBearing
-    ? walkSupersedesChain(liveDecisionBearing.id, sessionsByIdLocal).map(s => s.id)
+    ? walkSupersedesChain(liveDecisionBearing.id, sessionsByIdLocal).map((s) => s.id)
     : [];
 
-  const allSupersededOrRetracted = matches.every(s => s.retracted || !!s.supersededBy);
+  const allSupersededOrRetracted = matches.every((s) => s.retracted || !!s.supersededBy);
 
   const sessionsSummary = matches
     .slice()
     .sort((a, b) => b.endTime - a.endTime)
-    .map(s => ({
+    .map((s) => ({
       id: s.id,
       summary: s.summary,
       endTime: s.endTime,
@@ -246,7 +243,9 @@ export function renderEntityMarkdown(rec: EntityRecord): string {
   const kindIcon = rec.kind === 'symbol' ? '🔣' : '📄';
   lines.push(`## ${kindIcon} Entity: \`${rec.key}\``);
   lines.push('');
-  lines.push(`**Sessions:** ${rec.sessionCount} · **First seen:** ${new Date(rec.firstSeenAt).toLocaleDateString()} · **Last touched:** ${new Date(rec.lastTouchedAt).toLocaleDateString()}`);
+  lines.push(
+    `**Sessions:** ${rec.sessionCount} · **First seen:** ${new Date(rec.firstSeenAt).toLocaleDateString()} · **Last touched:** ${new Date(rec.lastTouchedAt).toLocaleDateString()}`,
+  );
   const typeBreakdown = Object.entries(rec.observationTypes)
     .sort((a, b) => b[1] - a[1])
     .map(([t, n]) => `${t}:${n}`)
@@ -254,12 +253,14 @@ export function renderEntityMarkdown(rec: EntityRecord): string {
   if (typeBreakdown) lines.push(`**Activity:** ${typeBreakdown}`);
   if (rec.allSupersededOrRetracted) {
     lines.push('');
-    lines.push('> ⚠️ Every session for this entity is retracted or superseded — treat memory as stale.');
+    lines.push(
+      '> ⚠️ Every session for this entity is retracted or superseded — treat memory as stale.',
+    );
   }
   lines.push('');
 
   if (rec.decisionLineage.length > 1) {
-    const links = rec.decisionLineage.map(id => `\`${id.substring(0, 8)}\``).join(' → ');
+    const links = rec.decisionLineage.map((id) => `\`${id.substring(0, 8)}\``).join(' → ');
     lines.push(`### 🧭 Decision lineage`);
     lines.push(links + '  *(oldest → current)*');
     lines.push('');
@@ -269,7 +270,7 @@ export function renderEntityMarkdown(rec: EntityRecord): string {
     lines.push(`### 🧠 Decisions (${rec.decisions.length})`);
     for (const d of rec.decisions) {
       const files = (d.evidence ?? [])
-        .map(e => e.filePath)
+        .map((e) => e.filePath)
         .filter((f): f is string => !!f)
         .slice(0, 2);
       const fileTail = files.length ? ` [📎 ${files.join(', ')}]` : '';
@@ -288,7 +289,7 @@ export function renderEntityMarkdown(rec: EntityRecord): string {
 
   if (rec.topTopics.length) {
     lines.push(`### 🏷 Topics`);
-    lines.push(rec.topTopics.map(t => `\`${t}\``).join(' · '));
+    lines.push(rec.topTopics.map((t) => `\`${t}\``).join(' · '));
     lines.push('');
   }
 
@@ -300,7 +301,9 @@ export function renderEntityMarkdown(rec: EntityRecord): string {
       const tags = [
         s.retracted ? '🚫 retracted' : '',
         s.supersededBy ? `⤴ superseded by \`${s.supersededBy.substring(0, 8)}\`` : '',
-      ].filter(Boolean).join(' ');
+      ]
+        .filter(Boolean)
+        .join(' ');
       lines.push(`- \`${s.id.substring(0, 8)}\` · ${ts}${conf}${tags ? ' · ' + tags : ''}`);
       lines.push(`  > ${s.summary}`);
     }

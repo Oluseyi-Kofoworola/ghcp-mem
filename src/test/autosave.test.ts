@@ -9,7 +9,10 @@ test('AutosaveTrigger — fires when event count exceeds threshold', async () =>
     eventThreshold: 5,
     minutesThreshold: 999,
     getEventCount: () => events,
-    onTrigger: async (reason) => { fired.push(reason); events = 0; },
+    onTrigger: async (reason) => {
+      fired.push(reason);
+      events = 0;
+    },
     pollIntervalMs: 5_000,
   });
   // Directly invoke the tick method to avoid real timers
@@ -25,7 +28,10 @@ test('AutosaveTrigger — fires on minutes threshold when events pending', async
     eventThreshold: 999,
     minutesThreshold: 0, // any pending event after any time
     getEventCount: () => events,
-    onTrigger: async (reason) => { fired.push(reason); events = 0; },
+    onTrigger: async (reason) => {
+      fired.push(reason);
+      events = 0;
+    },
   });
   await (trig as any).tick();
   assert.deepEqual(fired, ['minutes']);
@@ -38,7 +44,9 @@ test('AutosaveTrigger — does not fire with zero events', async () => {
     eventThreshold: 1,
     minutesThreshold: 0,
     getEventCount: () => events,
-    onTrigger: async (reason) => { fired.push(reason); },
+    onTrigger: async (reason) => {
+      fired.push(reason);
+    },
   });
   await (trig as any).tick();
   assert.deepEqual(fired, []);
@@ -51,7 +59,9 @@ test('AutosaveTrigger — notifyFlushed resets wall clock so minutes rule needs 
     eventThreshold: 999,
     minutesThreshold: 0,
     getEventCount: () => events,
-    onTrigger: async () => { firedCount++; },
+    onTrigger: async () => {
+      firedCount++;
+    },
   });
   await (trig as any).tick();
   trig.notifyFlushed();

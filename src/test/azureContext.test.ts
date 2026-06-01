@@ -14,7 +14,7 @@ type ExecFileFn = (
   file: string,
   args: string[],
   opts: object,
-  cb: (err: Error | null, stdout: string) => void
+  cb: (err: Error | null, stdout: string) => void,
 ) => { on: (event: string, cb: () => void) => void };
 
 let originalExecFile: ExecFileFn;
@@ -103,7 +103,9 @@ test('azureContext — reads default resource group from az configure', async ()
 test('azureContext — includeResources lists resource IDs', async () => {
   _resetAzureContextCache();
   const fakeAccount = JSON.stringify({ id: 'sub-1', name: 'my-sub', tenantId: 't-1' });
-  const fakeResources = JSON.stringify(['/subscriptions/sub-1/resourceGroups/rg-prod/providers/foo/bar/baz']);
+  const fakeResources = JSON.stringify([
+    '/subscriptions/sub-1/resourceGroups/rg-prod/providers/foo/bar/baz',
+  ]);
   execFileMock = makeMock({
     'account show': fakeAccount,
     'configure --list-defaults': '[]',

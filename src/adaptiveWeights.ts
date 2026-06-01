@@ -38,7 +38,13 @@
 /** Names of the signals we track and adapt. Order must stay stable. */
 export type SignalName = 'keyword' | 'recency' | 'confidence' | 'reinforcement' | 'feedback';
 
-export const SIGNALS: SignalName[] = ['keyword', 'recency', 'confidence', 'reinforcement', 'feedback'];
+export const SIGNALS: SignalName[] = [
+  'keyword',
+  'recency',
+  'confidence',
+  'reinforcement',
+  'feedback',
+];
 
 /** Hard bounds on each learned multiplier — never less than 0.75 or more than 1.25 of default. */
 export const MIN_WEIGHT = 0.75;

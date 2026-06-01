@@ -118,7 +118,9 @@ async function readGitRemote(workspaceUri: vscode.Uri): Promise<string | undefin
   // pathological inputs (the negated character class is fine for small inputs
   // but is still O(n) work the engine doesn't need to do on a 100MB file).
   if (bytes.byteLength > MAX_GIT_CONFIG_BYTES) {
-    console.warn(`[GHCP-MEM] .git/config too large (${bytes.byteLength} bytes), skipping remote detection`);
+    console.warn(
+      `[GHCP-MEM] .git/config too large (${bytes.byteLength} bytes), skipping remote detection`,
+    );
     return undefined;
   }
   const text = Buffer.from(bytes).toString('utf-8');

@@ -22,7 +22,7 @@ function mkSession(o: any = {}) {
 }
 
 test('mcpServer — TOOLS catalog exposes the full surface', () => {
-  const names = TOOLS.map(t => t.name).sort();
+  const names = TOOLS.map((t) => t.name).sort();
   assert.deepEqual(names, [
     'ghcpMem_conflicts',
     'ghcpMem_delete',
@@ -64,7 +64,7 @@ test('mcpServer — searchSessions respects type filter', () => {
     ],
   };
   const hits = searchSessions(db, '', { type: 'bugfix' }, 5);
-  assert.ok(hits.every(h => h.observationType === 'bugfix'));
+  assert.ok(hits.every((h) => h.observationType === 'bugfix'));
 });
 
 test('mcpServer — searchSessions respects sinceDays filter', () => {
@@ -77,7 +77,7 @@ test('mcpServer — searchSessions respects sinceDays filter', () => {
     ],
   };
   const hits = searchSessions(db, '', { sinceDays: 7 }, 5);
-  assert.ok(hits.every(h => h.summary !== 'old'));
+  assert.ok(hits.every((h) => h.summary !== 'old'));
 });
 
 test('mcpServer — timelineSessions returns most recent first', () => {

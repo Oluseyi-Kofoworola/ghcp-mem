@@ -33,8 +33,17 @@ const ROOT = path.resolve(__dirname, '..');
 const EXT_BUNDLE = path.join(ROOT, 'out', 'extension.js');
 const MCP_BUNDLE = path.join(ROOT, 'out', 'mcpServer.js');
 
-function exists(p) { try { fs.accessSync(p); return true; } catch { return false; } }
-function kb(n) { return (n / 1024).toFixed(1); }
+function exists(p) {
+  try {
+    fs.accessSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function kb(n) {
+  return (n / 1024).toFixed(1);
+}
 
 if (!exists(EXT_BUNDLE)) {
   console.error(`missing ${EXT_BUNDLE} — run 'npm run bundle:prod' first`);
@@ -121,8 +130,8 @@ async function measureStore(n) {
 
 (async () => {
   const heapBefore = process.memoryUsage().heapUsed;
-  const r100   = await measureStore(100);
-  const r1000  = await measureStore(1000);
+  const r100 = await measureStore(100);
+  const r1000 = await measureStore(1000);
   const r10000 = await measureStore(10000);
   const heapAfter = process.memoryUsage().heapUsed;
   const heapDelta = heapAfter - heapBefore;
@@ -135,11 +144,19 @@ async function measureStore(n) {
   console.log(`| Bundle size — \`out/mcpServer.js\` | **${kb(mcpSize)} KB** |`);
   console.log(`| Parse time — \`extension.js\` (best of 4) | **${extParseMs.toFixed(2)} ms** |`);
   console.log(`| Parse time — \`mcpServer.js\` (best of 4) | **${mcpParseMs.toFixed(2)} ms** |`);
-  console.log(`| Store load + index rebuild @ 100 sessions | **${r100.constructMs.toFixed(2)} ms** |`);
-  console.log(`| Store load + index rebuild @ 1 000 sessions | **${r1000.constructMs.toFixed(2)} ms** |`);
-  console.log(`| Store load + index rebuild @ 10 000 sessions | **${r10000.constructMs.toFixed(2)} ms** |`);
+  console.log(
+    `| Store load + index rebuild @ 100 sessions | **${r100.constructMs.toFixed(2)} ms** |`,
+  );
+  console.log(
+    `| Store load + index rebuild @ 1 000 sessions | **${r1000.constructMs.toFixed(2)} ms** |`,
+  );
+  console.log(
+    `| Store load + index rebuild @ 10 000 sessions | **${r10000.constructMs.toFixed(2)} ms** |`,
+  );
   console.log(`| First search @ 10 000 sessions | **${r10000.firstQueryMs.toFixed(2)} ms** |`);
-  console.log(`| Heap delta across all measurements | **${(heapDelta / 1024 / 1024).toFixed(1)} MB** |`);
+  console.log(
+    `| Heap delta across all measurements | **${(heapDelta / 1024 / 1024).toFixed(1)} MB** |`,
+  );
   console.log('');
   console.log(`> Measured on: ${process.platform} ${process.arch}, Node ${process.version}`);
   console.log(`> Reproduce: \`npm run bundle:prod && node scripts/measure-activation.js\``);

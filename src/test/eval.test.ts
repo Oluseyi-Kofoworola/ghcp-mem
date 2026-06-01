@@ -36,7 +36,7 @@ test('buildSelfQueries: derives query strings from session topics', () => {
   const qs = buildSelfQueries(sessions);
   // Three sessions have something usable; the 4th has nothing.
   assert.equal(qs.length, 3);
-  assert.deepEqual(qs.map(q => q.relevant).flat(), ['a', 'b', 'c']);
+  assert.deepEqual(qs.map((q) => q.relevant).flat(), ['a', 'b', 'c']);
 });
 
 test('formatEvalReport: empty runs produces sane message', () => {
@@ -63,11 +63,13 @@ test('runEvalSuite: runs all three configurations with enough sessions', async (
   (vscode.workspace as any).workspaceFolders = undefined;
   const store = new ContextStore(new (vscode as any).InMemoryMemento(), vscode.Uri.file('/tmp'));
   for (let i = 0; i < 5; i++) {
-    await store.addSession(makeSession({
-      id: `s${i}`,
-      summary: `Session ${i} discussing topic ${i}`,
-      keyTopics: [`topic-marker-${i}`],
-    }));
+    await store.addSession(
+      makeSession({
+        id: `s${i}`,
+        summary: `Session ${i} discussing topic ${i}`,
+        keyTopics: [`topic-marker-${i}`],
+      }),
+    );
   }
   const r = await runEvalSuite(store);
   assert.equal(r.runs.length, 3);

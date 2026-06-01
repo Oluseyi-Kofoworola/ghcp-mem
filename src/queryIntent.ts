@@ -45,7 +45,8 @@ const RECENT_PATTERNS: RegExp[] = [
  * snake_case, and file-path-like tokens as evidence of an entity-focused
  * query.
  */
-const IDENTIFIER_RE = /\b([a-zA-Z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]+|[a-z]+[_][a-z0-9_]+|[\w./-]*\.[a-z]{1,4})\b/;
+const IDENTIFIER_RE =
+  /\b([a-zA-Z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]+|[a-z]+[_][a-z0-9_]+|[\w./-]*\.[a-z]{1,4})\b/;
 
 export function classifyIntent(query: string): QueryIntent {
   const q = (query ?? '').trim();

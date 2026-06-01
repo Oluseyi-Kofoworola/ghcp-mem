@@ -2,7 +2,11 @@ import * as vscode from 'vscode';
 import { CompressedSession, ContextDatabase, ObservationType, getConfig } from './types';
 import { cosineSim, EmbeddingFn } from './embeddings';
 import { redact } from './redactor';
-import { extractTerms as sharedExtractTerms, keywordScore as sharedKeywordScore, computeAvgDocLen } from './searchCore';
+import {
+  extractTerms as sharedExtractTerms,
+  keywordScore as sharedKeywordScore,
+  computeAvgDocLen,
+} from './searchCore';
 import { validateSessions } from './validator';
 import { getRepoScopeSync } from './repoScope';
 import { aggregateTokenSavings } from './savings';
@@ -10,7 +14,13 @@ import { classifyIntent, intentWeights } from './queryIntent';
 import { expandQuery } from './queryExpansion';
 import { effectiveConfidence } from './decay';
 import { walkSupersedesChain } from './entity';
-import { Snippet, snippetsFromSession, snippetScore, tokenizeSnippet, avgSnippetLen } from './snippets';
+import {
+  Snippet,
+  snippetsFromSession,
+  snippetScore,
+  tokenizeSnippet,
+  avgSnippetLen,
+} from './snippets';
 import { ConflictWarning, detectConflicts } from './conflicts';
 import {
   AdaptiveWeightsState,
@@ -32,8 +42,8 @@ const BACKUP_MIN_INTERVAL_MS = 5 * 60 * 1000;
 /** Jaccard similarity on two string arrays (case-insensitive, deduped). */
 function jaccard(a: string[], b: string[]): number {
   if (!a.length && !b.length) return 0;
-  const sa = new Set(a.map(s => s.toLowerCase()));
-  const sb = new Set(b.map(s => s.toLowerCase()));
+  const sa = new Set(a.map((s) => s.toLowerCase()));
+  const sb = new Set(b.map((s) => s.toLowerCase()));
   let inter = 0;
   for (const v of sa) if (sb.has(v)) inter++;
   const union = sa.size + sb.size - inter;
@@ -102,7 +112,9 @@ export class ContextStore implements vscode.Disposable {
       if (stored && stored.weights) {
         this.adaptiveState = stored;
       }
-    } catch { /* keep empty state */ }
+    } catch {
+      /* keep empty state */
+    }
   }
 
   /** Wire in a (possibly async) embedding function once the API is available. */
@@ -131,7 +143,7 @@ export class ContextStore implements vscode.Disposable {
     // Content-hash dedup — if an identical-content session already exists,
     // merge tags + bump endTime instead of creating a new row.
     if (session.contentHash) {
-      const dup = this.db.sessions.find(s => s.contentHash === session.contentHash);
+      const dup = this.db.sessions.find((s) => s.contentHash === session.contentHash);
       if (dup) {
         dup.endTime = Math.max(dup.endTime, session.endTime);
         dup.rawEventCount += session.rawEventCount;
@@ -158,19 +170,30 @@ export class ContextStore implements vscode.Disposable {
     // Best-effort embedding — runs async after the session is indexed, so
     // it never blocks persistence and failures don't surface to users.
     if (!session.embedding && this.embedder) {
-      const text = [session.summary, ...session.keyTopics, ...session.keyFiles, ...session.decisions, ...session.problemsSolved].join(' ');
-      this.embedder(text).then(vec => {
-        if (vec) {
-          session.embedding = vec;
-          this.globalState.update(DB_KEY, this.db).then(undefined, () => {});
-        }
-      }).catch(() => {});
+      const text = [
+        session.summary,
+        ...session.keyTopics,
+        ...session.keyFiles,
+        ...session.decisions,
+        ...session.problemsSolved,
+      ].join(' ');
+      this.embedder(text)
+        .then((vec) => {
+          if (vec) {
+            session.embedding = vec;
+            this.globalState.update(DB_KEY, this.db).then(undefined, () => {});
+          }
+        })
+        .catch(() => {});
     }
 
     this.indexSession(session);
 
     if (this.db.sessions.length > config.maxStoredSessions) {
-      const dropped = this.db.sessions.splice(0, this.db.sessions.length - config.maxStoredSessions);
+      const dropped = this.db.sessions.splice(
+        0,
+        this.db.sessions.length - config.maxStoredSessions,
+      );
       for (const d of dropped) this.removeFromIndex(d);
     }
     // Size cap is the last line of defence after count/age limits.
@@ -184,8 +207,11 @@ export class ContextStore implements vscode.Disposable {
     if (!config.retentionDays || config.retentionDays <= 0) return;
     const cutoff = Date.now() - config.retentionDays * 24 * 60 * 60 * 1000;
     const before = this.db.sessions.length;
-    this.db.sessions = this.db.sessions.filter(s => {
-      if (s.endTime < cutoff) { this.removeFromIndex(s); return false; }
+    this.db.sessions = this.db.sessions.filter((s) => {
+      if (s.endTime < cutoff) {
+        this.removeFromIndex(s);
+        return false;
+      }
       return true;
     });
     if (this.db.sessions.length !== before) {
@@ -239,18 +265,18 @@ export class ContextStore implements vscode.Disposable {
   getWorkspaceSessions(): CompressedSession[] {
     const wsId = vscode.workspace.workspaceFolders?.[0]?.uri.toString();
     if (!wsId) return [...this.db.sessions];
-    return this.db.sessions.filter(s => s.workspaceId === wsId);
+    return this.db.sessions.filter((s) => s.workspaceId === wsId);
   }
 
   /** Sessions tagged with the same repo scope as the currently open workspace. */
   getRepoSessions(repoScopeId?: string): CompressedSession[] {
     const id = repoScopeId ?? getRepoScopeSync().id;
     if (!id) return [...this.db.sessions];
-    return this.db.sessions.filter(s => s.repoScope === id);
+    return this.db.sessions.filter((s) => s.repoScope === id);
   }
 
   getById(idOrPrefix: string): CompressedSession | undefined {
-    return this.db.sessions.find(s => s.id === idOrPrefix || s.id.startsWith(idOrPrefix));
+    return this.db.sessions.find((s) => s.id === idOrPrefix || s.id.startsWith(idOrPrefix));
   }
 
   /**
@@ -283,11 +309,14 @@ export class ContextStore implements vscode.Disposable {
   }> {
     const sessionsById = new Map<string, CompressedSession>();
     for (const s of this.db.sessions) sessionsById.set(s.id, s);
-    return results.map(session => {
+    return results.map((session) => {
       const lineage = walkSupersedesChain(session.id, sessionsById);
       const symbolSet = new Set<string>();
       const fileSet = new Set<string>();
-      for (const evList of [...(session.decisionEvidence ?? []), ...(session.problemEvidence ?? [])]) {
+      for (const evList of [
+        ...(session.decisionEvidence ?? []),
+        ...(session.problemEvidence ?? []),
+      ]) {
         for (const ev of evList) {
           if (ev.symbolId) symbolSet.add(ev.symbolId);
           if (ev.filePath) fileSet.add(ev.filePath);
@@ -303,7 +332,7 @@ export class ContextStore implements vscode.Disposable {
   }
 
   async deleteSession(id: string): Promise<boolean> {
-    const i = this.db.sessions.findIndex(s => s.id === id);
+    const i = this.db.sessions.findIndex((s) => s.id === id);
     if (i === -1) return false;
     this.removeFromIndex(this.db.sessions[i]);
     this.db.sessions.splice(i, 1);
@@ -315,9 +344,9 @@ export class ContextStore implements vscode.Disposable {
   async deleteSessions(ids: string[]): Promise<number> {
     const idSet = new Set(ids);
     const before = this.db.sessions.length;
-    const toRemove = this.db.sessions.filter(s => idSet.has(s.id));
+    const toRemove = this.db.sessions.filter((s) => idSet.has(s.id));
     for (const s of toRemove) this.removeFromIndex(s);
-    this.db.sessions = this.db.sessions.filter(s => !idSet.has(s.id));
+    this.db.sessions = this.db.sessions.filter((s) => !idSet.has(s.id));
     const removed = before - this.db.sessions.length;
     if (removed > 0) await this.persist();
     return removed;
@@ -544,13 +573,13 @@ export class ContextStore implements vscode.Disposable {
   /** Phase 4: return unacknowledged conflict warnings, newest first. */
   getPendingConflicts(): ConflictWarning[] {
     return [...this.pendingConflicts]
-      .filter(w => !w.acknowledged)
+      .filter((w) => !w.acknowledged)
       .sort((a, b) => b.detectedAt - a.detectedAt);
   }
 
   /** Mark a conflict warning as acknowledged (e.g. after the user /supersedes). */
   acknowledgeConflict(newSessionId: string, reason?: string): boolean {
-    const w = this.pendingConflicts.find(x => x.newSessionId === newSessionId && !x.acknowledged);
+    const w = this.pendingConflicts.find((x) => x.newSessionId === newSessionId && !x.acknowledged);
     if (!w) return false;
     w.acknowledged = true;
     if (reason) w.acknowledgedReason = reason;
@@ -586,7 +615,12 @@ export class ContextStore implements vscode.Disposable {
    *  - Returned sessions get their `usage.retrieved` counter bumped, with
    *    throttled persistence so we don't write on every search.
    */
-  search(query: string, filters: SearchFilters = {}, limit = 10, queryEmbedding?: number[]): CompressedSession[] {
+  search(
+    query: string,
+    filters: SearchFilters = {},
+    limit = 10,
+    queryEmbedding?: number[],
+  ): CompressedSession[] {
     const baseTerms = this.extractTerms(query);
     const intent = classifyIntent(query ?? '');
     const weights = intentWeights(intent);
@@ -628,8 +662,8 @@ export class ContextStore implements vscode.Disposable {
 
     let candidates: CompressedSession[];
     if (hadAnyTerm) {
-      candidates = this.db.sessions.filter(s =>
-        termMatchCount.has(s.id) || expansionMatched.has(s.id),
+      candidates = this.db.sessions.filter(
+        (s) => termMatchCount.has(s.id) || expansionMatched.has(s.id),
       );
     } else {
       // No query → return everything (recency fusion will sort it).
@@ -638,19 +672,23 @@ export class ContextStore implements vscode.Disposable {
 
     // Filter retracted sessions — they're kept on disk for audit but never
     // surface in retrieval.
-    candidates = candidates.filter(s => !s.retracted);
+    candidates = candidates.filter((s) => !s.retracted);
 
     // Filters
-    if (filters.type) candidates = candidates.filter(s => s.observationType === filters.type);
-    if (filters.sinceTs) candidates = candidates.filter(s => s.endTime >= filters.sinceTs!);
-    if (filters.untilTs) candidates = candidates.filter(s => s.startTime <= filters.untilTs!);
-    if (filters.workspaceOnly && wsId) candidates = candidates.filter(s => s.workspaceId === wsId);
-    if (filters.tag) candidates = candidates.filter(s => s.userTags.includes(filters.tag!));
-    if (filters.repoScope) candidates = candidates.filter(s => s.repoScope === filters.repoScope);
+    if (filters.type) candidates = candidates.filter((s) => s.observationType === filters.type);
+    if (filters.sinceTs) candidates = candidates.filter((s) => s.endTime >= filters.sinceTs!);
+    if (filters.untilTs) candidates = candidates.filter((s) => s.startTime <= filters.untilTs!);
+    if (filters.workspaceOnly && wsId)
+      candidates = candidates.filter((s) => s.workspaceId === wsId);
+    if (filters.tag) candidates = candidates.filter((s) => s.userTags.includes(filters.tag!));
+    if (filters.repoScope) candidates = candidates.filter((s) => s.repoScope === filters.repoScope);
 
     // --- Rank 1: keyword score (BM25 with field weights) ---
     const avgDocLen = computeAvgDocLen(candidates);
-    const keywordScores = candidates.map(s => ({ s, score: this.keywordScore(s, terms, wsId, avgDocLen) }));
+    const keywordScores = candidates.map((s) => ({
+      s,
+      score: this.keywordScore(s, terms, wsId, avgDocLen),
+    }));
     const keywordRanked = [...keywordScores].sort((a, b) => b.score - a.score);
     const keywordRankById = new Map<string, number>();
     keywordRanked.forEach((e, i) => keywordRankById.set(e.s.id, i));
@@ -662,9 +700,9 @@ export class ContextStore implements vscode.Disposable {
 
     // --- Rank 3 (optional): embedding cosine similarity ---
     let embRankById: Map<string, number> | undefined;
-    if (queryEmbedding && candidates.some(s => s.embedding)) {
+    if (queryEmbedding && candidates.some((s) => s.embedding)) {
       const embRanked = [...candidates]
-        .map(s => ({ s, sim: cosineSim(queryEmbedding, s.embedding) }))
+        .map((s) => ({ s, sim: cosineSim(queryEmbedding, s.embedding) }))
         .sort((a, b) => b.sim - a.sim);
       embRankById = new Map();
       embRanked.forEach((e, i) => embRankById!.set(e.s.id, i));
@@ -689,7 +727,7 @@ export class ContextStore implements vscode.Disposable {
     // ranking matches the static behaviour.
     const learned = this.adaptiveState.weights ?? defaultWeights();
 
-    const fused = candidates.map(s => {
+    const fused = candidates.map((s) => {
       const kRank = keywordRankById.get(s.id) ?? K * 10;
       const rRank = recencyRankById.get(s.id) ?? K * 10;
       const kComponent = (1 / (K + kRank)) * weights.keywordWeight * learned.keyword;
@@ -719,10 +757,10 @@ export class ContextStore implements vscode.Disposable {
       const confBoost = (confValue - 0.5) * 0.1 * learned.confidence;
       // Intent-driven decision/problem boosts (decision queries lift
       // sessions with non-empty decisions, etc.).
-      const decisionBoost = (weights.decisionBoost > 0 && s.decisions.length > 0)
-        ? weights.decisionBoost : 0;
-      const problemBoost = (weights.problemBoost > 0 && s.problemsSolved.length > 0)
-        ? weights.problemBoost : 0;
+      const decisionBoost =
+        weights.decisionBoost > 0 && s.decisions.length > 0 ? weights.decisionBoost : 0;
+      const problemBoost =
+        weights.problemBoost > 0 && s.problemsSolved.length > 0 ? weights.problemBoost : 0;
       // Supersession penalty — keeps the older row visible but well below
       // its replacement.
       const supersededPenalty = s.supersededBy ? -0.3 : 0;
@@ -746,9 +784,17 @@ export class ContextStore implements vscode.Disposable {
       });
       return {
         s,
-        score: rrf + decay + wsBoost + matchBoost + confBoost
-             + decisionBoost + problemBoost + supersededPenalty
-             + reinforcement + feedback,
+        score:
+          rrf +
+          decay +
+          wsBoost +
+          matchBoost +
+          confBoost +
+          decisionBoost +
+          problemBoost +
+          supersededPenalty +
+          reinforcement +
+          feedback,
       };
     });
 
@@ -759,16 +805,18 @@ export class ContextStore implements vscode.Disposable {
     const COLLAPSE_THRESHOLD = 0.9;
     const kept: typeof fused = [];
     for (const entry of fused) {
-      const isDup = kept.some(k => jaccard(entry.s.keyTopics, k.s.keyTopics) >= COLLAPSE_THRESHOLD);
+      const isDup = kept.some(
+        (k) => jaccard(entry.s.keyTopics, k.s.keyTopics) >= COLLAPSE_THRESHOLD,
+      );
       if (!isDup) kept.push(entry);
       if (kept.length >= limit) break;
     }
-    const result = kept.map(x => x.s);
+    const result = kept.map((x) => x.s);
     // Phase 2 reinforcement: bump retrieved counters with throttled persist.
     // Only fires when the query had at least one term — empty-query "browse"
     // calls (timeline/recent) shouldn't pollute the reinforcement signal.
     if (hadAnyTerm && result.length > 0) {
-      this.bumpRetrieved(result.map(s => s.id));
+      this.bumpRetrieved(result.map((s) => s.id));
     }
     return result;
   }
@@ -778,10 +826,18 @@ export class ContextStore implements vscode.Disposable {
    * filters out sessions whose key files no longer exist in the workspace
    * (mirrors GitHub agentic memory's codebase-validation pass).
    */
-  async searchWithEmbedding(query: string, filters: SearchFilters = {}, limit = 10): Promise<CompressedSession[]> {
+  async searchWithEmbedding(
+    query: string,
+    filters: SearchFilters = {},
+    limit = 10,
+  ): Promise<CompressedSession[]> {
     let vec: number[] | undefined;
     if (this.embedder && query && query.trim()) {
-      try { vec = await this.embedder(query); } catch { /* ignore */ }
+      try {
+        vec = await this.embedder(query);
+      } catch {
+        /* ignore */
+      }
     }
     // Over-fetch so post-filtering by freshness still yields ~limit results.
     const overFetch = Math.max(limit * 3, limit + 5);
@@ -795,7 +851,10 @@ export class ContextStore implements vscode.Disposable {
    * any list — if validation is disabled or there's no workspace, returns the
    * input slice unchanged.
    */
-  async filterByFreshness(sessions: CompressedSession[], limit: number): Promise<CompressedSession[]> {
+  async filterByFreshness(
+    sessions: CompressedSession[],
+    limit: number,
+  ): Promise<CompressedSession[]> {
     const cfg = getConfig();
     if (!cfg.validateAgainstCodebase || cfg.freshnessFloor <= 0 || sessions.length === 0) {
       return sessions.slice(0, limit);
@@ -806,10 +865,14 @@ export class ContextStore implements vscode.Disposable {
       for (const s of sessions) {
         const r = results.get(s.id);
         // Missing validation (e.g. no workspace) — keep, don't penalise.
-        if (!r || r.emptyKeyFiles) { kept.push(s); }
+        if (!r || r.emptyKeyFiles) {
+          kept.push(s);
+        }
         // Use grounded freshness (drift-aware) when available, fall back to
         // plain freshness for legacy results / tests that don't populate it.
-        else if ((r.groundedFreshness ?? r.freshness) >= cfg.freshnessFloor) { kept.push(s); }
+        else if ((r.groundedFreshness ?? r.freshness) >= cfg.freshnessFloor) {
+          kept.push(s);
+        }
         if (kept.length >= limit) break;
       }
       return kept;
@@ -817,7 +880,10 @@ export class ContextStore implements vscode.Disposable {
       // Validator failure is non-fatal (we always have something to return),
       // but it indicates a real bug — surface it so the user can find it in
       // the developer console instead of silently degrading retrieval.
-      console.warn('[GHCP-MEM] filterByFreshness validator failed; returning unfiltered slice:', err);
+      console.warn(
+        '[GHCP-MEM] filterByFreshness validator failed; returning unfiltered slice:',
+        err,
+      );
       return sessions.slice(0, limit);
     }
   }
@@ -828,7 +894,7 @@ export class ContextStore implements vscode.Disposable {
     const lo = centerTs - half;
     const hi = centerTs + half;
     return [...this.db.sessions]
-      .filter(s => s.startTime >= lo && s.startTime <= hi)
+      .filter((s) => s.startTime >= lo && s.startTime <= hi)
       .sort((a, b) => a.startTime - b.startTime)
       .slice(0, limit);
   }
@@ -859,13 +925,13 @@ export class ContextStore implements vscode.Disposable {
 
     // Apply session-level filters before decomposing so we don't bother
     // building snippets for sessions we'd reject anyway.
-    let scoped = sessionPool.filter(s => !s.retracted);
-    if (filters.type) scoped = scoped.filter(s => s.observationType === filters.type);
-    if (filters.sinceTs) scoped = scoped.filter(s => s.endTime >= filters.sinceTs!);
-    if (filters.untilTs) scoped = scoped.filter(s => s.startTime <= filters.untilTs!);
-    if (filters.workspaceOnly && wsId) scoped = scoped.filter(s => s.workspaceId === wsId);
-    if (filters.tag) scoped = scoped.filter(s => s.userTags.includes(filters.tag!));
-    if (filters.repoScope) scoped = scoped.filter(s => s.repoScope === filters.repoScope);
+    let scoped = sessionPool.filter((s) => !s.retracted);
+    if (filters.type) scoped = scoped.filter((s) => s.observationType === filters.type);
+    if (filters.sinceTs) scoped = scoped.filter((s) => s.endTime >= filters.sinceTs!);
+    if (filters.untilTs) scoped = scoped.filter((s) => s.startTime <= filters.untilTs!);
+    if (filters.workspaceOnly && wsId) scoped = scoped.filter((s) => s.workspaceId === wsId);
+    if (filters.tag) scoped = scoped.filter((s) => s.userTags.includes(filters.tag!));
+    if (filters.repoScope) scoped = scoped.filter((s) => s.repoScope === filters.repoScope);
 
     const snippets: Snippet[] = [];
     for (const s of scoped) snippets.push(...snippetsFromSession(s));
@@ -874,16 +940,14 @@ export class ContextStore implements vscode.Disposable {
     const terms = tokenizeSnippet(query);
     if (terms.size === 0) {
       // No query terms → return snippets newest-first.
-      return [...snippets]
-        .sort((a, b) => b.emittedAt - a.emittedAt)
-        .slice(0, limit);
+      return [...snippets].sort((a, b) => b.emittedAt - a.emittedAt).slice(0, limit);
     }
 
     const avgDocLen = avgSnippetLen(snippets);
     const HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000;
     const now = Date.now();
     const scored = snippets
-      .map(sn => {
+      .map((sn) => {
         const keyword = snippetScore(sn, terms, avgDocLen);
         if (keyword === 0) return undefined;
         const age = Math.max(0, now - sn.emittedAt);
@@ -897,9 +961,8 @@ export class ContextStore implements vscode.Disposable {
       .filter((e): e is { sn: Snippet; score: number } => !!e)
       .sort((a, b) => b.score - a.score || b.sn.emittedAt - a.sn.emittedAt);
 
-    return scored.slice(0, limit).map(e => e.sn);
+    return scored.slice(0, limit).map((e) => e.sn);
   }
-
 
   getRelevantSessions(query: string, maxResults?: number): CompressedSession[] {
     const config = getConfig();
@@ -943,11 +1006,11 @@ export class ContextStore implements vscode.Disposable {
     // Exclude retracted sessions and sessions superseded by a more recent
     // one. Both stay on disk for audit but we never want the auto-injected
     // brief to surface a contradicted/retracted memory.
-    workspace = workspace.filter(s => !s.retracted && !s.supersededBy);
+    workspace = workspace.filter((s) => !s.retracted && !s.supersededBy);
     if (workspace.length === 0) return [];
     const now = Date.now();
     const DAY = 86_400_000;
-    const scored = workspace.map(s => {
+    const scored = workspace.map((s) => {
       const days = Math.max(0, (now - s.startTime) / DAY);
       const recency = Math.exp(-days / 7) * 10;
       const importance =
@@ -961,7 +1024,7 @@ export class ContextStore implements vscode.Disposable {
       if (b.score !== a.score) return b.score - a.score;
       return b.s.startTime - a.s.startTime; // tie-break: newer first
     });
-    const top = scored.slice(0, count).map(x => x.s);
+    const top = scored.slice(0, count).map((x) => x.s);
     // Return oldest-first so the inject reads chronologically.
     top.sort((a, b) => a.startTime - b.startTime);
     return top;
@@ -978,9 +1041,9 @@ export class ContextStore implements vscode.Disposable {
     const wsId = vscode.workspace.workspaceFolders?.[0]?.uri.toString();
     if (!wsId) return 0;
     const before = this.db.sessions.length;
-    const toRemove = this.db.sessions.filter(s => s.workspaceId === wsId);
+    const toRemove = this.db.sessions.filter((s) => s.workspaceId === wsId);
     for (const s of toRemove) this.removeFromIndex(s);
-    this.db.sessions = this.db.sessions.filter(s => s.workspaceId !== wsId);
+    this.db.sessions = this.db.sessions.filter((s) => s.workspaceId !== wsId);
     const removed = before - this.db.sessions.length;
     if (removed > 0) {
       this.db.lastUpdated = Date.now();
@@ -997,7 +1060,10 @@ export class ContextStore implements vscode.Disposable {
     return JSON.stringify(this.db, null, 2);
   }
 
-  async importFromJson(json: string, merge = true): Promise<{ imported: number; skippedInvalid: number }> {
+  async importFromJson(
+    json: string,
+    merge = true,
+  ): Promise<{ imported: number; skippedInvalid: number }> {
     const parsed = JSON.parse(json) as ContextDatabase;
     if (!parsed || !Array.isArray(parsed.sessions)) {
       throw new Error('Invalid memory JSON format');
@@ -1006,14 +1072,17 @@ export class ContextStore implements vscode.Disposable {
       this.db.sessions = [];
       this.index.clear();
     }
-    const existingIds = new Set(this.db.sessions.map(s => s.id));
+    const existingIds = new Set(this.db.sessions.map((s) => s.id));
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     let imported = 0;
     let skippedInvalid = 0;
     const r = (txt: string) => redact(txt, { redactSecrets: true, honorPrivateTags: true }).text;
     for (const s of parsed.sessions) {
       // Skip sessions with missing or malformed IDs to prevent injection.
-      if (typeof s.id !== 'string' || !uuidRe.test(s.id)) { skippedInvalid++; continue; }
+      if (typeof s.id !== 'string' || !uuidRe.test(s.id)) {
+        skippedInvalid++;
+        continue;
+      }
       if (existingIds.has(s.id)) continue;
       // Re-run redaction on import to protect against unredacted third-party data.
       const sanitized: CompressedSession = {
@@ -1037,16 +1106,20 @@ export class ContextStore implements vscode.Disposable {
     const today = new Date();
     const isSameLocalDay = (ts: number) => {
       const d = new Date(ts);
-      return d.getFullYear() === today.getFullYear()
-        && d.getMonth() === today.getMonth()
-        && d.getDate() === today.getDate();
+      return (
+        d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate()
+      );
     };
 
-    const todaySessions = this.db.sessions.filter(s => isSameLocalDay(s.endTime));
+    const todaySessions = this.db.sessions.filter((s) => isSameLocalDay(s.endTime));
     const todaySavings = aggregateTokenSavings(todaySessions);
     const lifetimeSavings = aggregateTokenSavings(this.db.sessions);
 
-    const ratios = this.db.sessions.map(s => aggregateTokenSavings([s]).compressionRatio).filter(r => r > 1);
+    const ratios = this.db.sessions
+      .map((s) => aggregateTokenSavings([s]).compressionRatio)
+      .filter((r) => r > 1);
     const avgCompressionRatio = ratios.length
       ? Math.round((ratios.reduce((a, b) => a + b, 0) / ratios.length) * 10) / 10
       : 1;
@@ -1064,7 +1137,9 @@ export class ContextStore implements vscode.Disposable {
       avgCompressionRatio,
       totalCompactTokens: Math.round(lifetimeSavings.compactTokens),
       oldestSession: this.db.sessions.length ? this.db.sessions[0].startTime : null,
-      newestSession: this.db.sessions.length ? this.db.sessions[this.db.sessions.length - 1].endTime : null,
+      newestSession: this.db.sessions.length
+        ? this.db.sessions[this.db.sessions.length - 1].endTime
+        : null,
       totalRedactions: this.db.sessions.reduce((a, s) => a + (s.redactionCount ?? 0), 0),
     };
   }
@@ -1072,7 +1147,12 @@ export class ContextStore implements vscode.Disposable {
   // ── Internals ──
 
   /** Keyword-frequency score over weighted fields. Public-ish for tests. */
-  keywordScore(s: CompressedSession, terms: Set<string>, wsId: string | undefined, avgDocLen?: number): number {
+  keywordScore(
+    s: CompressedSession,
+    terms: Set<string>,
+    wsId: string | undefined,
+    avgDocLen?: number,
+  ): number {
     return sharedKeywordScore(s, terms, wsId, avgDocLen);
   }
 
@@ -1137,7 +1217,7 @@ export class ContextStore implements vscode.Disposable {
     // starve the extension host UI thread on large stores. We use setTimeout
     // rather than setImmediate because setImmediate is not available in the
     // VS Code web extension host (browser context).
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       const step = () => {
         const end = Math.min(i + CHUNK, sessions.length);
         for (; i < end; i++) this.indexSession(sessions[i]);
@@ -1190,13 +1270,21 @@ export class ContextStore implements vscode.Disposable {
       const dir = path.join(os.homedir(), '.ghcp-mem');
       await fs.mkdir(dir, { recursive: true });
       // Restrict directory to owner-only on creation (best-effort on non-POSIX).
-      try { await fs.chmod(dir, 0o700); } catch { /* ignore on Windows */ }
+      try {
+        await fs.chmod(dir, 0o700);
+      } catch {
+        /* ignore on Windows */
+      }
       const finalPath = path.join(dir, 'sessions.json');
       const tmpPath = `${finalPath}.${process.pid}.tmp`;
       await fs.writeFile(tmpPath, JSON.stringify(this.db), { encoding: 'utf8', mode: 0o600 });
       await fs.rename(tmpPath, finalPath);
       // Ensure permissions if the file already existed with wrong mode.
-      try { await fs.chmod(finalPath, 0o600); } catch { /* ignore on Windows */ }
+      try {
+        await fs.chmod(finalPath, 0o600);
+      } catch {
+        /* ignore on Windows */
+      }
     } catch {
       // ignore
     }
@@ -1259,13 +1347,15 @@ export class ContextStore implements vscode.Disposable {
     }
     // Re-run redaction on restore — consistent with importFromJson and importPack.
     const r = (txt: string) => redact(txt, { redactSecrets: true, honorPrivateTags: true }).text;
-    const sanitized = parsed.sessions.map((s): CompressedSession => ({
-      ...s,
-      summary: r(s.summary),
-      decisions: (s.decisions ?? []).map(r),
-      problemsSolved: (s.problemsSolved ?? []).map(r),
-      keyTopics: (s.keyTopics ?? []).map(r),
-    }));
+    const sanitized = parsed.sessions.map(
+      (s): CompressedSession => ({
+        ...s,
+        summary: r(s.summary),
+        decisions: (s.decisions ?? []).map(r),
+        problemsSolved: (s.problemsSolved ?? []).map(r),
+        keyTopics: (s.keyTopics ?? []).map(r),
+      }),
+    );
     this.db = { version: DB_VERSION, sessions: sanitized, lastUpdated: Date.now() };
     await this.rebuildIndexAsync();
     await this.globalState.update(DB_KEY, this.db);

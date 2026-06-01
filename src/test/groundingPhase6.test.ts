@@ -32,7 +32,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
     rawEventCount: overrides.rawEventCount ?? 10,
     userTags: overrides.userTags ?? [],
     redactionCount: overrides.redactionCount ?? 0,
-    contentHash: overrides.contentHash ?? computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
+    contentHash:
+      overrides.contentHash ??
+      computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
   };
   if (overrides.confidence !== undefined) base.confidence = overrides.confidence;
   if (overrides.supersedes !== undefined) base.supersedes = overrides.supersedes;
@@ -47,22 +49,36 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
 
 test('explainScore — covers every signal contribution', () => {
   const target = makeSession({
-    id: 'X', summary: 'auth jwt rework',
+    id: 'X',
+    summary: 'auth jwt rework',
     keyTopics: ['authentication', 'jwt'],
     decisions: ['use bcrypt cost 12'],
     confidence: 0.85,
   });
   const e = explainScore(target, 'auth jwt', { allSessions: [target] });
-  const labels = e.contributions.map(c => c.label);
-  for (const expected of ['keyword', 'recency', 'workspace', 'match-ratio', 'confidence', 'decision-boost', 'problem-boost', 'reinforcement', 'feedback', 'superseded']) {
+  const labels = e.contributions.map((c) => c.label);
+  for (const expected of [
+    'keyword',
+    'recency',
+    'workspace',
+    'match-ratio',
+    'confidence',
+    'decision-boost',
+    'problem-boost',
+    'reinforcement',
+    'feedback',
+    'superseded',
+  ]) {
     assert.ok(labels.includes(expected), `missing contribution ${expected}`);
   }
 });
 
 test('explainScore — total roughly matches the score the ranker uses', () => {
   const target = makeSession({
-    id: 'A', summary: 'auth refactor',
-    keyTopics: ['authentication'], endTime: Date.now(),
+    id: 'A',
+    summary: 'auth refactor',
+    keyTopics: ['authentication'],
+    endTime: Date.now(),
   });
   const e = explainScore(target, 'auth', { allSessions: [target] });
   // With only one session, the keyword and recency RRF both = 1/60.
@@ -72,25 +88,40 @@ test('explainScore — total roughly matches the score the ranker uses', () => {
 
 test('explainScore — supersession contributes a negative penalty', () => {
   const target = makeSession({
-    id: 'A', summary: 'old auth note',
+    id: 'A',
+    summary: 'old auth note',
     supersededBy: 'B',
   });
   const other = makeSession({ id: 'B', summary: 'new auth note' });
   const e = explainScore(target, 'auth', { allSessions: [target, other] });
-  const supersededRow = e.contributions.find(c => c.label === 'superseded')!;
+  const supersededRow = e.contributions.find((c) => c.label === 'superseded')!;
   assert.equal(supersededRow.value, -0.3);
 });
 
 test('explainScore — uses learned weights when supplied', () => {
-  const target = makeSession({ id: 'A', summary: 'auth refactor', keyTopics: ['authentication'], endTime: Date.now() });
+  const target = makeSession({
+    id: 'A',
+    summary: 'auth refactor',
+    keyTopics: ['authentication'],
+    endTime: Date.now(),
+  });
   const baseline = explainScore(target, 'auth', { allSessions: [target] });
   const boosted = explainScore(target, 'auth', {
     allSessions: [target],
-    learnedWeights: { keyword: 1.25, recency: 1.0, confidence: 1.0, reinforcement: 1.0, feedback: 1.0 },
+    learnedWeights: {
+      keyword: 1.25,
+      recency: 1.0,
+      confidence: 1.0,
+      reinforcement: 1.0,
+      feedback: 1.0,
+    },
   });
-  const baseK = baseline.contributions.find(c => c.label === 'keyword')!.value;
-  const boostK = boosted.contributions.find(c => c.label === 'keyword')!.value;
-  assert.ok(boostK > baseK, `learned keyword weight should lift the keyword contribution (base ${baseK}, boosted ${boostK})`);
+  const baseK = baseline.contributions.find((c) => c.label === 'keyword')!.value;
+  const boostK = boosted.contributions.find((c) => c.label === 'keyword')!.value;
+  assert.ok(
+    boostK > baseK,
+    `learned keyword weight should lift the keyword contribution (base ${baseK}, boosted ${boostK})`,
+  );
 });
 
 test('explainScore — rank within candidate pool is reported', () => {
@@ -115,8 +146,16 @@ test('renderExplanation — produces a markdown table with all rows', () => {
 
 test('buildMermaidGraph — emits flowchart header and one node per session', () => {
   const sessions = [
-    makeSession({ id: '00000000-0000-0000-0000-aaaaaaaaaaaa', summary: 'first', observationType: 'feature' }),
-    makeSession({ id: '00000000-0000-0000-0000-bbbbbbbbbbbb', summary: 'second', observationType: 'bugfix' }),
+    makeSession({
+      id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+      summary: 'first',
+      observationType: 'feature',
+    }),
+    makeSession({
+      id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+      summary: 'second',
+      observationType: 'bugfix',
+    }),
   ];
   const md = buildMermaidGraph(sessions);
   assert.match(md, /^flowchart TB/);
@@ -126,8 +165,16 @@ test('buildMermaidGraph — emits flowchart header and one node per session', ()
 
 test('buildMermaidGraph — emits supersession edges with `supersedes` label', () => {
   const sessions = [
-    makeSession({ id: '00000000-0000-0000-0000-aaaaaaaaaaaa', summary: 'old', supersededBy: '00000000-0000-0000-0000-bbbbbbbbbbbb' }),
-    makeSession({ id: '00000000-0000-0000-0000-bbbbbbbbbbbb', summary: 'new', supersedes: '00000000-0000-0000-0000-aaaaaaaaaaaa' }),
+    makeSession({
+      id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+      summary: 'old',
+      supersededBy: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+    }),
+    makeSession({
+      id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+      summary: 'new',
+      supersedes: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+    }),
   ];
   const md = buildMermaidGraph(sessions);
   assert.match(md, /-->\|supersedes\|/);
@@ -136,7 +183,11 @@ test('buildMermaidGraph — emits supersession edges with `supersedes` label', (
 test('buildMermaidGraph — emits correction edges as dashed arrows', () => {
   const sessions = [
     makeSession({ id: '00000000-0000-0000-0000-aaaaaaaaaaaa', summary: 'orig' }),
-    makeSession({ id: '00000000-0000-0000-0000-bbbbbbbbbbbb', summary: 'fix', correctionOf: '00000000-0000-0000-0000-aaaaaaaaaaaa' }),
+    makeSession({
+      id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
+      summary: 'fix',
+      correctionOf: '00000000-0000-0000-0000-aaaaaaaaaaaa',
+    }),
   ];
   const md = buildMermaidGraph(sessions);
   assert.match(md, /-\.->\|corrected by\|/);
@@ -146,22 +197,31 @@ test('buildMermaidGraph — emits causal edge for bugfix following feature', () 
   const now = Date.now();
   const feat = makeSession({
     id: '00000000-0000-0000-0000-aaaaaaaaaaaa',
-    summary: 'feature work', observationType: 'feature',
-    keyFiles: ['src/auth.ts'], endTime: now - 86_400_000,
+    summary: 'feature work',
+    observationType: 'feature',
+    keyFiles: ['src/auth.ts'],
+    endTime: now - 86_400_000,
   });
   const fix = makeSession({
     id: '00000000-0000-0000-0000-bbbbbbbbbbbb',
-    summary: 'bug fix', observationType: 'bugfix',
-    keyFiles: ['src/auth.ts'], startTime: now, endTime: now + 1000,
+    summary: 'bug fix',
+    observationType: 'bugfix',
+    keyFiles: ['src/auth.ts'],
+    startTime: now,
+    endTime: now + 1000,
   });
   const md = buildMermaidGraph([feat, fix]);
   assert.match(md, /==>\|fixed by\|/);
 });
 
 test('buildMermaidGraph — flags retracted sessions in the node label', () => {
-  const sessions = [makeSession({
-    id: '00000000-0000-0000-0000-cccccccccccc', summary: 'gone', retracted: true,
-  })];
+  const sessions = [
+    makeSession({
+      id: '00000000-0000-0000-0000-cccccccccccc',
+      summary: 'gone',
+      retracted: true,
+    }),
+  ];
   const md = buildMermaidGraph(sessions);
   assert.match(md, /🚫/);
   assert.match(md, /stroke-dasharray/);
@@ -177,20 +237,31 @@ test('buildMermaidGraph — handles empty input gracefully', () => {
 test('ContextStore.acknowledgeConflict — dismisses pending warning with reason', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({
-    id: '00000000-0000-0000-0000-111111111111', summary: 'a',
-    decisions: ['use cookies'],
-    keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
-    endTime: Date.now() - 60_000,
-  }));
-  await store.addSession(makeSession({
-    id: '00000000-0000-0000-0000-222222222222', summary: 'b',
-    decisions: ['use JWT instead of cookies'],
-    keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
-    endTime: Date.now(),
-  }));
+  await store.addSession(
+    makeSession({
+      id: '00000000-0000-0000-0000-111111111111',
+      summary: 'a',
+      decisions: ['use cookies'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
+      endTime: Date.now() - 60_000,
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: '00000000-0000-0000-0000-222222222222',
+      summary: 'b',
+      decisions: ['use JWT instead of cookies'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
+      endTime: Date.now(),
+    }),
+  );
   assert.equal(store.getPendingConflicts().length, 1);
-  const ok = store.acknowledgeConflict('00000000-0000-0000-0000-222222222222', 'Marketing call, not a real overturn');
+  const ok = store.acknowledgeConflict(
+    '00000000-0000-0000-0000-222222222222',
+    'Marketing call, not a real overturn',
+  );
   assert.equal(ok, true);
   assert.equal(store.getPendingConflicts().length, 0);
 });

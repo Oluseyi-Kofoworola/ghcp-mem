@@ -42,7 +42,11 @@ for (const src of sources) {
   const out = join(OUT_DIR, `${name}.png`);
   const srcMtime = statSync(src).mtimeMs;
   let outMtime = 0;
-  try { outMtime = statSync(out).mtimeMs; } catch { /* missing */ }
+  try {
+    outMtime = statSync(out).mtimeMs;
+  } catch {
+    /* missing */
+  }
 
   if (outMtime >= srcMtime) {
     skipped++;
@@ -52,19 +56,30 @@ for (const src of sources) {
   execFileSync(
     'npx',
     [
-      '--yes', '@mermaid-js/mermaid-cli@10',
-      '-i', src,
-      '-o', out,
-      '-b', 'white',
-      '-s', '2',
-      '-w', '1600',
-      '-p', PUPPETEER_CFG,
+      '--yes',
+      '@mermaid-js/mermaid-cli@10',
+      '-i',
+      src,
+      '-o',
+      out,
+      '-b',
+      'white',
+      '-s',
+      '2',
+      '-w',
+      '1600',
+      '-p',
+      PUPPETEER_CFG,
     ],
     { stdio: 'inherit', cwd: ROOT },
   );
   rendered++;
 }
 
-try { rmSync(PUPPETEER_CFG); } catch { /* ignore */ }
+try {
+  rmSync(PUPPETEER_CFG);
+} catch {
+  /* ignore */
+}
 
 console.log(`rendered ${rendered}, up-to-date ${skipped} (${SRC_DIR} → ${OUT_DIR})`);

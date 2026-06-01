@@ -32,7 +32,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const args = process.argv.slice(2);
-const positional = args.filter(a => !a.startsWith('--'));
+const positional = args.filter((a) => !a.startsWith('--'));
 const NEW = positional[0];
 const noteIdx = args.indexOf('--note');
 const NOTE = noteIdx >= 0 ? args[noteIdx + 1] : null;
@@ -43,8 +43,12 @@ if (!NEW || !/^\d+\.\d+\.\d+$/.test(NEW)) {
   process.exit(2);
 }
 
-function read(rel) { return readFileSync(resolve(ROOT, rel), 'utf8'); }
-function write(rel, content) { writeFileSync(resolve(ROOT, rel), content); }
+function read(rel) {
+  return readFileSync(resolve(ROOT, rel), 'utf8');
+}
+function write(rel, content) {
+  writeFileSync(resolve(ROOT, rel), content);
+}
 
 // ── 1. package.json ────────────────────────────────────────────────
 const pkgPath = 'package.json';
@@ -78,7 +82,9 @@ const newDemo = demo.replace(/v\d+\.\d+\.\d+/g, `v${NEW}`);
 const changed = newDemo !== demo;
 write(demoPath, newDemo);
 const refs = [...newDemo.matchAll(/v\d+\.\d+\.\d+/g)].length;
-console.log(`DEMO.md: ${changed ? 'updated' : 'already current'} (${refs} citations now at v${NEW})`);
+console.log(
+  `DEMO.md: ${changed ? 'updated' : 'already current'} (${refs} citations now at v${NEW})`,
+);
 
 // ── 4. CHANGELOG.md — prepend a stub if no entry for NEW yet ───────
 const clPath = 'CHANGELOG.md';
@@ -96,7 +102,9 @@ if (cl.includes(`## [${NEW}]`)) {
     write(clPath, newCl);
     console.log(`CHANGELOG: prepended stub for [${NEW}]`);
   } else {
-    console.warn(`⚠️  CHANGELOG.md has no existing release entry — wrote stub at top, edit before committing`);
+    console.warn(
+      `⚠️  CHANGELOG.md has no existing release entry — wrote stub at top, edit before committing`,
+    );
     write(clPath, stub + cl);
   }
 }
@@ -104,8 +112,7 @@ if (cl.includes(`## [${NEW}]`)) {
 // ── 5. Run the gate to confirm we left a consistent state ──────────
 console.log('');
 try {
-  execFileSync('node', ['scripts/check-release-consistency.mjs'],
-    { cwd: ROOT, stdio: 'inherit' });
+  execFileSync('node', ['scripts/check-release-consistency.mjs'], { cwd: ROOT, stdio: 'inherit' });
 } catch {
   console.error('\n❌ bump completed but consistency check FAILED — see output above');
   process.exit(1);
@@ -119,9 +126,13 @@ console.log(`  2. Verify tests:        npm test`);
 console.log(`  3. Commit:              git commit -am 'release: v${NEW} — <one-line summary>'`);
 console.log(`  4. Tag:                 git tag -a v${NEW} -m 'Release v${NEW}'`);
 console.log(`  5. Push HEAD + tag:     git push origin main && git push origin v${NEW}`);
-console.log(`  6. Publish:             npm run package && npx vsce publish --packagePath ghcp-mem-${NEW}.vsix`);
+console.log(
+  `  6. Publish:             npm run package && npx vsce publish --packagePath ghcp-mem-${NEW}.vsix`,
+);
 console.log('');
 console.log(`Or run them in sequence:`);
-console.log(`  npm test && git commit -am 'release: v${NEW}' && git tag -a v${NEW} -m 'v${NEW}' \\`);
+console.log(
+  `  npm test && git commit -am 'release: v${NEW}' && git tag -a v${NEW} -m 'v${NEW}' \\`,
+);
 console.log(`    && git push origin main v${NEW} && npm run package \\`);
 console.log(`    && npx vsce publish --packagePath ghcp-mem-${NEW}.vsix`);

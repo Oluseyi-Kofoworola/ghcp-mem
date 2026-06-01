@@ -20,7 +20,10 @@ export async function getEmbedder(): Promise<EmbeddingFn | undefined> {
   if (!lm) return undefined;
 
   // Preferred: stable VS Code ≥1.102 API — computeEmbeddings(model, { inputs })
-  if (typeof lm.computeEmbeddings === 'function' && typeof lm.selectEmbeddingModels === 'function') {
+  if (
+    typeof lm.computeEmbeddings === 'function' &&
+    typeof lm.selectEmbeddingModels === 'function'
+  ) {
     return async (text: string) => {
       try {
         const models: any[] = await lm.selectEmbeddingModels({});
@@ -29,7 +32,9 @@ export async function getEmbedder(): Promise<EmbeddingFn | undefined> {
           const vec = res?.embeddings?.[0]?.values ?? res?.[0]?.values;
           if (Array.isArray(vec)) return vec;
         }
-      } catch { /* fall through to older shape */ }
+      } catch {
+        /* fall through to older shape */
+      }
       try {
         const res = await lm.computeEmbeddings({ inputs: [text] });
         const vec = res?.[0]?.values ?? res?.embeddings?.[0]?.values;
@@ -71,7 +76,9 @@ export async function getEmbedder(): Promise<EmbeddingFn | undefined> {
 
 export function cosineSim(a: number[] | undefined, b: number[] | undefined): number {
   if (!a || !b || a.length === 0 || a.length !== b.length) return 0;
-  let dot = 0, na = 0, nb = 0;
+  let dot = 0,
+    na = 0,
+    nb = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
     na += a[i] * a[i];

@@ -1,5 +1,17 @@
-import { SessionEvent, ObservationType, FileEditData, DiagnosticData, FileLifecycleData, TerminalData } from './types';
-import { classifyFile, classifyCommand, inferAzureObservationType, AzureSubsystem } from './azureDetect';
+import {
+  SessionEvent,
+  ObservationType,
+  FileEditData,
+  DiagnosticData,
+  FileLifecycleData,
+  TerminalData,
+} from './types';
+import {
+  classifyFile,
+  classifyCommand,
+  inferAzureObservationType,
+  AzureSubsystem,
+} from './azureDetect';
 
 /**
  * Rule-based observation pre-classifier.
@@ -84,7 +96,8 @@ export function classifyByRules(
   for (const p of editPaths) {
     const cls = classifyFile(p);
     if (!cls.isAzure) continue;
-    if (cls.subsystems.some(s => ['iac-bicep', 'iac-terraform', 'iac-arm'].includes(s))) azureInfraHits++;
+    if (cls.subsystems.some((s) => ['iac-bicep', 'iac-terraform', 'iac-arm'].includes(s)))
+      azureInfraHits++;
     else azureDeployHits++;
   }
   if (azureInfraHits > editPaths.length / 2) return 'infra';
@@ -93,8 +106,9 @@ export function classifyByRules(
   const isTest = (p: string) => /(^|\/)(__tests__\/|test\/|tests\/)|\.test\.|\.spec\./i.test(p);
   const isDoc = (p: string) => /\.md$|\.mdx$|(^|\/)docs?\//i.test(p);
   const isConfig = (p: string) =>
-    /(^|\/)(package\.json|tsconfig(\..+)?\.json|\.eslintrc.*|\.prettierrc.*|\.gitignore|\.env\..*|\.editorconfig|\.npmrc|Dockerfile|docker-compose\..*|\.ya?ml|\.toml|\.ini)$/i.test(p) ||
-    /(^|\/)\.github\//i.test(p);
+    /(^|\/)(package\.json|tsconfig(\..+)?\.json|\.eslintrc.*|\.prettierrc.*|\.gitignore|\.env\..*|\.editorconfig|\.npmrc|Dockerfile|docker-compose\..*|\.ya?ml|\.toml|\.ini)$/i.test(
+      p,
+    ) || /(^|\/)\.github\//i.test(p);
 
   const testCount = editPaths.filter(isTest).length;
   const docCount = editPaths.filter(isDoc).length;
@@ -112,7 +126,7 @@ export function classifyByRules(
   // Rule 4 — many new files and most edits are in new files → feature
   if (createdPaths.length >= 3) {
     const createdSet = new Set(createdPaths);
-    const touchedNew = editPaths.filter(p => createdSet.has(p)).length;
+    const touchedNew = editPaths.filter((p) => createdSet.has(p)).length;
     if (touchedNew >= editPaths.length * 0.6) return 'feature';
   }
 

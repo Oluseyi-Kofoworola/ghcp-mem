@@ -59,7 +59,11 @@ function readFile(rel) {
 
 function git(...args) {
   try {
-    return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    return execFileSync('git', args, {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
   } catch (err) {
     return { error: err.message || String(err), exitCode: err.status };
   }
@@ -67,7 +71,10 @@ function git(...args) {
 
 // ── 1. Source of truth ──────────────────────────────────────────────
 const pkgRaw = readFile('package.json');
-if (!pkgRaw) { report(); process.exit(1); }
+if (!pkgRaw) {
+  report();
+  process.exit(1);
+}
 const pkg = JSON.parse(pkgRaw);
 const VERSION = pkg.version;
 if (!/^\d+\.\d+\.\d+$/.test(VERSION)) {
@@ -80,16 +87,24 @@ if (!/^\d+\.\d+\.\d+$/.test(VERSION)) {
 const readme = readFile('README.md');
 if (readme) {
   const footerRe = /\*\*v(\d+\.\d+\.\d+)\*\*/g;
-  const refs = [...readme.matchAll(footerRe)].map(m => m[1]);
+  const refs = [...readme.matchAll(footerRe)].map((m) => m[1]);
   const distinct = [...new Set(refs)];
   if (distinct.length === 0) {
     fail('README footer **vX.Y.Z**', VERSION, 'no match', 'add **v$VERSION** somewhere in README');
   } else if (distinct.length > 1) {
-    fail('README footer (multiple versions cited)', VERSION, distinct.join(' / '),
-         'README cites more than one version; only one is the truth');
+    fail(
+      'README footer (multiple versions cited)',
+      VERSION,
+      distinct.join(' / '),
+      'README cites more than one version; only one is the truth',
+    );
   } else if (distinct[0] !== VERSION) {
-    fail('README footer **vX.Y.Z**', `v${VERSION}`, `v${distinct[0]}`,
-         `run: npm run bump:version -- ${VERSION}`);
+    fail(
+      'README footer **vX.Y.Z**',
+      `v${VERSION}`,
+      `v${distinct[0]}`,
+      `run: npm run bump:version -- ${VERSION}`,
+    );
   } else {
     pass('README footer', `v${distinct[0]}`);
   }
@@ -98,18 +113,29 @@ if (readme) {
 // ── 3. DEMO.md version refs ─────────────────────────────────────────
 const demo = readFile('docs/DEMO.md');
 if (demo) {
-  const demoRefs = [...demo.matchAll(/v(\d+\.\d+\.\d+)/g)].map(m => m[1]);
+  const demoRefs = [...demo.matchAll(/v(\d+\.\d+\.\d+)/g)].map((m) => m[1]);
   const demoDistinct = [...new Set(demoRefs)];
   if (demoDistinct.length === 0) {
     fail('DEMO.md version refs', VERSION, 'none', 'DEMO.md should cite the current version');
   } else if (demoDistinct.length > 1) {
-    fail('DEMO.md (multiple versions cited)', VERSION, demoDistinct.join(' / '),
-         'every version mention in DEMO.md must match package.json');
+    fail(
+      'DEMO.md (multiple versions cited)',
+      VERSION,
+      demoDistinct.join(' / '),
+      'every version mention in DEMO.md must match package.json',
+    );
   } else if (demoDistinct[0] !== VERSION) {
-    fail('DEMO.md version', `v${VERSION}`, `v${demoDistinct[0]}`,
-         `run: npm run bump:version -- ${VERSION}`);
+    fail(
+      'DEMO.md version',
+      `v${VERSION}`,
+      `v${demoDistinct[0]}`,
+      `run: npm run bump:version -- ${VERSION}`,
+    );
   } else {
-    pass('DEMO.md', `v${demoDistinct[0]} (${demoRefs.length} citation${demoRefs.length === 1 ? '' : 's'})`);
+    pass(
+      'DEMO.md',
+      `v${demoDistinct[0]} (${demoRefs.length} citation${demoRefs.length === 1 ? '' : 's'})`,
+    );
   }
 }
 
@@ -118,11 +144,19 @@ const changelog = readFile('CHANGELOG.md');
 if (changelog) {
   const top = changelog.match(/^## \[(\d+\.\d+\.\d+)\b/m);
   if (!top) {
-    fail('CHANGELOG.md latest entry', `[${VERSION}]`, 'no `## [X.Y.Z]` heading found',
-         'add a `## [' + VERSION + '] — YYYY-MM-DD` entry at the top');
+    fail(
+      'CHANGELOG.md latest entry',
+      `[${VERSION}]`,
+      'no `## [X.Y.Z]` heading found',
+      'add a `## [' + VERSION + '] — YYYY-MM-DD` entry at the top',
+    );
   } else if (top[1] !== VERSION) {
-    fail('CHANGELOG.md latest entry', `[${VERSION}]`, `[${top[1]}]`,
-         `the CHANGELOG top heading must match package.json; add a new [${VERSION}] entry`);
+    fail(
+      'CHANGELOG.md latest entry',
+      `[${VERSION}]`,
+      `[${top[1]}]`,
+      `the CHANGELOG top heading must match package.json; add a new [${VERSION}] entry`,
+    );
   } else {
     pass('CHANGELOG.md', `top entry [${top[1]}]`);
   }
@@ -135,8 +169,12 @@ if (STRICT) {
   if (typeof dirty === 'object' && dirty.error) {
     fail('git status', 'OK', dirty.error);
   } else if (dirty) {
-    fail('working tree clean', 'no uncommitted changes', dirty.split('\n').length + ' modified path(s)',
-         'commit or stash before publishing');
+    fail(
+      'working tree clean',
+      'no uncommitted changes',
+      dirty.split('\n').length + ' modified path(s)',
+      'commit or stash before publishing',
+    );
   } else {
     pass('working tree', 'clean');
   }
@@ -145,13 +183,15 @@ if (STRICT) {
   const head = git('rev-parse', 'HEAD');
   const originMain = git('rev-parse', 'origin/main');
   if (typeof head === 'object' || typeof originMain === 'object') {
-    fail('git refs', 'HEAD + origin/main resolvable', 'git error',
-         'run: git fetch origin');
+    fail('git refs', 'HEAD + origin/main resolvable', 'git error', 'run: git fetch origin');
   } else if (head !== originMain) {
     const ahead = git('rev-list', '--count', 'origin/main..main');
-    fail('HEAD pushed to origin/main', 'origin/main = HEAD',
-         `local is ${ahead} commit(s) ahead of origin/main`,
-         'push to GitHub first — Marketplace + source-of-truth must match');
+    fail(
+      'HEAD pushed to origin/main',
+      'origin/main = HEAD',
+      `local is ${ahead} commit(s) ahead of origin/main`,
+      'push to GitHub first — Marketplace + source-of-truth must match',
+    );
   } else {
     pass('HEAD pushed to origin/main', head.substring(0, 8));
   }
@@ -162,12 +202,19 @@ if (STRICT) {
   // tags, which never matches HEAD.
   const tagCommit = git('rev-parse', `v${VERSION}^{commit}`);
   if (typeof tagCommit === 'object') {
-    fail(`tag v${VERSION}`, 'exists locally', 'missing',
-         `run: git tag -a v${VERSION} -m "Release v${VERSION}"`);
+    fail(
+      `tag v${VERSION}`,
+      'exists locally',
+      'missing',
+      `run: git tag -a v${VERSION} -m "Release v${VERSION}"`,
+    );
   } else if (tagCommit !== head) {
-    fail(`tag v${VERSION}`, `points at HEAD (${head.substring(0, 8)})`,
-         `points at ${tagCommit.substring(0, 8)}`,
-         `re-tag at current HEAD: git tag -f v${VERSION}`);
+    fail(
+      `tag v${VERSION}`,
+      `points at HEAD (${head.substring(0, 8)})`,
+      `points at ${tagCommit.substring(0, 8)}`,
+      `re-tag at current HEAD: git tag -f v${VERSION}`,
+    );
   } else {
     pass(`tag v${VERSION}`, `at ${tagCommit.substring(0, 8)}`);
   }
@@ -175,11 +222,19 @@ if (STRICT) {
   // 5d. tag pushed to origin
   const remoteTag = git('ls-remote', '--tags', 'origin', `v${VERSION}`);
   if (typeof remoteTag === 'object') {
-    fail(`tag v${VERSION} on origin`, 'reachable', remoteTag.error || 'unreachable',
-         `run: git push origin v${VERSION}`);
+    fail(
+      `tag v${VERSION} on origin`,
+      'reachable',
+      remoteTag.error || 'unreachable',
+      `run: git push origin v${VERSION}`,
+    );
   } else if (!remoteTag) {
-    fail(`tag v${VERSION} on origin`, 'pushed', 'not on origin',
-         `run: git push origin v${VERSION}  (triggers release.yml → GitHub Release)`);
+    fail(
+      `tag v${VERSION} on origin`,
+      'pushed',
+      'not on origin',
+      `run: git push origin v${VERSION}  (triggers release.yml → GitHub Release)`,
+    );
   } else {
     pass(`tag v${VERSION} on origin`, 'pushed');
   }

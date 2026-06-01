@@ -51,10 +51,12 @@ export function computeHealth(sessions: CompressedSession[]): HealthScore {
     };
   }
 
-  const redacted = sessions.filter(s => (s.redactionCount ?? 0) > 0).length;
-  const typed = sessions.filter(s => s.observationType !== 'unknown').length;
-  const tagged = sessions.filter(s => (s.userTags ?? []).length > 0).length;
-  const azure = sessions.filter(s => !!s.azureContext || (s.userTags ?? []).includes('azure')).length;
+  const redacted = sessions.filter((s) => (s.redactionCount ?? 0) > 0).length;
+  const typed = sessions.filter((s) => s.observationType !== 'unknown').length;
+  const tagged = sessions.filter((s) => (s.userTags ?? []).length > 0).length;
+  const azure = sessions.filter(
+    (s) => !!s.azureContext || (s.userTags ?? []).includes('azure'),
+  ).length;
 
   const redactionCoveragePct = pct(redacted, total);
   // We still expose redactionCoveragePct for transparency, but for health we
@@ -72,28 +74,36 @@ export function computeHealth(sessions: CompressedSession[]): HealthScore {
 
   const retentionHeadroomPct = Math.max(
     0,
-    Math.min(100, 100 - Math.round((total / Math.max(1, config.maxStoredSessions || 50)) * 100))
+    Math.min(100, 100 - Math.round((total / Math.max(1, config.maxStoredSessions || 50)) * 100)),
   );
 
   const now = Date.now();
   const THIRTY_D = 30 * 24 * 60 * 60 * 1000;
-  const recent = sessions.filter(s => now - s.endTime < THIRTY_D).length;
+  const recent = sessions.filter((s) => now - s.endTime < THIRTY_D).length;
   const freshnessPct = pct(recent, total);
 
   // Weights sum to 100.
   const score = Math.round(
-    secretHygienePct * 0.20 +
+    secretHygienePct * 0.2 +
       typedPct * 0.15 +
-      taggedPct * 0.10 +
-      (100 * (1 - (total - hashes.size) / total)) * 0.20 + // "no dup" health
-      retentionHeadroomPct * 0.20 +
-      freshnessPct * 0.15
+      taggedPct * 0.1 +
+      100 * (1 - (total - hashes.size) / total) * 0.2 + // "no dup" health
+      retentionHeadroomPct * 0.2 +
+      freshnessPct * 0.15,
   );
 
-  if (redactionCoveragePct > 40) notes.push('High secret incidence detected in captured events — consider expanding excludeGlobs/private tags.');
-  if (typedPct < 60) notes.push('Many sessions are type:unknown — LM classifier may be skipped or offline.');
-  if (retentionHeadroomPct < 20) notes.push('Nearing maxStoredSessions — consider raising or tagging for retention.');
-  if (dedupRatio > 0.15) notes.push(`${Math.round(dedupRatio * 100)}% of sessions were dedup-merged — consider larger compression windows.`);
+  if (redactionCoveragePct > 40)
+    notes.push(
+      'High secret incidence detected in captured events — consider expanding excludeGlobs/private tags.',
+    );
+  if (typedPct < 60)
+    notes.push('Many sessions are type:unknown — LM classifier may be skipped or offline.');
+  if (retentionHeadroomPct < 20)
+    notes.push('Nearing maxStoredSessions — consider raising or tagging for retention.');
+  if (dedupRatio > 0.15)
+    notes.push(
+      `${Math.round(dedupRatio * 100)}% of sessions were dedup-merged — consider larger compression windows.`,
+    );
   if (recent === 0) notes.push('No sessions in the last 30 days.');
 
   return {

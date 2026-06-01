@@ -78,10 +78,8 @@ export function expandQuery(
 
   // Sort by co-occurrence desc, then by lower globalFreq (rarer = more
   // discriminative). Stable tie-break by term name for determinism.
-  scored.sort((a, b) =>
-    b.coOccur - a.coOccur ||
-    a.globalFreq - b.globalFreq ||
-    a.term.localeCompare(b.term),
+  scored.sort(
+    (a, b) => b.coOccur - a.coOccur || a.globalFreq - b.globalFreq || a.term.localeCompare(b.term),
   );
-  return scored.slice(0, maxExpansions).map(s => s.term);
+  return scored.slice(0, maxExpansions).map((s) => s.term);
 }

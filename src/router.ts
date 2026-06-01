@@ -24,10 +24,10 @@ import { classifyIntent, QueryIntent } from './queryIntent';
 
 /** Coarse high-level intent — drives which action surface we recommend. */
 export type RequestIntent =
-  | 'lookup'         // "why / what / how / who / when" question
-  | 'modify'         // explicit write/edit verb
-  | 'investigate'    // "find / locate / search / show me"
-  | 'mixed'          // combines lookup + modify
+  | 'lookup' // "why / what / how / who / when" question
+  | 'modify' // explicit write/edit verb
+  | 'investigate' // "find / locate / search / show me"
+  | 'mixed' // combines lookup + modify
   | 'unknown';
 
 /** Single suggested step. Cost is an estimate in LM tokens. */
@@ -88,9 +88,7 @@ const LOOKUP_VERBS = [
   /\b(why|what|how|when|who|which|explain|describe|show me what|tell me about)\b/i,
   /\b(rationale|decision|design choice|history)\b/i,
 ];
-const INVESTIGATE_VERBS = [
-  /\b(find|locate|search|show me where|grep|look up|where is|list)\b/i,
-];
+const INVESTIGATE_VERBS = [/\b(find|locate|search|show me where|grep|look up|where is|list)\b/i];
 
 /**
  * Coarse high-level intent classifier. Layered on top of `queryIntent`
@@ -101,9 +99,9 @@ const INVESTIGATE_VERBS = [
 export function classifyRequest(query: string): RequestIntent {
   const q = (query ?? '').trim();
   if (!q) return 'unknown';
-  const hasModify = MODIFY_VERBS.some(re => re.test(q));
-  const hasLookup = LOOKUP_VERBS.some(re => re.test(q));
-  const hasInvestigate = INVESTIGATE_VERBS.some(re => re.test(q));
+  const hasModify = MODIFY_VERBS.some((re) => re.test(q));
+  const hasLookup = LOOKUP_VERBS.some((re) => re.test(q));
+  const hasInvestigate = INVESTIGATE_VERBS.some((re) => re.test(q));
   if (hasModify && hasLookup) return 'mixed';
   if (hasModify) return 'modify';
   if (hasLookup) return 'lookup';
@@ -129,16 +127,16 @@ export function extractMentionedPaths(query: string): string[] {
 
 /** Rough per-call cost for MCP tools that return compact JSON. */
 const MCP_TOOL_TOKEN_COST: Record<string, number> = {
-  ghcpMem_search:    250,
-  ghcpMem_get:       400,
-  ghcpMem_entity:    500,
-  ghcpMem_snippets:  450,
-  ghcpMem_lineage:   350,
+  ghcpMem_search: 250,
+  ghcpMem_get: 400,
+  ghcpMem_entity: 500,
+  ghcpMem_snippets: 450,
+  ghcpMem_lineage: 350,
   ghcpMem_conflicts: 400,
-  ghcpMem_explain:   400,
-  ghcpMem_graph:     800, // mermaid graph can be larger
-  ghcpMem_recent:    300,
-  ghcpMem_timeline:  300,
+  ghcpMem_explain: 400,
+  ghcpMem_graph: 800, // mermaid graph can be larger
+  ghcpMem_recent: 300,
+  ghcpMem_timeline: 300,
 };
 
 /**
@@ -169,10 +167,11 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
 
   // Naive baseline: attach every mentioned file at full cost. This is the
   // number we'll compare against to surface the saving.
-  const naiveAttachTokens = mentioned.reduce((acc, p) => {
-    const path = p.replace(/#.*$/, ''); // strip symbol suffix
-    return acc + estimateAttachTokens(ctx.fileSizes?.[path]);
-  }, 0) || estimateAttachTokens(undefined); // assume one default-size file if no mentions
+  const naiveAttachTokens =
+    mentioned.reduce((acc, p) => {
+      const path = p.replace(/#.*$/, ''); // strip symbol suffix
+      return acc + estimateAttachTokens(ctx.fileSizes?.[path]);
+    }, 0) || estimateAttachTokens(undefined); // assume one default-size file if no mentions
 
   const actions: RouteAction[] = [];
 
@@ -180,11 +179,14 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
     actions.push({
       kind: 'attach',
       paths: mentioned.length ? mentioned : ['(file the user means)'],
-      rationale: 'MCP tools not wired up — fall back to file attach. Run `npx ghcp-mem-mcp` to enable cheaper routes.',
+      rationale:
+        'MCP tools not wired up — fall back to file attach. Run `npx ghcp-mem-mcp` to enable cheaper routes.',
       estimatedTokens: naiveAttachTokens,
     });
     return {
-      intent, queryIntent: qIntent, actions,
+      intent,
+      queryIntent: qIntent,
+      actions,
       estimatedTotalTokens: naiveAttachTokens,
       naiveAttachTokens,
       reasoning: 'No MCP server detected; recommending the attach fallback.',
@@ -194,14 +196,18 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
   switch (intent) {
     case 'lookup': {
       // Lookups: prefer the most-specific MCP tool given the queryIntent.
-      const tool = qIntent === 'decision' || qIntent === 'problem'
-        ? 'ghcpMem_snippets'
-        : (mentioned.length ? 'ghcpMem_entity' : 'ghcpMem_search');
-      const args: Record<string, unknown> = tool === 'ghcpMem_entity' && mentioned[0]
-        ? { key: mentioned[0] }
-        : { query };
+      const tool =
+        qIntent === 'decision' || qIntent === 'problem'
+          ? 'ghcpMem_snippets'
+          : mentioned.length
+            ? 'ghcpMem_entity'
+            : 'ghcpMem_search';
+      const args: Record<string, unknown> =
+        tool === 'ghcpMem_entity' && mentioned[0] ? { key: mentioned[0] } : { query };
       actions.push({
-        kind: 'mcp', tool, args,
+        kind: 'mcp',
+        tool,
+        args,
         rationale: `Lookup intent: query the memory store directly — ~${MCP_TOOL_TOKEN_COST[tool]} tokens vs ${naiveAttachTokens} for attaching ${mentioned.length || 1} file(s).`,
         estimatedTokens: MCP_TOOL_TOKEN_COST[tool] ?? 400,
       });
@@ -211,8 +217,11 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
       // Investigation: search snippets first; if the user still needs
       // source we'll attach the winning files based on those results.
       actions.push({
-        kind: 'mcp', tool: 'ghcpMem_snippets', args: { query },
-        rationale: 'Investigation intent: snippet search returns the matching decision/problem text plus the source session ID. If you then need the actual code, attach only the file(s) returned.',
+        kind: 'mcp',
+        tool: 'ghcpMem_snippets',
+        args: { query },
+        rationale:
+          'Investigation intent: snippet search returns the matching decision/problem text plus the source session ID. If you then need the actual code, attach only the file(s) returned.',
         estimatedTokens: MCP_TOOL_TOKEN_COST.ghcpMem_snippets,
       });
       break;
@@ -225,14 +234,21 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
         actions.push({
           kind: 'attach',
           paths: mentioned,
-          rationale: 'Modification intent: source required to write the change. Attach only the files explicitly mentioned, not their dependency closure.',
-          estimatedTokens: mentioned.reduce((acc, p) => acc + estimateAttachTokens(ctx.fileSizes?.[p.replace(/#.*$/, '')]), 0),
+          rationale:
+            'Modification intent: source required to write the change. Attach only the files explicitly mentioned, not their dependency closure.',
+          estimatedTokens: mentioned.reduce(
+            (acc, p) => acc + estimateAttachTokens(ctx.fileSizes?.[p.replace(/#.*$/, '')]),
+            0,
+          ),
         });
       }
       if (mentioned[0]) {
         actions.push({
-          kind: 'mcp', tool: 'ghcpMem_entity', args: { key: mentioned[0] },
-          rationale: 'Lift prior decisions about this file so the change respects past architectural choices.',
+          kind: 'mcp',
+          tool: 'ghcpMem_entity',
+          args: { key: mentioned[0] },
+          rationale:
+            'Lift prior decisions about this file so the change respects past architectural choices.',
           estimatedTokens: MCP_TOOL_TOKEN_COST.ghcpMem_entity,
         });
       }
@@ -241,15 +257,22 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
     case 'mixed': {
       // Mixed: do the lookup first (cheap), then attach.
       actions.push({
-        kind: 'mcp', tool: 'ghcpMem_search', args: { query },
-        rationale: 'Mixed intent: surface prior context cheaply first, then attach files only when the change actually requires editing them.',
+        kind: 'mcp',
+        tool: 'ghcpMem_search',
+        args: { query },
+        rationale:
+          'Mixed intent: surface prior context cheaply first, then attach files only when the change actually requires editing them.',
         estimatedTokens: MCP_TOOL_TOKEN_COST.ghcpMem_search,
       });
       if (mentioned.length) {
         actions.push({
-          kind: 'attach', paths: mentioned,
+          kind: 'attach',
+          paths: mentioned,
           rationale: 'After the lookup, attach the file(s) you intend to edit.',
-          estimatedTokens: mentioned.reduce((acc, p) => acc + estimateAttachTokens(ctx.fileSizes?.[p.replace(/#.*$/, '')]), 0),
+          estimatedTokens: mentioned.reduce(
+            (acc, p) => acc + estimateAttachTokens(ctx.fileSizes?.[p.replace(/#.*$/, '')]),
+            0,
+          ),
         });
       }
       break;
@@ -259,8 +282,11 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
       // Couldn't classify — default to the cheapest probe so the user
       // can iterate without burning the attach budget.
       actions.push({
-        kind: 'mcp', tool: 'ghcpMem_search', args: { query },
-        rationale: 'Intent unclear: try the cheap search probe first. Re-route with a more specific question once results land.',
+        kind: 'mcp',
+        tool: 'ghcpMem_search',
+        args: { query },
+        rationale:
+          'Intent unclear: try the cheap search probe first. Re-route with a more specific question once results land.',
         estimatedTokens: MCP_TOOL_TOKEN_COST.ghcpMem_search,
       });
       break;
@@ -270,12 +296,15 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
   const total = actions.reduce((acc, a) => acc + a.estimatedTokens, 0);
   const savedTokens = Math.max(0, naiveAttachTokens - total);
   const savedPct = naiveAttachTokens > 0 ? Math.round((savedTokens / naiveAttachTokens) * 100) : 0;
-  const reasoning = total < naiveAttachTokens
-    ? `Estimated ${total} tokens vs ${naiveAttachTokens} for naive attach — ~${savedPct}% saving.`
-    : `Estimated ${total} tokens (attach is the right call here — no cheaper alternative exists for ${intent} intent).`;
+  const reasoning =
+    total < naiveAttachTokens
+      ? `Estimated ${total} tokens vs ${naiveAttachTokens} for naive attach — ~${savedPct}% saving.`
+      : `Estimated ${total} tokens (attach is the right call here — no cheaper alternative exists for ${intent} intent).`;
 
   return {
-    intent, queryIntent: qIntent, actions,
+    intent,
+    queryIntent: qIntent,
+    actions,
     estimatedTotalTokens: total,
     naiveAttachTokens,
     reasoning,
@@ -294,13 +323,15 @@ export function renderRecommendation(rec: RouteRecommendation): string {
   lines.push(`> ${rec.reasoning}`);
   lines.push('');
   rec.actions.forEach((a, i) => {
-    lines.push(`**${i + 1}. ${a.kind === 'mcp' ? `🔧 MCP \`${a.tool}\`` : '📎 Attach file(s)'}** · ~${a.estimatedTokens} tokens`);
+    lines.push(
+      `**${i + 1}. ${a.kind === 'mcp' ? `🔧 MCP \`${a.tool}\`` : '📎 Attach file(s)'}** · ~${a.estimatedTokens} tokens`,
+    );
     if (a.kind === 'mcp') {
       lines.push(`   \`\`\``);
       lines.push(`   ${a.tool}(${JSON.stringify(a.args)})`);
       lines.push(`   \`\`\``);
     } else {
-      lines.push(`   ${a.paths.map(p => `\`${p}\``).join(', ')}`);
+      lines.push(`   ${a.paths.map((p) => `\`${p}\``).join(', ')}`);
     }
     lines.push(`   _${a.rationale}_`);
     lines.push('');

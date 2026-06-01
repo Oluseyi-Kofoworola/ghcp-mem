@@ -133,7 +133,7 @@ export function tokenizeSnippet(text: string): Set<string> {
       .toLowerCase()
       .replace(/[^a-z0-9\s_-]/g, ' ')
       .split(/\s+/)
-      .filter(t => t.length > 2),
+      .filter((t) => t.length > 2),
   );
 }
 

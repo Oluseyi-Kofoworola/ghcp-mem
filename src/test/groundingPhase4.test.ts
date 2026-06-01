@@ -8,22 +8,9 @@ import assert from 'node:assert/strict';
 import { InMemoryMemento } from './__mocks__/vscode';
 import { ContextStore } from '../contextStore';
 import { CompressedSession, Evidence, computeContentHash } from '../types';
-import {
-  snippetsFromSession,
-  snippetScore,
-  tokenizeSnippet,
-  avgSnippetLen,
-} from '../snippets';
-import {
-  hasContradictionMarker,
-  detectConflicts,
-  CONTRADICTION_MARKERS,
-} from '../conflicts';
-import {
-  getCausalNeighbors,
-  labelEdge,
-  CAUSAL_WINDOW_MS,
-} from '../causalGraph';
+import { snippetsFromSession, snippetScore, tokenizeSnippet, avgSnippetLen } from '../snippets';
+import { hasContradictionMarker, detectConflicts, CONTRADICTION_MARKERS } from '../conflicts';
+import { getCausalNeighbors, labelEdge, CAUSAL_WINDOW_MS } from '../causalGraph';
 
 function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSession {
   const summary = overrides.summary ?? 's';
@@ -46,7 +33,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
     rawEventCount: overrides.rawEventCount ?? 10,
     userTags: overrides.userTags ?? [],
     redactionCount: overrides.redactionCount ?? 0,
-    contentHash: overrides.contentHash ?? computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
+    contentHash:
+      overrides.contentHash ??
+      computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
   };
   if (overrides.confidence !== undefined) base.confidence = overrides.confidence;
   if (overrides.supersedes !== undefined) base.supersedes = overrides.supersedes;
@@ -70,7 +59,7 @@ test('snippetsFromSession — produces one snippet per non-empty field', () => {
   const out = snippetsFromSession(s);
   // 1 summary + 2 decisions + 1 problem + 2 topics = 6 snippets
   assert.equal(out.length, 6);
-  const kinds = out.map(x => x.kind).sort();
+  const kinds = out.map((x) => x.kind).sort();
   assert.deepEqual(kinds, ['decision', 'decision', 'problem', 'summary', 'topic', 'topic']);
   for (const sn of out) assert.equal(sn.sessionId, 'sx');
 });
@@ -96,7 +85,7 @@ test('snippetsFromSession — propagates evidence, confidence, retraction', () =
     retracted: true,
   });
   const out = snippetsFromSession(s);
-  const decisionSnip = out.find(x => x.kind === 'decision')!;
+  const decisionSnip = out.find((x) => x.kind === 'decision')!;
   assert.equal(decisionSnip.evidence?.[0].filePath, 'src/a.ts');
   assert.equal(decisionSnip.confidence, 0.91);
   assert.equal(decisionSnip.retracted, true);
@@ -113,19 +102,18 @@ test('tokenizeSnippet — drops short tokens and punctuation', () => {
 });
 
 test('snippetScore — returns 0 when no terms match', () => {
-  const sn = snippetsFromSession(makeSession({ decisions: ['use bcrypt'] }))
-    .find(x => x.kind === 'decision')!;
+  const sn = snippetsFromSession(makeSession({ decisions: ['use bcrypt'] })).find(
+    (x) => x.kind === 'decision',
+  )!;
   assert.equal(snippetScore(sn, new Set(['rust', 'kafka'])), 0);
 });
 
 test('snippetScore — decision/topic outranks summary on same hit', () => {
-  const sessions = [
-    makeSession({ id: 'a', summary: 'auth refactor', decisions: ['auth'] }),
-  ];
+  const sessions = [makeSession({ id: 'a', summary: 'auth refactor', decisions: ['auth'] })];
   const snippets = sessions.flatMap(snippetsFromSession);
   const avg = avgSnippetLen(snippets);
-  const dec = snippets.find(s => s.kind === 'decision')!;
-  const sum = snippets.find(s => s.kind === 'summary')!;
+  const dec = snippets.find((s) => s.kind === 'decision')!;
+  const sum = snippets.find((s) => s.kind === 'summary')!;
   const decScore = snippetScore(dec, new Set(['auth']), avg);
   const sumScore = snippetScore(sum, new Set(['auth']), avg);
   assert.ok(decScore > sumScore, `decision (${decScore}) should outrank summary (${sumScore})`);
@@ -136,16 +124,20 @@ test('snippetScore — decision/topic outranks summary on same hit', () => {
 test('ContextStore.searchSnippets — returns matching snippets ranked by score', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({
-    id: 's1',
-    summary: 'irrelevant payments work',
-    decisions: ['use stripe webhooks'],
-  }));
-  await store.addSession(makeSession({
-    id: 's2',
-    summary: 'auth refactor',
-    decisions: ['use bcrypt cost 12', 'rotate JWTs every 15 minutes'],
-  }));
+  await store.addSession(
+    makeSession({
+      id: 's1',
+      summary: 'irrelevant payments work',
+      decisions: ['use stripe webhooks'],
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 's2',
+      summary: 'auth refactor',
+      decisions: ['use bcrypt cost 12', 'rotate JWTs every 15 minutes'],
+    }),
+  );
   const hits = store.searchSnippets('bcrypt', {}, 5);
   assert.ok(hits.length >= 1);
   assert.equal(hits[0].sessionId, 's2');
@@ -156,15 +148,26 @@ test('ContextStore.searchSnippets — returns matching snippets ranked by score'
 test('ContextStore.searchSnippets — excludes retracted parent sessions', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({
-    id: 'live', summary: 'auth note', decisions: ['use bcrypt'],
-  }));
-  await store.addSession(makeSession({
-    id: 'gone', summary: 'auth note gone', decisions: ['use bcrypt'],
-    retracted: true,
-  }));
+  await store.addSession(
+    makeSession({
+      id: 'live',
+      summary: 'auth note',
+      decisions: ['use bcrypt'],
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'gone',
+      summary: 'auth note gone',
+      decisions: ['use bcrypt'],
+      retracted: true,
+    }),
+  );
   const hits = store.searchSnippets('bcrypt', {}, 5);
-  assert.ok(!hits.some(h => h.sessionId === 'gone'), 'retracted session must not contribute snippets');
+  assert.ok(
+    !hits.some((h) => h.sessionId === 'gone'),
+    'retracted session must not contribute snippets',
+  );
 });
 
 test('ContextStore.searchSnippets — empty query falls back to newest-first', async () => {
@@ -214,13 +217,17 @@ test('detectConflicts — flags decisions overlapping older session with shared 
 
 test('detectConflicts — no candidates when files/topics do not overlap', () => {
   const old = makeSession({
-    id: 'old', decisions: ['use cookie sessions'],
-    keyFiles: ['src/ui.tsx'], keyTopics: ['ui'],
+    id: 'old',
+    decisions: ['use cookie sessions'],
+    keyFiles: ['src/ui.tsx'],
+    keyTopics: ['ui'],
     endTime: Date.now() - 60_000,
   });
   const newer = makeSession({
-    id: 'new', decisions: ['rolled back cookies on the auth path'],
-    keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
+    id: 'new',
+    decisions: ['rolled back cookies on the auth path'],
+    keyFiles: ['src/auth.ts'],
+    keyTopics: ['authentication'],
     endTime: Date.now(),
   });
   const warnings = detectConflicts(newer, [old]);
@@ -230,18 +237,26 @@ test('detectConflicts — no candidates when files/topics do not overlap', () =>
 test('ContextStore — addSession surfaces detected conflicts via getPendingConflicts', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({
-    id: 'old', summary: 'a',
-    decisions: ['use cookies'],
-    keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
-    endTime: Date.now() - 60_000,
-  }));
-  await store.addSession(makeSession({
-    id: 'new', summary: 'b',
-    decisions: ['use JWT instead of cookies'],
-    keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
-    endTime: Date.now(),
-  }));
+  await store.addSession(
+    makeSession({
+      id: 'old',
+      summary: 'a',
+      decisions: ['use cookies'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
+      endTime: Date.now() - 60_000,
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'new',
+      summary: 'b',
+      decisions: ['use JWT instead of cookies'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
+      endTime: Date.now(),
+    }),
+  );
   const pending = store.getPendingConflicts();
   assert.equal(pending.length, 1);
   assert.equal(pending[0].newSessionId, 'new');
@@ -250,21 +265,33 @@ test('ContextStore — addSession surfaces detected conflicts via getPendingConf
 test('ContextStore.setSupersedes — acknowledges matching conflict warning', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({
-    id: 'old', summary: 'a',
-    decisions: ['use cookies'],
-    keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
-    endTime: Date.now() - 60_000,
-  }));
-  await store.addSession(makeSession({
-    id: 'new', summary: 'b',
-    decisions: ['use JWT instead of cookies'],
-    keyFiles: ['src/auth.ts'], keyTopics: ['authentication'],
-    endTime: Date.now(),
-  }));
+  await store.addSession(
+    makeSession({
+      id: 'old',
+      summary: 'a',
+      decisions: ['use cookies'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
+      endTime: Date.now() - 60_000,
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'new',
+      summary: 'b',
+      decisions: ['use JWT instead of cookies'],
+      keyFiles: ['src/auth.ts'],
+      keyTopics: ['authentication'],
+      endTime: Date.now(),
+    }),
+  );
   assert.equal(store.getPendingConflicts().length, 1);
   await store.setSupersedes('new', 'old');
-  assert.equal(store.getPendingConflicts().length, 0, '/supersede must auto-acknowledge the warning');
+  assert.equal(
+    store.getPendingConflicts().length,
+    0,
+    '/supersede must auto-acknowledge the warning',
+  );
 });
 
 // ─── causal graph ────────────────────────────────────────────────────────────
@@ -290,35 +317,57 @@ test('labelEdge — test after feature → tests', () => {
 test('getCausalNeighbors — walks predecessors and successors within window', () => {
   const now = Date.now();
   const center = makeSession({
-    id: 'c', startTime: now - 10_000, endTime: now,
-    keyFiles: ['src/auth.ts'], observationType: 'refactor',
+    id: 'c',
+    startTime: now - 10_000,
+    endTime: now,
+    keyFiles: ['src/auth.ts'],
+    observationType: 'refactor',
   });
   const pred = makeSession({
-    id: 'p', startTime: now - 86_400_000 - 10_000, endTime: now - 86_400_000,
-    keyFiles: ['src/auth.ts'], observationType: 'feature',
+    id: 'p',
+    startTime: now - 86_400_000 - 10_000,
+    endTime: now - 86_400_000,
+    keyFiles: ['src/auth.ts'],
+    observationType: 'feature',
   });
   const succ = makeSession({
-    id: 's', startTime: now + 60_000, endTime: now + 120_000,
-    keyFiles: ['src/auth.ts'], observationType: 'bugfix',
+    id: 's',
+    startTime: now + 60_000,
+    endTime: now + 120_000,
+    keyFiles: ['src/auth.ts'],
+    observationType: 'bugfix',
   });
   const unrelated = makeSession({
-    id: 'u', startTime: now - 5000, endTime: now - 1000,
+    id: 'u',
+    startTime: now - 5000,
+    endTime: now - 1000,
     keyFiles: ['src/widget.tsx'],
   });
   const n = getCausalNeighbors('c', [center, pred, succ, unrelated]);
   assert.ok(n);
-  assert.deepEqual(n!.predecessors.map(p => p.sessionId), ['p']);
-  assert.deepEqual(n!.successors.map(s => s.sessionId), ['s']);
+  assert.deepEqual(
+    n!.predecessors.map((p) => p.sessionId),
+    ['p'],
+  );
+  assert.deepEqual(
+    n!.successors.map((s) => s.sessionId),
+    ['s'],
+  );
   assert.equal(n!.successors[0].label, 'introduced_issue_fixed_by');
 });
 
 test('getCausalNeighbors — outside window is excluded', () => {
   const now = Date.now();
-  const center = makeSession({ id: 'c', startTime: now - 10_000, endTime: now, keyFiles: ['src/x.ts'] });
+  const center = makeSession({
+    id: 'c',
+    startTime: now - 10_000,
+    endTime: now,
+    keyFiles: ['src/x.ts'],
+  });
   const veryOld = makeSession({
     id: 'old',
-    startTime: now - (CAUSAL_WINDOW_MS * 2) - 10_000,
-    endTime: now - (CAUSAL_WINDOW_MS * 2),
+    startTime: now - CAUSAL_WINDOW_MS * 2 - 10_000,
+    endTime: now - CAUSAL_WINDOW_MS * 2,
     keyFiles: ['src/x.ts'],
   });
   const n = getCausalNeighbors('c', [center, veryOld]);

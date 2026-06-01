@@ -37,7 +37,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
     rawEventCount: overrides.rawEventCount ?? 10,
     userTags: overrides.userTags ?? [],
     redactionCount: overrides.redactionCount ?? 0,
-    contentHash: overrides.contentHash ?? computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
+    contentHash:
+      overrides.contentHash ??
+      computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
   };
   if (overrides.confidence !== undefined) base.confidence = overrides.confidence;
   if (overrides.supersededBy !== undefined) base.supersededBy = overrides.supersededBy;
@@ -96,10 +98,10 @@ test('expandQuery — picks terms that co-occur with the query terms', () => {
   // Make the corpus large enough that strong co-occurrence doesn't trip
   // the maxGlobalFrequency stopword filter (default cap 50%).
   const sessionIds = Array.from({ length: 10 }, (_, i) => `s${i + 1}`);
-  const authSet = new Set(['s1', 's2', 's3']);                  // 30% of corpus
-  const jwtSet = new Set(['s1', 's2', 's3']);                   // always co-occurs with auth
-  const bcryptSet = new Set(['s1', 's2']);                      // mostly co-occurs
-  const uiSet = new Set(['s9']);                                // unrelated
+  const authSet = new Set(['s1', 's2', 's3']); // 30% of corpus
+  const jwtSet = new Set(['s1', 's2', 's3']); // always co-occurs with auth
+  const bcryptSet = new Set(['s1', 's2']); // mostly co-occurs
+  const uiSet = new Set(['s9']); // unrelated
   const index = new Map<string, Set<string>>([
     ['auth', authSet],
     ['jwt', jwtSet],
@@ -137,23 +139,31 @@ test('expandQuery — empty for empty term set', () => {
 
 test('findEnclosingSymbol — returns deepest enclosing symbol name', () => {
   // Mimic vscode.DocumentSymbol shape — we only need range + name + children.
-  const symbols = [{
-    name: 'AuthService',
-    range: { start: { line: 0 }, end: { line: 50 } },
-    children: [{
-      name: 'hashPassword',
-      range: { start: { line: 10 }, end: { line: 20 } },
-      children: [],
-    }],
-  }] as any;
+  const symbols = [
+    {
+      name: 'AuthService',
+      range: { start: { line: 0 }, end: { line: 50 } },
+      children: [
+        {
+          name: 'hashPassword',
+          range: { start: { line: 10 }, end: { line: 20 } },
+          children: [],
+        },
+      ],
+    },
+  ] as any;
   const targetRange = { start: { line: 15 }, end: { line: 15 } } as any;
   assert.equal(findEnclosingSymbol(symbols, targetRange), 'hashPassword');
 });
 
 test('findEnclosingSymbol — returns undefined when target falls outside any symbol', () => {
-  const symbols = [{
-    name: 'X', range: { start: { line: 0 }, end: { line: 5 } }, children: [],
-  }] as any;
+  const symbols = [
+    {
+      name: 'X',
+      range: { start: { line: 0 }, end: { line: 5 } },
+      children: [],
+    },
+  ] as any;
   const target = { start: { line: 50 }, end: { line: 50 } } as any;
   assert.equal(findEnclosingSymbol(symbols, target), undefined);
 });
@@ -194,7 +204,7 @@ test('ContextStore.addCorrection — chains correctionOf + supersession', async 
   const store = new ContextStore(mem);
   // Distinct summaries so contentHash dedup doesn't merge them.
   await store.addSession(makeSession({ id: 'orig', summary: 'original decision text' }));
-  await store.addSession(makeSession({ id: 'fix',  summary: 'corrected decision text' }));
+  await store.addSession(makeSession({ id: 'fix', summary: 'corrected decision text' }));
   assert.equal(await store.addCorrection('orig', 'fix'), true);
   assert.equal(store.getById('fix')!.correctionOf, 'orig');
   assert.equal(store.getById('orig')!.supersededBy, 'fix');
@@ -206,10 +216,19 @@ test('ContextStore.addCorrection — chains correctionOf + supersession', async 
 test('ContextStore.search — excludes retracted sessions', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({ id: 'keep', summary: 'auth notes', keyTopics: ['authentication'] }));
-  await store.addSession(makeSession({ id: 'drop', summary: 'auth notes', keyTopics: ['authentication'], retracted: true }));
+  await store.addSession(
+    makeSession({ id: 'keep', summary: 'auth notes', keyTopics: ['authentication'] }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'drop',
+      summary: 'auth notes',
+      keyTopics: ['authentication'],
+      retracted: true,
+    }),
+  );
   const results = store.search('auth', {}, 5);
-  assert.deepEqual(results.map(s => s.id).sort(), ['keep']);
+  assert.deepEqual(results.map((s) => s.id).sort(), ['keep']);
 });
 
 test('ContextStore.search — supersession penalty pushes superseded sessions below their replacement', async () => {
@@ -219,14 +238,23 @@ test('ContextStore.search — supersession penalty pushes superseded sessions be
   // The older "main" session has more keyword density (would normally rank
   // higher on BM25), but its supersession penalty must keep it below the
   // newer/lighter session.
-  await store.addSession(makeSession({
-    id: 'old', summary: 'auth auth auth jwt jwt jwt', keyTopics: ['authentication', 'jwt'],
-    endTime: now - 10_000, supersededBy: 'new',
-  }));
-  await store.addSession(makeSession({
-    id: 'new', summary: 'auth jwt', keyTopics: ['authentication'],
-    endTime: now,
-  }));
+  await store.addSession(
+    makeSession({
+      id: 'old',
+      summary: 'auth auth auth jwt jwt jwt',
+      keyTopics: ['authentication', 'jwt'],
+      endTime: now - 10_000,
+      supersededBy: 'new',
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'new',
+      summary: 'auth jwt',
+      keyTopics: ['authentication'],
+      endTime: now,
+    }),
+  );
   const results = store.search('auth jwt', {}, 5);
   assert.equal(results[0].id, 'new', 'newer (non-superseded) session must rank first');
 });
@@ -256,14 +284,24 @@ test('ContextStore.search — accept feedback rank-boost beats reject', async ()
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
   const now = Date.now();
-  await store.addSession(makeSession({
-    id: 'accepted', summary: 'auth refactor', keyTopics: ['authentication'], endTime: now,
-    usage: { retrieved: 0, lastRetrievedAt: 0, accepted: 5, rejected: 0 },
-  }));
-  await store.addSession(makeSession({
-    id: 'rejected', summary: 'auth refactor', keyTopics: ['authentication'], endTime: now,
-    usage: { retrieved: 0, lastRetrievedAt: 0, accepted: 0, rejected: 5 },
-  }));
+  await store.addSession(
+    makeSession({
+      id: 'accepted',
+      summary: 'auth refactor',
+      keyTopics: ['authentication'],
+      endTime: now,
+      usage: { retrieved: 0, lastRetrievedAt: 0, accepted: 5, rejected: 0 },
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'rejected',
+      summary: 'auth refactor',
+      keyTopics: ['authentication'],
+      endTime: now,
+      usage: { retrieved: 0, lastRetrievedAt: 0, accepted: 0, rejected: 5 },
+    }),
+  );
   const results = store.search('auth', {}, 5);
   assert.equal(results[0].id, 'accepted', 'accept-heavy session must outrank reject-heavy session');
 });
@@ -274,7 +312,7 @@ test('getStartupCandidates — skips retracted and superseded sessions', async (
   await store.addSession(makeSession({ id: 'live', summary: 'live' }));
   await store.addSession(makeSession({ id: 'old', summary: 'old', supersededBy: 'live' }));
   await store.addSession(makeSession({ id: 'gone', summary: 'gone', retracted: true }));
-  const ids = store.getStartupCandidates(10).map(s => s.id);
+  const ids = store.getStartupCandidates(10).map((s) => s.id);
   assert.deepEqual(ids, ['live']);
 });
 
@@ -282,7 +320,8 @@ test('getStartupCandidates — skips retracted and superseded sessions', async (
 
 test('splitIdAndText — splits id from text payload', () => {
   assert.deepEqual(splitIdAndText('abc123 the actual rationale was X'), {
-    idPrefix: 'abc123', text: 'the actual rationale was X',
+    idPrefix: 'abc123',
+    text: 'the actual rationale was X',
   });
 });
 

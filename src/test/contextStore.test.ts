@@ -26,7 +26,9 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
     rawEventCount: overrides.rawEventCount ?? 10,
     userTags: overrides.userTags ?? [],
     redactionCount: overrides.redactionCount ?? 0,
-    contentHash: overrides.contentHash ?? computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
+    contentHash:
+      overrides.contentHash ??
+      computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
   };
   return base;
 }
@@ -70,10 +72,17 @@ test('ContextStore — search returns relevant sessions', async () => {
 test('ContextStore — search filter by type', async () => {
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
-  await store.addSession(makeSession({ summary: 'fix one', observationType: 'bugfix', keyTopics: ['x'] }));
-  await store.addSession(makeSession({ summary: 'add one', observationType: 'feature', keyTopics: ['y'] }));
+  await store.addSession(
+    makeSession({ summary: 'fix one', observationType: 'bugfix', keyTopics: ['x'] }),
+  );
+  await store.addSession(
+    makeSession({ summary: 'add one', observationType: 'feature', keyTopics: ['y'] }),
+  );
   const bugHits = store.search('', { type: 'bugfix' }, 10);
-  assert.equal(bugHits.every(s => s.observationType === 'bugfix'), true);
+  assert.equal(
+    bugHits.every((s) => s.observationType === 'bugfix'),
+    true,
+  );
 });
 
 test('ContextStore — RRF prefers recent+matching over old-only', async () => {
@@ -81,8 +90,25 @@ test('ContextStore — RRF prefers recent+matching over old-only', async () => {
   const store = new ContextStore(mem);
   const oldTs = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const newTs = Date.now();
-  await store.addSession(makeSession({ id: 'old', summary: 'rate limiter logic', keyTopics: ['rate'], startTime: oldTs, endTime: oldTs }));
-  await store.addSession(makeSession({ id: 'new', summary: 'rate limiter logic', keyTopics: ['rate'], startTime: newTs, endTime: newTs, keyFiles: ['x.ts'] }));
+  await store.addSession(
+    makeSession({
+      id: 'old',
+      summary: 'rate limiter logic',
+      keyTopics: ['rate'],
+      startTime: oldTs,
+      endTime: oldTs,
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: 'new',
+      summary: 'rate limiter logic',
+      keyTopics: ['rate'],
+      startTime: newTs,
+      endTime: newTs,
+      keyFiles: ['x.ts'],
+    }),
+  );
   const hits = store.search('rate', {}, 5);
   assert.equal(hits[0].id, 'new');
 });
@@ -92,16 +118,27 @@ test('ContextStore — getStartupCandidates prefers sessions with decisions over
   const store = new ContextStore(mem);
   const now = Date.now();
   // Two equally-recent sessions; one has decisions, one is plain.
-  await store.addSession(makeSession({
-    id: '11111111-1111-4111-8111-111111111111',
-    summary: 'plain session', startTime: now, endTime: now,
-    decisions: [], problemsSolved: [], userTags: [],
-  }));
-  await store.addSession(makeSession({
-    id: '22222222-2222-4222-8222-222222222222',
-    summary: 'session with decisions', startTime: now, endTime: now,
-    decisions: ['picked X over Y'], problemsSolved: [],
-  }));
+  await store.addSession(
+    makeSession({
+      id: '11111111-1111-4111-8111-111111111111',
+      summary: 'plain session',
+      startTime: now,
+      endTime: now,
+      decisions: [],
+      problemsSolved: [],
+      userTags: [],
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: '22222222-2222-4222-8222-222222222222',
+      summary: 'session with decisions',
+      startTime: now,
+      endTime: now,
+      decisions: ['picked X over Y'],
+      problemsSolved: [],
+    }),
+  );
   const picks = store.getStartupCandidates(1);
   assert.equal(picks.length, 1);
   assert.match(picks[0].summary, /decisions/);
@@ -113,17 +150,29 @@ test('ContextStore — getStartupCandidates lets a pinned older session beat a r
   const now = Date.now();
   const oldTs = now - 3 * 86_400_000; // 3 days old — recency still > 0
   // Pinned, 3 days old. Should score ~10 (tag) + recency(~6) ≈ 16.
-  await store.addSession(makeSession({
-    id: '33333333-3333-4333-8333-333333333333',
-    summary: 'pinned older', startTime: oldTs, endTime: oldTs,
-    observationType: 'feature', userTags: ['pin'],
-  }));
+  await store.addSession(
+    makeSession({
+      id: '33333333-3333-4333-8333-333333333333',
+      summary: 'pinned older',
+      startTime: oldTs,
+      endTime: oldTs,
+      observationType: 'feature',
+      userTags: ['pin'],
+    }),
+  );
   // Recent but unknown-type with no metadata. Recency ~10, importance 0 = ~10.
-  await store.addSession(makeSession({
-    id: '44444444-4444-4444-8444-444444444444',
-    summary: 'recent empty', startTime: now, endTime: now,
-    observationType: 'unknown', userTags: [], decisions: [], problemsSolved: [],
-  }));
+  await store.addSession(
+    makeSession({
+      id: '44444444-4444-4444-8444-444444444444',
+      summary: 'recent empty',
+      startTime: now,
+      endTime: now,
+      observationType: 'unknown',
+      userTags: [],
+      decisions: [],
+      problemsSolved: [],
+    }),
+  );
   const picks = store.getStartupCandidates(1);
   assert.equal(picks.length, 1);
   assert.match(picks[0].summary, /pinned/);
@@ -135,18 +184,33 @@ test('ContextStore — getStartupCandidates returns oldest-first chronological o
   const t0 = Date.now() - 2 * 86_400_000;
   const t1 = Date.now() - 1 * 86_400_000;
   const t2 = Date.now();
-  await store.addSession(makeSession({
-    id: '55555555-5555-4555-8555-555555555555',
-    summary: 'middle', startTime: t1, endTime: t1, decisions: ['d'],
-  }));
-  await store.addSession(makeSession({
-    id: '66666666-6666-4666-8666-666666666666',
-    summary: 'newest', startTime: t2, endTime: t2, decisions: ['d'],
-  }));
-  await store.addSession(makeSession({
-    id: '77777777-7777-4777-8777-777777777777',
-    summary: 'oldest', startTime: t0, endTime: t0, decisions: ['d'],
-  }));
+  await store.addSession(
+    makeSession({
+      id: '55555555-5555-4555-8555-555555555555',
+      summary: 'middle',
+      startTime: t1,
+      endTime: t1,
+      decisions: ['d'],
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: '66666666-6666-4666-8666-666666666666',
+      summary: 'newest',
+      startTime: t2,
+      endTime: t2,
+      decisions: ['d'],
+    }),
+  );
+  await store.addSession(
+    makeSession({
+      id: '77777777-7777-4777-8777-777777777777',
+      summary: 'oldest',
+      startTime: t0,
+      endTime: t0,
+      decisions: ['d'],
+    }),
+  );
   const picks = store.getStartupCandidates(3);
   assert.equal(picks.length, 3);
   assert.equal(picks[0].summary, 'oldest');
@@ -168,7 +232,8 @@ test('ContextStore — enforceSizeCap evicts oldest until under cap', async () =
   vscode.workspace.getConfiguration = (section?: string) => {
     const real = origGet.call(vscode.workspace, section);
     return {
-      get: (k: string, d?: unknown) => k === 'maxStoreSizeMB' ? 0.001 : (real.get ? real.get(k, d) : d),
+      get: (k: string, d?: unknown) =>
+        k === 'maxStoreSizeMB' ? 0.001 : real.get ? real.get(k, d) : d,
     };
   };
   try {
@@ -176,12 +241,14 @@ test('ContextStore — enforceSizeCap evicts oldest until under cap', async () =
     // Stuff a fat summary into each session to grow the JSON over 1 KB quickly.
     // Distinct content per session so the content-hash dedup path doesn't collapse them.
     for (let i = 0; i < 10; i++) {
-      await store.addSession(makeSession({
-        id: `aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa${i.toString().padStart(4, '0')}`,
-        summary: `size-cap-fixture-${i}-${'x'.repeat(400)}`,
-        startTime: Date.now() - (10 - i) * 1000,
-        endTime: Date.now() - (10 - i) * 1000 + 50,
-      }));
+      await store.addSession(
+        makeSession({
+          id: `aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa${i.toString().padStart(4, '0')}`,
+          summary: `size-cap-fixture-${i}-${'x'.repeat(400)}`,
+          startTime: Date.now() - (10 - i) * 1000,
+          endTime: Date.now() - (10 - i) * 1000 + 50,
+        }),
+      );
     }
     // Should have been culled to far fewer than 10.
     assert.ok(store.getAllSessions().length < 10, 'size cap evicted some sessions');
@@ -198,16 +265,18 @@ test('ContextStore — enforceSizeCap is a no-op when cap is 0', async () => {
   vscode.workspace.getConfiguration = (section?: string) => {
     const real = origGet.call(vscode.workspace, section);
     return {
-      get: (k: string, d?: unknown) => k === 'maxStoreSizeMB' ? 0 : (real.get ? real.get(k, d) : d),
+      get: (k: string, d?: unknown) => (k === 'maxStoreSizeMB' ? 0 : real.get ? real.get(k, d) : d),
     };
   };
   try {
     const store = new ContextStore(mem);
     for (let i = 0; i < 5; i++) {
-      await store.addSession(makeSession({
-        id: `bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbb${i.toString().padStart(4, '0')}`,
-        summary: `no-op-fixture-${i}`,
-      }));
+      await store.addSession(
+        makeSession({
+          id: `bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbb${i.toString().padStart(4, '0')}`,
+          summary: `no-op-fixture-${i}`,
+        }),
+      );
     }
     assert.equal(store.enforceSizeCap(), 0);
     assert.equal(store.getAllSessions().length, 5);
@@ -220,16 +289,18 @@ test('ContextStore — getStats includes today sessions and token-savings estima
   const mem = new InMemoryMemento() as any;
   const store = new ContextStore(mem);
   const now = Date.now();
-  await store.addSession(makeSession({
-    id: '99999999-9999-4999-8999-999999999999',
-    startTime: now - 1000,
-    endTime: now,
-    summary: 'short summary',
-    keyFiles: ['src/a.ts', 'src/b.ts'],
-    keyTopics: ['auth', 'token'],
-    decisions: ['adopt strategy x'],
-    problemsSolved: ['fixed import error'],
-  }));
+  await store.addSession(
+    makeSession({
+      id: '99999999-9999-4999-8999-999999999999',
+      startTime: now - 1000,
+      endTime: now,
+      summary: 'short summary',
+      keyFiles: ['src/a.ts', 'src/b.ts'],
+      keyTopics: ['auth', 'token'],
+      decisions: ['adopt strategy x'],
+      problemsSolved: ['fixed import error'],
+    }),
+  );
   const stats = store.getStats();
   assert.equal(stats.todaySessions, 1);
   assert.ok(stats.todayEstimatedTokensSaved > 0);
@@ -240,14 +311,16 @@ test('ContextStore — getStats excludes non-today sessions from today metrics',
   const store = new ContextStore(mem);
   const now = Date.now();
   const yesterday = now - 24 * 60 * 60 * 1000;
-  await store.addSession(makeSession({
-    id: 'aaaaaaaa-9999-4999-8999-999999999999',
-    startTime: yesterday - 1000,
-    endTime: yesterday,
-    summary: 'old session',
-    keyFiles: ['legacy.ts'],
-    decisions: ['legacy decision'],
-  }));
+  await store.addSession(
+    makeSession({
+      id: 'aaaaaaaa-9999-4999-8999-999999999999',
+      startTime: yesterday - 1000,
+      endTime: yesterday,
+      summary: 'old session',
+      keyFiles: ['legacy.ts'],
+      decisions: ['legacy decision'],
+    }),
+  );
   const stats = store.getStats();
   assert.equal(stats.todaySessions, 0);
   assert.equal(stats.todayEstimatedTokensSaved, 0);

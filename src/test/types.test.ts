@@ -40,8 +40,20 @@ test('computeContentHash — invariant to array order', () => {
 });
 
 test('computeContentHash — differs when summary changes', () => {
-  const a = computeContentHash({ summary: 'v1', keyFiles: [], keyTopics: [], decisions: [], problemsSolved: [] });
-  const b = computeContentHash({ summary: 'v2', keyFiles: [], keyTopics: [], decisions: [], problemsSolved: [] });
+  const a = computeContentHash({
+    summary: 'v1',
+    keyFiles: [],
+    keyTopics: [],
+    decisions: [],
+    problemsSolved: [],
+  });
+  const b = computeContentHash({
+    summary: 'v2',
+    keyFiles: [],
+    keyTopics: [],
+    decisions: [],
+    problemsSolved: [],
+  });
   assert.notEqual(a, b);
 });
 

@@ -56,7 +56,10 @@ test('MCP TOOLS catalog — every entry has a valid JSON-Schema input', () => {
     assert.ok(typeof t.name === 'string' && t.name.length > 0, `tool name missing`);
     assert.ok(!seen.has(t.name), `duplicate tool name: ${t.name}`);
     seen.add(t.name);
-    assert.ok(typeof t.description === 'string' && t.description.length >= 10, `tool ${t.name} description too short`);
+    assert.ok(
+      typeof t.description === 'string' && t.description.length >= 10,
+      `tool ${t.name} description too short`,
+    );
     assert.ok(t.inputSchema, `tool ${t.name} missing inputSchema`);
     assert.equal(t.inputSchema.type, 'object', `tool ${t.name} inputSchema.type must be 'object'`);
     if (t.inputSchema.required) {
@@ -78,7 +81,10 @@ test('languageModelTools contribution — every entry has a valid JSON-Schema in
     assert.ok(typeof t.name === 'string' && t.name.length > 0, `tool name missing`);
     assert.ok(!seen.has(t.name), `duplicate languageModelTool name: ${t.name}`);
     seen.add(t.name);
-    assert.ok(t.modelDescription && t.modelDescription.length >= 20, `tool ${t.name} modelDescription too short`);
+    assert.ok(
+      t.modelDescription && t.modelDescription.length >= 20,
+      `tool ${t.name} modelDescription too short`,
+    );
     assert.ok(t.inputSchema, `tool ${t.name} missing inputSchema`);
     assert.equal(t.inputSchema.type, 'object', `tool ${t.name} inputSchema.type must be 'object'`);
     if (t.inputSchema.required) {
@@ -98,8 +104,14 @@ test('chat participant slash-commands — every command has name + description',
   for (const p of participants) {
     const cmds: Array<{ name: string; description: string }> = p.commands ?? [];
     for (const c of cmds) {
-      assert.ok(typeof c.name === 'string' && /^[a-z][a-z0-9-]*$/.test(c.name), `bad slash command name: ${c.name}`);
-      assert.ok(typeof c.description === 'string' && c.description.length >= 5, `slash command ${c.name} description too short`);
+      assert.ok(
+        typeof c.name === 'string' && /^[a-z][a-z0-9-]*$/.test(c.name),
+        `bad slash command name: ${c.name}`,
+      );
+      assert.ok(
+        typeof c.description === 'string' && c.description.length >= 5,
+        `slash command ${c.name} description too short`,
+      );
     }
   }
 });

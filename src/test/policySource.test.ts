@@ -8,14 +8,14 @@ test('policy source rules load and apply to redaction', async () => {
   globalThis.fetch = (async () => ({
     ok: true,
     status: 200,
-    json: async () => ([
+    json: async () => [
       {
         name: 'corp-ticket',
         pattern: 'CORP-[A-Z0-9]{8}',
         replacement: '[REDACTED:corp-ticket]',
         flags: 'g',
       },
-    ]),
+    ],
   })) as unknown as typeof fetch;
 
   try {

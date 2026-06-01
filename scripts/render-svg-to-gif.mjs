@@ -32,7 +32,7 @@ if (argv.length < 2) {
 
 const [inSvg, outGif, ...rest] = argv;
 const opts = Object.fromEntries(
-  rest.flatMap((a, i, all) => (a.startsWith('--') ? [[a.slice(2), all[i + 1]]] : []))
+  rest.flatMap((a, i, all) => (a.startsWith('--') ? [[a.slice(2), all[i + 1]]] : [])),
 );
 const durationMs = Number(opts['duration-ms'] ?? 4000);
 const fps = Number(opts.fps ?? 12);
@@ -60,16 +60,20 @@ const frames = [];
 for (let i = 0; i < numFrames; i++) {
   const t = Math.max(50, Math.round((i * durationMs) / numFrames));
   const out = join(tmp, `frame-${String(i).padStart(4, '0')}.png`);
-  execFileSync(CHROME, [
-    '--headless',
-    '--disable-gpu',
-    '--no-sandbox',
-    '--hide-scrollbars',
-    `--virtual-time-budget=${t}`,
-    `--window-size=${width},${height}`,
-    `--screenshot=${out}`,
-    `file://${inputPath}`,
-  ], { stdio: ['ignore', 'ignore', 'ignore'] });
+  execFileSync(
+    CHROME,
+    [
+      '--headless',
+      '--disable-gpu',
+      '--no-sandbox',
+      '--hide-scrollbars',
+      `--virtual-time-budget=${t}`,
+      `--window-size=${width},${height}`,
+      `--screenshot=${out}`,
+      `file://${inputPath}`,
+    ],
+    { stdio: ['ignore', 'ignore', 'ignore'] },
+  );
   if (!existsSync(out)) {
     console.error(`  frame ${i} (t=${t}ms) not captured — aborting`);
     process.exit(1);
@@ -82,10 +86,20 @@ for (let i = 0; i < numFrames; i++) {
 
 // Stitch with gifski. quality=85 balances size vs fidelity well for line art.
 console.log(`encoding GIF: ${outputPath}`);
-execFileSync('gifski',
-  ['--fps', String(fps), '--width', String(width), '--quality', '85',
-   '--output', outputPath, ...frames],
-  { stdio: 'inherit' }
+execFileSync(
+  'gifski',
+  [
+    '--fps',
+    String(fps),
+    '--width',
+    String(width),
+    '--quality',
+    '85',
+    '--output',
+    outputPath,
+    ...frames,
+  ],
+  { stdio: 'inherit' },
 );
 
 // Cleanup
