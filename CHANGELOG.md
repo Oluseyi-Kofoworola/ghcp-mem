@@ -6,6 +6,25 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.5.3] — 2026-06-01
+
+UX fix in response to user feedback: the "Persist this compressed memory snapshot?" modal was firing on every compression cycle and became disruptive. The prompt now has a third button so users can silence it for good — without having to dig into Settings or learn a hidden config key.
+
+### Changed — `confirmPersistSession()` in `src/extension.ts`
+- **New button: `Persist, don't ask again`** — confirms the current snapshot **and** sets `ghcpMem.previewBeforePersist = false` at `ConfigurationTarget.Global`, so the modal will not show again on this machine.
+- Modal `detail` now tells users where to re-enable the prompt: *Settings → `ghcpMem.previewBeforePersist`*. No magic — discoverable and reversible.
+- After the choice lands, a 5-second status-bar message confirms what changed: `$(check) GHCP-MEM: persist prompt disabled. Re-enable in Settings: ghcpMem.previewBeforePersist`.
+- **Enterprise-mode interaction handled explicitly.** `types.ts:267` ORs `previewBeforePersist` with `enterpriseMode`, so disabling the former alone is insufficient when the latter is on. In that case the user now sees a follow-up warning with an `Open Settings` action that jumps straight to `ghcpMem.enterpriseMode` — no silent failure, no confused user wondering why the prompt is still there.
+- Failure to write the config is logged at `WARN` (existing `log()` helper) and the snapshot is still persisted — the UX fix never blocks the data path.
+
+### Why this is the right shape
+The pre-existing two-button modal (`Persist` / `Discard`) forced a decision on every snapshot. For users who have already vetted the redaction pipeline once, that's noise. The new third option treats consent as a one-time gate, not a recurring tax — matching how VS Code itself handles things like "Don't ask again" on trust prompts. Settings remains the source of truth, so audit-conscious workflows (enterprise mode) keep their guardrail by default.
+
+### No new tests required
+The change is a pure UX/wiring fix inside an existing function — the persistence pipeline, redaction, and config schema are unchanged. All 153 existing tests pass.
+
+---
+
 ## [1.5.2] — 2026-06-01
 
 The release-consistency gate in **1.5.1** lives outside the extension — as an npm script + CI gate. A reviewer (correctly) pointed out that **GHCP-MEM itself should be able to catch the same class of bug** at any time, not only at publish. Drift detection now ships as a first-class extension capability surfaced through every interface GHCP-MEM already owns.

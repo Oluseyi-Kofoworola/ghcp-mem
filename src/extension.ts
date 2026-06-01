@@ -1107,13 +1107,57 @@ async function confirmPersistSession(session: CompressedSession): Promise<boolea
   const preview = buildSessionPreview(session);
   const doc = await vscode.workspace.openTextDocument({ content: preview, language: 'markdown' });
   await vscode.window.showTextDocument(doc, { preview: true });
+
+  // The "don't ask again" path. When the user picks this, we permanently
+  // disable previewBeforePersist so they're never interrupted again. If
+  // enterpriseMode is the reason the prompt was forced on, we tell them
+  // explicitly that enterprise mode keeps it on regardless.
+  const PERSIST_ALWAYS = 'Persist, don\'t ask again';
+  const PERSIST_ONCE = 'Persist';
+  const DISCARD = 'Discard';
+
   const choice = await vscode.window.showInformationMessage(
     'Persist this compressed memory snapshot?',
-    { modal: true },
-    'Persist',
-    'Discard',
+    { modal: true, detail: 'Pick "don\'t ask again" to silence this prompt for future captures. Re-enable any time in Settings: ghcpMem.previewBeforePersist.' },
+    PERSIST_ALWAYS,
+    PERSIST_ONCE,
+    DISCARD,
   );
-  return choice === 'Persist';
+
+  if (choice === PERSIST_ALWAYS) {
+    try {
+      // Globally — survives across workspaces. Matches user intent ("once and for all").
+      await vscode.workspace.getConfiguration('ghcpMem').update(
+        'previewBeforePersist',
+        false,
+        vscode.ConfigurationTarget.Global,
+      );
+      if (config.enterpriseMode) {
+        // Enterprise mode forces previewBeforePersist back on via the OR in
+        // getConfig(). Be honest about it rather than silently ignoring the
+        // user's choice.
+        const followUp = await vscode.window.showWarningMessage(
+          'GHCP-MEM: preview-before-persist disabled, but enterprise mode keeps it on. To fully silence the prompt, also disable ghcpMem.enterpriseMode.',
+          'Open Settings',
+        );
+        if (followUp === 'Open Settings') {
+          void vscode.commands.executeCommand('workbench.action.openSettings', 'ghcpMem.enterpriseMode');
+        }
+      } else {
+        vscode.window.setStatusBarMessage(
+          '$(check) GHCP-MEM: persist prompt disabled. Re-enable in Settings: ghcpMem.previewBeforePersist',
+          5000,
+        );
+      }
+    } catch (err) {
+      // Setting update can fail in unusual hosts (e.g. read-only configs).
+      // Persist the snapshot anyway — the user's intent was "yes, save".
+      log('WARN', `Failed to persist 'don't ask again' choice: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return true;
+  }
+
+  return choice === PERSIST_ONCE;
 }
 
 function startCompressionTimer(intervalMinutes: number, idleSeconds = 30): void {
