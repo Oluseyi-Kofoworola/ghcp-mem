@@ -15,7 +15,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Required for the strict release-consistency gate (invoked by
           # `vscode:prepublish` inside `vsce package` below). The gate
