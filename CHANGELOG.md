@@ -6,6 +6,38 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.6.3] — 2026-06-07
+
+Pure maintenance release. No extension behaviour changes — every fix here is in the build/CI/security plumbing the v1.6.2 audit (and the 10 stuck Dependabot PRs that resulted from it) surfaced.
+
+### Fixed — CI gate now passes on PR builds
+- **Pull-request-aware strict gate** (`scripts/check-release-consistency.mjs`). `vsce package` fires `vscode:prepublish`, which chains `check:release:strict`, which then runs the "HEAD pushed to origin/main", "tag exists at HEAD", and "tag pushed to origin" checks. On a GitHub Actions PR run, HEAD is a synthetic merge commit (`refs/pull/N/merge`) — by construction it can never equal `origin/main` and no `vX.Y.Z` tag points at it. Result: every PR build was hitting the gate and turning red across all 4 of its checks, blocking the 10 open Dependabot PRs. The gate now detects PR context via `GITHUB_EVENT_NAME=pull_request` / `GITHUB_REF=refs/pull/*` and records a single explicit `HEAD/tag git-state checks: skipped (pull-request build)` line instead. The doc surface checks (package.json, README, DEMO.md, CHANGELOG, clean tree) still run on PRs, and the full strict surface still runs on tag pushes — so release-time integrity is unchanged.
+- **Readable failure message instead of `[object Object]`** (`scripts/check-release-consistency.mjs:151`). The "HEAD pushed" failure was rendering `local is [object Object] commit(s) ahead of origin/main` because the rev-list helper returns an error object when the requested range is unresolvable, and the template literal silently stringified it. Now: the result is type-checked before interpolation, falls back to a literal `unknown`, and the rev-list call uses `origin/main..HEAD` (which always exists in a detached-HEAD CI checkout) instead of `origin/main..main` (which doesn't).
+
+### Fixed — Security advisories cleared
+`npm audit fix` (non-breaking) resolves the four advisories that were failing the Security workflow's `audit` job on every PR:
+- **`tmp` (high — GHSA-ph9p-34f9-6g65)** — path traversal via unsanitized prefix/postfix.
+- **`qs` (moderate — GHSA-q8mj-m7cp-5q26)** — remotely triggerable DoS on `qs.stringify` with null/undefined entries in comma-format arrays.
+- **`uuid` (moderate — GHSA-w5hq-g745-h8pq)** — missing buffer-bounds check in v3/v5/v6 when `buf` is provided.
+- **`@azure/msal-node` (moderate, transitive via `uuid`)** — cleared automatically by the uuid bump.
+
+`npm audit --audit-level=high` now returns `found 0 vulnerabilities`.
+
+### Fixed — Zero lint warnings + regression gate
+Cleared all 13 ESLint warnings that the CI log had been carrying since v1.6.0, and tightened the lint script so future warnings fail the build instead of being ignored:
+- **`lint` script now uses `--max-warnings=0`** (`package.json`). CI fails on the first new warning.
+- **Dead imports/locals removed**: `diffCmd` and `err` in `contextProvider.ts` (1893, 2101), `PACK_TAG_PREFIX` in `extension.ts:24`, the unused `vscode` import in `packs.ts:1`, `classifyCommand` in `ruleClassifier.ts:11`.
+- **Six useless-escape warnings fixed**: `\/` and `\[` inside character classes in `redactor.ts:162,168` and `repoScope.ts:128`; `\'` inside double-quoted strings in `extension.ts:1536,1542`.
+- **Two `let → const`** in `src/test/autosave.test.ts:41,56` (locals never reassigned).
+
+### Why no extension code changed
+v1.6.0 was a large feature release (Phases 1–9). v1.6.1 fixed the release-trail (Node 20 glob bug). v1.6.2 fixed the second-order CI fallout (shallow-checkout self-heal). v1.6.3 closes out the *third-order* fallout from those changes — the strict gate firing on PR builds, the audit advisories piling up while the Security job was failing, and the lint warnings accumulating because nothing in CI was enforcing zero. With v1.6.3 merged, the 10 open Dependabot PRs should go green and the next feature release (v1.7) starts from a clean baseline.
+
+### Test count
+All 323 tests still passing.
+
+---
+
 ## [1.6.2] — 2026-06-01
 
 Follow-up to v1.6.1's release-trail fix. v1.6.1 unblocked CI's `npm test` step (Node-20 glob bug), but the Release workflow then immediately tripped on a *second* latent bug: the strict release-consistency gate (run as `vsce package`'s `vscode:prepublish` hook) checks `git rev-parse origin/main`, and `actions/checkout@v4`'s default shallow checkout doesn't carry that ref. So the gate failed instantly on the v1.6.1 tag push, before the build could produce any artifacts. v1.6.2 is the actual first release with a green end-to-end CI Release run — no behaviour changes in the extension itself.

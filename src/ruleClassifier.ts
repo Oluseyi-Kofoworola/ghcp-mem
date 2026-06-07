@@ -6,12 +6,7 @@ import {
   FileLifecycleData,
   TerminalData,
 } from './types';
-import {
-  classifyFile,
-  classifyCommand,
-  inferAzureObservationType,
-  AzureSubsystem,
-} from './azureDetect';
+import { classifyFile, inferAzureObservationType, AzureSubsystem } from './azureDetect';
 
 /**
  * Rule-based observation pre-classifier.

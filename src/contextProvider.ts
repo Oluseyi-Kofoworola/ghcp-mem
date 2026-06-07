@@ -1890,7 +1890,6 @@ export class ContextProvider implements vscode.Disposable {
       const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (!cwd) throw new Error('No workspace open');
 
-      let diffCmd: string;
       if (query && /^\d+$/.test(query.trim())) {
         // PR number — try to get via gh CLI.
         // Defensive validation: even though the regex above narrows to digits,
@@ -2098,7 +2097,7 @@ export class ContextProvider implements vscode.Disposable {
         { cwd },
       );
       stagedDiff = diffOut.substring(0, 2000); // Keep it manageable
-    } catch (err) {
+    } catch {
       stream.markdown(
         '_Could not read staged diff. Ensure you are in a git repository with staged changes._\n',
       );

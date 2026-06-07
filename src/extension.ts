@@ -21,7 +21,6 @@ import {
   importPack,
   uninstallPack,
   listInstalledPacks,
-  PACK_TAG_PREFIX,
 } from './packs';
 import { AutosaveTrigger } from './autosave';
 import { MemoryTimelinePanel } from './timelinePanel';
@@ -1533,13 +1532,13 @@ async function recordSuccessAndMaybePromptForRating(): Promise<void> {
       'Is GHCP-MEM helping your workflow? A Marketplace rating helps more developers discover it.',
       'Rate GHCP-MEM',
       'Later',
-      "Don\'t Ask Again",
+      "Don't Ask Again",
     );
     state.lastPromptAt = now;
     if (choice === 'Rate GHCP-MEM') {
       state.rated = true;
       await vscode.env.openExternal(vscode.Uri.parse(MARKETPLACE_REVIEW_URL));
-    } else if (choice === "Don\'t Ask Again") {
+    } else if (choice === "Don't Ask Again") {
       state.doNotAskAgain = true;
     }
     await reviewStateStore.update(REVIEW_PROMPT_KEY, state);

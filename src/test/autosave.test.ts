@@ -38,7 +38,7 @@ test('AutosaveTrigger — fires on minutes threshold when events pending', async
 });
 
 test('AutosaveTrigger — does not fire with zero events', async () => {
-  let events = 0;
+  const events = 0;
   const fired: string[] = [];
   const trig = new AutosaveTrigger({
     eventThreshold: 1,
@@ -53,7 +53,7 @@ test('AutosaveTrigger — does not fire with zero events', async () => {
 });
 
 test('AutosaveTrigger — notifyFlushed resets wall clock so minutes rule needs to re-elapse', async () => {
-  let events = 1;
+  const events = 1;
   let firedCount = 0;
   const trig = new AutosaveTrigger({
     eventThreshold: 999,

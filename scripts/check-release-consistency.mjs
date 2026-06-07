@@ -38,6 +38,18 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const STRICT = process.argv.includes('--strict');
 const QUIET = process.argv.includes('--quiet');
 
+// Detect GitHub Actions pull-request context. On PR runs, the checked-out HEAD
+// is a synthetic merge commit (refs/pull/N/merge), so by construction it will
+// never equal origin/main and no `vX.Y.Z` tag will point at it. The strict
+// git-state checks (HEAD-pushed, tag-exists, tag-on-origin) are therefore
+// meaningless in that context — they only have signal when the gate runs at
+// actual release time (release.yml on a refs/tags/vX.Y.Z push, where HEAD is
+// the tag commit on main). Skipping them here keeps `vsce package` working in
+// PR-build CI without weakening the gate at release time.
+const IS_PR_BUILD =
+  process.env.GITHUB_EVENT_NAME === 'pull_request' ||
+  (process.env.GITHUB_REF && process.env.GITHUB_REF.startsWith('refs/pull/'));
+
 const failures = [];
 const passed = [];
 
@@ -179,73 +191,85 @@ if (STRICT) {
     pass('working tree', 'clean');
   }
 
-  // 5b. HEAD pushed to origin/main
-  const head = git('rev-parse', 'HEAD');
-  let originMain = git('rev-parse', 'origin/main');
-  // CI checkouts default to `fetch-depth: 1`, which leaves us without an
-  // `origin/main` ref. Self-heal once before failing so the script works
-  // in both clean local dev and shallow CI environments. We use a narrow
-  // `git fetch` (single branch, no tags) to keep the network footprint
-  // small. The workflows also do this explicitly belt-and-suspenders.
-  if (typeof originMain === 'object') {
-    git('fetch', '--no-tags', 'origin', '+refs/heads/main:refs/remotes/origin/main');
-    originMain = git('rev-parse', 'origin/main');
-  }
-  if (typeof head === 'object' || typeof originMain === 'object') {
-    fail('git refs', 'HEAD + origin/main resolvable', 'git error', 'run: git fetch origin');
-  } else if (head !== originMain) {
-    const ahead = git('rev-list', '--count', 'origin/main..main');
-    fail(
-      'HEAD pushed to origin/main',
-      'origin/main = HEAD',
-      `local is ${ahead} commit(s) ahead of origin/main`,
-      'push to GitHub first — Marketplace + source-of-truth must match',
-    );
+  // 5b–5d only have signal at real release time (tag push on main). On a PR
+  // build HEAD is a synthetic merge commit and there is no `vX.Y.Z` tag yet,
+  // so these checks would fail by construction. Skip them but still record a
+  // passed line so the gate output stays honest.
+  if (IS_PR_BUILD) {
+    pass('HEAD/tag git-state checks', 'skipped (pull-request build)');
   } else {
-    pass('HEAD pushed to origin/main', head.substring(0, 8));
-  }
+    // 5b. HEAD pushed to origin/main
+    const head = git('rev-parse', 'HEAD');
+    let originMain = git('rev-parse', 'origin/main');
+    // CI checkouts default to `fetch-depth: 1`, which leaves us without an
+    // `origin/main` ref. Self-heal once before failing so the script works
+    // in both clean local dev and shallow CI environments. We use a narrow
+    // `git fetch` (single branch, no tags) to keep the network footprint
+    // small. The workflows also do this explicitly belt-and-suspenders.
+    if (typeof originMain === 'object') {
+      git('fetch', '--no-tags', 'origin', '+refs/heads/main:refs/remotes/origin/main');
+      originMain = git('rev-parse', 'origin/main');
+    }
+    if (typeof head === 'object' || typeof originMain === 'object') {
+      fail('git refs', 'HEAD + origin/main resolvable', 'git error', 'run: git fetch origin');
+    } else if (head !== originMain) {
+      // Use a ref that always exists (HEAD) rather than `main`, which may not
+      // exist locally in detached-HEAD CI checkouts. Coerce the result so a
+      // git failure renders as a readable message instead of `[object Object]`.
+      const aheadResult = git('rev-list', '--count', 'origin/main..HEAD');
+      const ahead = typeof aheadResult === 'string' ? aheadResult : 'unknown';
+      fail(
+        'HEAD pushed to origin/main',
+        'origin/main = HEAD',
+        `local is ${ahead} commit(s) ahead of origin/main`,
+        'push to GitHub first — Marketplace + source-of-truth must match',
+      );
+    } else {
+      pass('HEAD pushed to origin/main', head.substring(0, 8));
+    }
 
-  // 5c. tag vX.Y.Z exists locally
-  // Use ^{commit} to dereference an annotated tag to its underlying commit
-  // SHA. Without it, git rev-parse returns the tag-object SHA for annotated
-  // tags, which never matches HEAD.
-  const tagCommit = git('rev-parse', `v${VERSION}^{commit}`);
-  if (typeof tagCommit === 'object') {
-    fail(
-      `tag v${VERSION}`,
-      'exists locally',
-      'missing',
-      `run: git tag -a v${VERSION} -m "Release v${VERSION}"`,
-    );
-  } else if (tagCommit !== head) {
-    fail(
-      `tag v${VERSION}`,
-      `points at HEAD (${head.substring(0, 8)})`,
-      `points at ${tagCommit.substring(0, 8)}`,
-      `re-tag at current HEAD: git tag -f v${VERSION}`,
-    );
-  } else {
-    pass(`tag v${VERSION}`, `at ${tagCommit.substring(0, 8)}`);
-  }
+    // 5c. tag vX.Y.Z exists locally
+    // Use ^{commit} to dereference an annotated tag to its underlying commit
+    // SHA. Without it, git rev-parse returns the tag-object SHA for annotated
+    // tags, which never matches HEAD.
+    const tagCommit = git('rev-parse', `v${VERSION}^{commit}`);
+    if (typeof tagCommit === 'object') {
+      fail(
+        `tag v${VERSION}`,
+        'exists locally',
+        'missing',
+        `run: git tag -a v${VERSION} -m "Release v${VERSION}"`,
+      );
+    } else if (tagCommit !== head) {
+      fail(
+        `tag v${VERSION}`,
+        `points at HEAD (${head.substring(0, 8)})`,
+        `points at ${tagCommit.substring(0, 8)}`,
+        `re-tag at current HEAD: git tag -f v${VERSION}`,
+      );
+    } else {
+      pass(`tag v${VERSION}`, `at ${tagCommit.substring(0, 8)}`);
+    }
 
-  // 5d. tag pushed to origin
-  const remoteTag = git('ls-remote', '--tags', 'origin', `v${VERSION}`);
-  if (typeof remoteTag === 'object') {
-    fail(
-      `tag v${VERSION} on origin`,
-      'reachable',
-      remoteTag.error || 'unreachable',
-      `run: git push origin v${VERSION}`,
-    );
-  } else if (!remoteTag) {
-    fail(
-      `tag v${VERSION} on origin`,
-      'pushed',
-      'not on origin',
-      `run: git push origin v${VERSION}  (triggers release.yml → GitHub Release)`,
-    );
-  } else {
-    pass(`tag v${VERSION} on origin`, 'pushed');
+    // 5d. tag pushed to origin
+    const remoteTag = git('ls-remote', '--tags', 'origin', `v${VERSION}`);
+    if (typeof remoteTag === 'object') {
+      fail(
+        `tag v${VERSION} on origin`,
+        'reachable',
+        remoteTag.error || 'unreachable',
+        `run: git push origin v${VERSION}`,
+      );
+    } else if (!remoteTag) {
+      fail(
+        `tag v${VERSION} on origin`,
+        'pushed',
+        'not on origin',
+        `run: git push origin v${VERSION}  (triggers release.yml → GitHub Release)`,
+      );
+    } else {
+      pass(`tag v${VERSION} on origin`, 'pushed');
+    }
   }
 }
 
