@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎬 GHCP-MEM v1.6.2 — Live Demo
+# 🎬 GHCP-MEM v1.6.3 — Live Demo
 
 ### A 6-minute walkthrough that exercises every capability
 
@@ -11,7 +11,7 @@
 </div>
 
 > [!NOTE]
-> **Prereqs:** GHCP-MEM v1.6.2 installed (Marketplace search **GHCP-MEM**, or `code --install-extension ITcredibl.ghcp-mem`) and VS Code reloaded. Open any workspace. No Azure subscription needed — the Azure steps degrade gracefully if `az` isn't installed or signed in.
+> **Prereqs:** GHCP-MEM v1.6.3 installed (Marketplace search **GHCP-MEM**, or `code --install-extension ITcredibl.ghcp-mem`) and VS Code reloaded. Open any workspace. No Azure subscription needed — the Azure steps degrade gracefully if `az` isn't installed or signed in.
 
 ---
 
@@ -19,7 +19,7 @@
 
 ```mermaid
 timeline
-    title GHCP-MEM v1.6.2 — 6-minute live demo
+    title GHCP-MEM v1.6.3 — 6-minute live demo
     section 🩺 Health
         0. Sanity check (10s)              : status bar glyph
         1. Seed Azure sessions (15s)       : Seed Azure Demo Sessions
@@ -376,6 +376,6 @@ Plus the CI pipeline runs three additional gates: `npm run lint` → `npm test` 
 
 [← Back to README](../README.md) · [Competitive analysis](COMPARISON.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
 
-<sub>**Demo script for GHCP-MEM v1.6.2** · 307 tests · zero native deps · zero ports · CI ubuntu × windows × node 20</sub>
+<sub>**Demo script for GHCP-MEM v1.6.3** · 307 tests · zero native deps · zero ports · CI ubuntu × windows × node 20</sub>
 
 </div>

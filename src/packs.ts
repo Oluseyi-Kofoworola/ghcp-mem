@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import { CompressedSession } from './types';
 import { redact } from './redactor';
 import { ContextStore } from './contextStore';

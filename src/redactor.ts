@@ -159,13 +159,13 @@ const RULES: RedactionRule[] = [
   {
     name: 'azure-sas',
     pattern:
-      /(?:\?|&)(?:sv|sig|se|sp|st|spr|srt|ss|skoid|sktid)=[A-Za-z0-9%_\-.=+\/]+(?:&(?:sv|sig|se|sp|st|spr|srt|ss|skoid|sktid)=[A-Za-z0-9%_\-.=+\/]+){2,}/gi,
+      /(?:\?|&)(?:sv|sig|se|sp|st|spr|srt|ss|skoid|sktid)=[A-Za-z0-9%_\-.=+/]+(?:&(?:sv|sig|se|sp|st|spr|srt|ss|skoid|sktid)=[A-Za-z0-9%_\-.=+/]+){2,}/gi,
     replacement: (m: string) => `${m.startsWith('&') ? '&' : '?'}${hashedTag('azure-sas', m)}`,
   },
   // Azure Storage account key (88-char base64 ending in ==)
   {
     name: 'azure-storage-key',
-    pattern: /\b[A-Za-z0-9+\/]{86}==/g,
+    pattern: /\b[A-Za-z0-9+/]{86}==/g,
     replacement: (m: string) => hashedTag('azure-storage-key', m),
   },
   // Service-principal client secret (new format: starts with two-char prefix + ~ then base64-ish, 40 chars)
