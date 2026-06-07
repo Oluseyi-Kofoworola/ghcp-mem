@@ -23,6 +23,9 @@ Pure maintenance release. No extension behaviour changes — every fix here is i
 
 `npm audit --audit-level=high` now returns `found 0 vulnerabilities`.
 
+### Fixed — gitleaks PR scans
+- **`GITHUB_TOKEN` now passed to `gitleaks/gitleaks-action@v2`** (`.github/workflows/security.yml`). The action shipped a breaking change requiring `GITHUB_TOKEN` to be set on `pull_request` events, so every PR's `gitleaks` job had been failing instantly with `🛑 GITHUB_TOKEN is now required to scan pull requests` (independent of repo content). Now wired through `env.GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}`, scoped read-only via the top-level `permissions: contents: read` declaration. Also added `fetch-depth: 0` so the action has the full history it needs for the PR-vs-base diff. Together with the strict-gate fix above, this brings the PR check count from 4/5 red → **5/5 green**.
+
 ### Fixed — Zero lint warnings + regression gate
 Cleared all 13 ESLint warnings that the CI log had been carrying since v1.6.0, and tightened the lint script so future warnings fail the build instead of being ignored:
 - **`lint` script now uses `--max-warnings=0`** (`package.json`). CI fails on the first new warning.
