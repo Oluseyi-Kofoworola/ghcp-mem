@@ -48,7 +48,7 @@ npm run watch          # incremental build in watch mode
 | Path | Purpose |
 |---|---|
 | `src/extension.ts` | Entry point — lifecycle, commands, walkthroughs |
-| `src/contextProvider.ts` | `@mem` chat participant and all slash commands |
+| `src/contextProvider.ts` | `@baton` chat participant and all slash commands |
 | `src/contextStore.ts` | Persistent storage, indexing, eviction, backups |
 | `src/contextCompressor.ts` | LM compression and git branch tagging |
 | `src/searchCore.ts` | BM25 + RRF + recency scoring |

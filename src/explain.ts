@@ -1,7 +1,7 @@
 /**
  * Score-decomposition explainer.
  *
- * Phase 6 trust-transparency win: when a developer asks "why did `@mem auth`
+ * Phase 6 trust-transparency win: when a developer asks "why did `@baton auth`
  * surface session 4f7e3a91 above 1a2b3c4d?", the system can show its work.
  *
  * `explainScore(session, query, store)` reruns the exact fusion math used

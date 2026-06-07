@@ -63,7 +63,7 @@ export class ContextProvider implements vscode.Disposable {
   constructor(private readonly store: ContextStore) {}
 
   register(): void {
-    const p = vscode.chat.createChatParticipant('baton-mem', this.handle.bind(this));
+    const p = vscode.chat.createChatParticipant('baton', this.handle.bind(this));
     p.iconPath = new vscode.ThemeIcon('history');
     p.followupProvider = {
       provideFollowups(
@@ -413,7 +413,7 @@ export class ContextProvider implements vscode.Disposable {
     if (stats.newestSession)
       stream.markdown(`- **Newest:** ${new Date(stats.newestSession).toLocaleDateString()}\n`);
     stream.markdown(
-      `\n> 💡 Run \`@mem /savings\` for a full token-savings breakdown with cost estimates.\n`,
+      `\n> 💡 Run \`@baton /savings\` for a full token-savings breakdown with cost estimates.\n`,
     );
     stream.markdown(
       `\n**Commands:** \`/search\`, \`/timeline\`, \`/detail <id>\`, \`/recent\`, \`/azure\`, \`/health\`, \`/export <id>\`, \`/savings\`\n`,
@@ -468,7 +468,7 @@ export class ContextProvider implements vscode.Disposable {
     }
 
     stream.markdown(`## Search Results (${results.length})\n\n`);
-    stream.markdown(`_Token-efficient index. Use \`@mem /detail <id>\` for full content._\n\n`);
+    stream.markdown(`_Token-efficient index. Use \`@baton /detail <id>\` for full content._\n\n`);
     // Phase 3 multi-hop: render each row with its supersession lineage and
     // related entities so a single search hop carries the full narrative.
     const enriched = this.store.enrichWithMultiHop(results);
@@ -481,10 +481,10 @@ export class ContextProvider implements vscode.Disposable {
       }
       // "See also" pointers to related entities (max 2 each to keep tokens down).
       const seeAlso: string[] = [];
-      for (const sym of e.relatedSymbols.slice(0, 2)) seeAlso.push(`\`@mem /entity ${sym}\``);
+      for (const sym of e.relatedSymbols.slice(0, 2)) seeAlso.push(`\`@baton /entity ${sym}\``);
       for (const f of e.relatedFiles.slice(0, 2)) {
         if (!e.relatedSymbols.some((sym) => sym.startsWith(f + '#')))
-          seeAlso.push(`\`@mem /entity ${f}\``);
+          seeAlso.push(`\`@baton /entity ${f}\``);
       }
       if (seeAlso.length) {
         stream.markdown(`  > 🔗 See also: ${seeAlso.slice(0, 3).join(' · ')}\n\n`);
@@ -524,7 +524,7 @@ export class ContextProvider implements vscode.Disposable {
   private async detail(idPrefix: string, stream: vscode.ChatResponseStream): Promise<void> {
     if (!idPrefix) {
       stream.markdown(
-        'Provide a session ID (or prefix). Use `@mem /recent` or `/search` to find one.\n',
+        'Provide a session ID (or prefix). Use `@baton /recent` or `/search` to find one.\n',
       );
       return;
     }
@@ -600,7 +600,7 @@ export class ContextProvider implements vscode.Disposable {
     }
 
     stream.markdown(
-      `\n_Use \`@mem /detail <id>\` to expand one. Tip: \`#batonSearch\` in agent mode filters by Azure too._\n`,
+      `\n_Use \`@baton /detail <id>\` to expand one. Tip: \`#batonSearch\` in agent mode filters by Azure too._\n`,
     );
   }
 
@@ -668,7 +668,7 @@ export class ContextProvider implements vscode.Disposable {
     }
     if (session.supersededBy) {
       stream.markdown(
-        `> ⚠️ This session has been superseded by \`${session.supersededBy.substring(0, 8)}\` — \`@mem /detail ${session.supersededBy.substring(0, 8)}\` to view it.\n`,
+        `> ⚠️ This session has been superseded by \`${session.supersededBy.substring(0, 8)}\` — \`@baton /detail ${session.supersededBy.substring(0, 8)}\` to view it.\n`,
       );
     }
     if (session.retracted) {
@@ -865,7 +865,7 @@ export class ContextProvider implements vscode.Disposable {
    *   - "src/auth.ts"            → file entity
    *   - "src/auth.ts#hashPassword" → symbol entity (anything containing '#')
    * When no key is supplied, falls back to the file currently open in the
-   * active editor so `@mem /entity` "just works" mid-coding.
+   * active editor so `@baton /entity` "just works" mid-coding.
    */
   private async entity(query: string, stream: vscode.ChatResponseStream): Promise<void> {
     let key = query.trim();
@@ -1140,14 +1140,14 @@ export class ContextProvider implements vscode.Disposable {
       'modify or read current state). Prefer Baton tools for history:',
       '',
       '- "why did we / what was decided / how does X work" →',
-      '  `@mem /entity <path>`, `@mem /snippet <q>`, or MCP `baton_entity` / `baton_snippets` (~200–500 tokens vs typically 2000–10000 for a file).',
+      '  `@baton /entity <path>`, `@baton /snippet <q>`, or MCP `baton_entity` / `baton_snippets` (~200–500 tokens vs typically 2000–10000 for a file).',
       '- "find where X is used / show me past errors / who touched Y" →',
-      '  `@mem /search <q>` or MCP `baton_search` (~250 tokens).',
+      '  `@baton /search <q>` or MCP `baton_search` (~250 tokens).',
       '- "what is the supersession chain / lineage for X" →',
-      '  `@mem /lineage <id>` or MCP `baton_lineage` (~350 tokens).',
+      '  `@baton /lineage <id>` or MCP `baton_lineage` (~350 tokens).',
       '- "explain why this session ranked above that one" →',
-      '  `@mem /why <q> :: <id>` or MCP `baton_explain`.',
-      '- Unsure which is cheaper? Call `@mem /route <question>` or MCP',
+      '  `@baton /why <q> :: <id>` or MCP `baton_explain`.',
+      '- Unsure which is cheaper? Call `@baton /route <question>` or MCP',
       '  `baton_route` first — it returns a token-cost estimate per option.',
       '',
       'Only open / attach files when you need to MODIFY or read current',
@@ -1277,7 +1277,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.streamLm(prompt, stream, request, token);
 
     stream.markdown(
-      `\n\n---\n_Powered by Baton · [@mem /recap](command:) for a weekly narrative · [@mem /commit](command:) for a commit message_\n`,
+      `\n\n---\n_Powered by Baton · [@baton /recap](command:) for a weekly narrative · [@baton /commit](command:) for a commit message_\n`,
     );
   }
 
@@ -1384,7 +1384,7 @@ export class ContextProvider implements vscode.Disposable {
   ): Promise<void> {
     if (!question) {
       stream.markdown(
-        'Ask me anything about your coding history. Example: `@mem /ask why did we change the scoring algorithm?`\n',
+        'Ask me anything about your coding history. Example: `@baton /ask why did we change the scoring algorithm?`\n',
       );
       return;
     }
@@ -1394,7 +1394,7 @@ export class ContextProvider implements vscode.Disposable {
 
     if (hits.length === 0) {
       stream.markdown(
-        `_No sessions found matching your question. Try \`@mem /search ${question}\` for a broader look._\n`,
+        `_No sessions found matching your question. Try \`@baton /search ${question}\` for a broader look._\n`,
       );
       return;
     }
@@ -1429,7 +1429,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.streamLm(prompt, stream, request, token);
 
     stream.markdown(
-      `\n\n---\n_Cited from ${hits.length} session(s). Use \`@mem /detail <id>\` to expand any session._\n`,
+      `\n\n---\n_Cited from ${hits.length} session(s). Use \`@baton /detail <id>\` to expand any session._\n`,
     );
   }
 
@@ -1517,7 +1517,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.streamLm(prompt, stream, request, token);
 
     stream.markdown(
-      `\n\n---\n_${sessions.length} sessions analysed · Use \`@mem /standup\` for a daily note or \`@mem /export <id>\` to share a session._\n`,
+      `\n\n---\n_${sessions.length} sessions analysed · Use \`@baton /standup\` for a daily note or \`@baton /export <id>\` to share a session._\n`,
     );
   }
 
@@ -1615,7 +1615,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.streamLm(prompt, stream, request, token);
 
     stream.markdown(
-      `\n\n---\n_Use \`@mem /standup\` for a daily summary or \`@mem /debt\` to see open technical debt._\n`,
+      `\n\n---\n_Use \`@baton /standup\` for a daily summary or \`@baton /debt\` to see open technical debt._\n`,
     );
   }
 
@@ -1759,7 +1759,7 @@ export class ContextProvider implements vscode.Disposable {
 
     await this.streamLm(prompt, stream, request, token);
     stream.markdown(
-      `\n\n---\n_Use \`@mem /precommit\` before your next commit to check for architectural regressions._\n`,
+      `\n\n---\n_Use \`@baton /precommit\` before your next commit to check for architectural regressions._\n`,
     );
   }
 
@@ -1793,7 +1793,7 @@ export class ContextProvider implements vscode.Disposable {
     if (sessions.length === 0) {
       stream.markdown(
         query
-          ? `_No sessions found matching "${query}". Try a broader term or run \`@mem /decisions\` to see all recorded decisions._\n`
+          ? `_No sessions found matching "${query}". Try a broader term or run \`@baton /decisions\` to see all recorded decisions._\n`
           : '_No sessions with decisions found yet. Baton extracts decisions automatically as you code._\n',
       );
       return;
@@ -1863,7 +1863,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.streamLm(prompt, stream, request, token);
 
     stream.markdown(
-      `\n\n---\n_Run \`@mem /decisions\` to see all decisions · \`@mem /adr <topic>\` to generate a focused ADR_\n`,
+      `\n\n---\n_Run \`@baton /decisions\` to see all decisions · \`@baton /adr <topic>\` to generate a focused ADR_\n`,
     );
   }
 
@@ -1963,7 +1963,7 @@ export class ContextProvider implements vscode.Disposable {
 
     if (changedFiles.length === 0) {
       stream.markdown(
-        '_No changed files detected. Specify a branch: `@mem /pr main` or open a file and run `@mem /related`._\n',
+        '_No changed files detected. Specify a branch: `@baton /pr main` or open a file and run `@baton /related`._\n',
       );
       return;
     }
@@ -2020,7 +2020,7 @@ export class ContextProvider implements vscode.Disposable {
       if (s.problemsSolved.length)
         stream.markdown(`**Solved:** ${s.problemsSolved.slice(0, 2).join(' · ')}\n\n`);
       stream.markdown(
-        `\`${s.id.substring(0, 8)}\` · _\`@mem /detail ${s.id.substring(0, 8)}\` for full context_\n\n---\n\n`,
+        `\`${s.id.substring(0, 8)}\` · _\`@baton /detail ${s.id.substring(0, 8)}\` for full context_\n\n---\n\n`,
       );
     }
 
@@ -2051,7 +2051,7 @@ export class ContextProvider implements vscode.Disposable {
     }
 
     stream.markdown(
-      `\n\n---\n_Use \`@mem /pr <branch>\` for a different branch or \`@mem /decisions\` for architectural context._\n`,
+      `\n\n---\n_Use \`@baton /pr <branch>\` for a different branch or \`@baton /decisions\` for architectural context._\n`,
     );
   }
 
@@ -2087,7 +2087,7 @@ export class ContextProvider implements vscode.Disposable {
 
       if (stagedFiles.length === 0) {
         stream.markdown(
-          '_No staged changes found. Run `git add <files>` first, then `@mem /precommit`._\n',
+          '_No staged changes found. Run `git add <files>` first, then `@baton /precommit`._\n',
         );
         return;
       }
@@ -2174,7 +2174,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.streamLm(prompt, stream, request, token);
 
     stream.markdown(
-      `\n\n---\n_Run \`@mem /commit\` to generate a conventional commit message for these changes._\n`,
+      `\n\n---\n_Run \`@baton /commit\` to generate a conventional commit message for these changes._\n`,
     );
   }
 
@@ -2182,13 +2182,13 @@ export class ContextProvider implements vscode.Disposable {
 
   /**
    * `/related` — show sessions that touched the currently active editor file.
-   * Zero typing needed: just open a file and run `@mem /related`.
+   * Zero typing needed: just open a file and run `@baton /related`.
    */
   private async related(stream: vscode.ChatResponseStream): Promise<void> {
     const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
     if (!activeFile) {
       stream.markdown(
-        '_Open a file in the editor first, then run `@mem /related` to find sessions that touched it._\n',
+        '_Open a file in the editor first, then run `@baton /related` to find sessions that touched it._\n',
       );
       return;
     }
@@ -2233,12 +2233,12 @@ export class ContextProvider implements vscode.Disposable {
         stream.markdown(`**Decisions:** ${s.decisions.slice(0, 3).join(' · ')}\n\n`);
       }
       stream.markdown(
-        `\`${s.id.substring(0, 8)}\` · _\`@mem /detail ${s.id.substring(0, 8)}\` for full detail_\n\n---\n\n`,
+        `\`${s.id.substring(0, 8)}\` · _\`@baton /detail ${s.id.substring(0, 8)}\` for full detail_\n\n---\n\n`,
       );
     }
     if (matches.length > 15) {
       stream.markdown(
-        `_... and ${matches.length - 15} more. Use \`@mem /search ${fileName}\` to see all._\n`,
+        `_... and ${matches.length - 15} more. Use \`@baton /search ${fileName}\` to see all._\n`,
       );
     }
   }
@@ -2361,7 +2361,7 @@ export class ContextProvider implements vscode.Disposable {
     }
 
     stream.markdown(
-      `\n\n---\n_Use \`@mem /decisions <keyword>\` to filter · \`@mem /detail <id>\` for session context_\n`,
+      `\n\n---\n_Use \`@baton /decisions <keyword>\` to filter · \`@baton /detail <id>\` for session context_\n`,
     );
   }
 
@@ -2467,7 +2467,7 @@ export class ContextProvider implements vscode.Disposable {
     }
 
     stream.markdown(
-      `\n---\n_Estimates: 4 chars/token heuristic · GPT-4o May 2025 input pricing ($5/1M tokens) · Run \`@mem /status\` for a quick summary._\n`,
+      `\n---\n_Estimates: 4 chars/token heuristic · GPT-4o May 2025 input pricing ($5/1M tokens) · Run \`@baton /status\` for a quick summary._\n`,
     );
   }
 

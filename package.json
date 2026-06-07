@@ -2,7 +2,7 @@
   "name": "baton-mem",
   "displayName": "Baton",
   "description": "A local, auditable session-memory layer for VS Code and GitHub Copilot, built for engineers who need persistent project context without relying on a cloud memory backend.",
-  "version": "1.6.3",
+  "version": "2.0.0",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -264,9 +264,9 @@
     },
     "chatParticipants": [
       {
-        "id": "baton-mem",
-        "name": "mem",
-        "fullName": "Session Memory",
+        "id": "baton",
+        "name": "baton",
+        "fullName": "Baton — Session Memory",
         "description": "Query persistent coding session memory with progressive disclosure",
         "isSticky": true,
         "commands": [
@@ -847,7 +847,7 @@
           {
             "id": "talk-to-mem",
             "title": "Chat with your memory",
-            "description": "Open Copilot Chat and type `@mem /recent` to query past sessions. Try `/search`, `/timeline`, `/azure`, `/health`, or `/export`.\n[Open Copilot Chat](command:workbench.action.chat.open)",
+            "description": "Open Copilot Chat and type `@baton /recent` to query past sessions. Try `/search`, `/timeline`, `/azure`, `/health`, or `/export`.\n[Open Copilot Chat](command:workbench.action.chat.open)",
             "media": {
               "markdown": "walkthroughs/chat.md"
             },

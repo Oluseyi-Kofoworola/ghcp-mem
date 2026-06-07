@@ -14,7 +14,7 @@
  * stays identical.
  *
  * Retrieval uses the same BM25 + recency + confidence stack as session
- * search, but at snippet granularity — so `@mem how do we hash passwords`
+ * search, but at snippet granularity — so `@baton how do we hash passwords`
  * returns the actual decision text + its session ID, not the whole 800-
  * token session card.
  *

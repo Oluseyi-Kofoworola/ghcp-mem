@@ -24,7 +24,7 @@ Run a single test file: `npx mocha --require ts-node/register src/test/<name>.te
 Entry points and module ownership are listed in [CONTRIBUTING.md §2](CONTRIBUTING.md#2-project-structure). Key boundaries:
 
 - [src/extension.ts](src/extension.ts) — activation, command registration, walkthroughs. Keep activation cheap (`onStartupFinished`).
-- [src/contextProvider.ts](src/contextProvider.ts) — `@mem` chat participant + all slash commands (`/search`, `/entity`, `/why`, `/lineage`, `/route`, `/compliance`, …).
+- [src/contextProvider.ts](src/contextProvider.ts) — `@baton` chat participant + all slash commands (`/search`, `/entity`, `/why`, `/lineage`, `/route`, `/compliance`, …).
 - [src/contextStore.ts](src/contextStore.ts) — persistent storage, indexing, eviction, backups. All writes go through here.
 - [src/contextCompressor.ts](src/contextCompressor.ts) — LM compression. **Evidence-citation gate**: a decision cannot be emitted without pointing at the captured event that produced it. Do not weaken this.
 - [src/searchCore.ts](src/searchCore.ts) — BM25 + RRF + recency. Guarded by an nDCG@K regression gate in CI (`scripts/eval-check.js`).

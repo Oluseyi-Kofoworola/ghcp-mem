@@ -26,6 +26,7 @@ import { AutosaveTrigger } from './autosave';
 import { MemoryTimelinePanel } from './timelinePanel';
 import { SessionCodeLensProvider } from './sessionCodeLens';
 import { refreshPolicyRedactionRules } from './policySource';
+import { runOneTimeMigration } from './migration';
 
 let capture: SessionCapture;
 let compressor: ContextCompressor;
@@ -71,6 +72,22 @@ interface ReviewPromptState {
 export async function activate(context: vscode.ExtensionContext) {
   memLog = vscode.window.createOutputChannel('Baton');
   context.subscriptions.push(memLog);
+
+  // v2.0.0 one-time migration from ghcp-mem. Runs once per install, before
+  // any other state is touched, so a successful migration is visible to
+  // the rest of activation (ContextStore reads the migrated mirror, etc).
+  try {
+    const report = await runOneTimeMigration({ globalState: context.globalState });
+    if (!report.alreadyDone) {
+      log(
+        'INFO',
+        `v2.0.0 migration: legacyFound=${report.legacyFound} mirror=${report.mirrorMigrated} settings=${report.settingsMigrated.length} errors=${report.errors.length}`,
+      );
+      for (const err of report.errors) log('WARN', `migration: ${err}`);
+    }
+  } catch (e) {
+    log('ERROR', `v2.0.0 migration crashed: ${(e as Error).message}`);
+  }
 
   const config = getConfig();
   if (!config.enabled) {
@@ -680,7 +697,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const res = await importPack(store, pack);
         updateStatusBar();
         const conflictsTail = res.conflictsRaised
-          ? ` ⚠️ ${res.conflictsRaised} potential conflict(s) raised — run \`@mem /conflicts\` to review.`
+          ? ` ⚠️ ${res.conflictsRaised} potential conflict(s) raised — run \`@baton /conflicts\` to review.`
           : '';
         vscode.window.showInformationMessage(
           `Baton: Imported ${res.imported} session(s) from pack "${pack.name}"${res.skipped ? ` (${res.skipped} already present)` : ''}.${conflictsTail}`,
@@ -841,7 +858,7 @@ export async function activate(context: vscode.ExtensionContext) {
         const count = matches.length;
         const latest = [...matches].sort((a, b) => b.endTime - a.endTime)[0];
         const ago = formatAgoSimple(latest.endTime);
-        const msg = `$(history) ${count} mem session${count > 1 ? 's' : ''} for ${fileName} · last: ${ago} — @mem /related`;
+        const msg = `$(history) ${count} mem session${count > 1 ? 's' : ''} for ${fileName} · last: ${ago} — @baton /related`;
         vscode.window.setStatusBarMessage(msg, 8000);
       }
 
@@ -994,7 +1011,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         if (pick?.id) {
           await vscode.commands.executeCommand('workbench.action.chat.open', {
-            query: `@mem /detail ${pick.id}`,
+            query: `@baton /detail ${pick.id}`,
           });
         }
       },

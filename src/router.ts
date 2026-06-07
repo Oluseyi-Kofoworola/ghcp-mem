@@ -11,7 +11,7 @@
  *   - Mixed          ("explain X then add error handling")  → step plan
  *
  * The recommender is consumed two ways:
- *   1. `@mem /route <query>` — surfaces the recommendation to humans
+ *   1. `@baton /route <query>` — surfaces the recommendation to humans
  *   2. `baton_route` MCP tool — lets agents (Copilot, Cursor, Cline)
  *      query the router themselves before deciding context, so they pick
  *      tools without an attach round-trip.

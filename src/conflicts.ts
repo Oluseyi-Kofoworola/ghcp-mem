@@ -23,7 +23,7 @@
  *
  * We deliberately do NOT auto-supersede — the heuristic is good enough
  * to draw attention to the conflict, but the user makes the call via
- * `@mem /supersede <newer> <older>`. False positives are cheap (a hint
+ * `@baton /supersede <newer> <older>`. False positives are cheap (a hint
  * the user dismisses) while a false auto-supersession would be expensive
  * (corrupts the audit trail).
  *
@@ -160,7 +160,7 @@ export function detectConflicts(
  *   ⚠️ Possible conflict — decision text
  *   Marker: "instead of"
  *   Candidates: ...
- *   Resolve: `@mem /supersede <new> <candidate>`
+ *   Resolve: `@baton /supersede <new> <candidate>`
  */
 export function renderConflictWarning(w: ConflictWarning): string {
   const lines: string[] = [];
@@ -180,7 +180,7 @@ export function renderConflictWarning(w: ConflictWarning): string {
       .join(', ');
     lines.push(`- \`${c.sessionId.substring(0, 8)}\` — ${c.summary} _(shares ${shared})_`);
     lines.push(
-      `  > Resolve: \`@mem /supersede ${w.newSessionId.substring(0, 8)} ${c.sessionId.substring(0, 8)}\``,
+      `  > Resolve: \`@baton /supersede ${w.newSessionId.substring(0, 8)} ${c.sessionId.substring(0, 8)}\``,
     );
   }
   lines.push('');

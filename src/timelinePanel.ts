@@ -101,7 +101,7 @@ export class MemoryTimelinePanel {
   private handleMessage(msg: { type: string; id?: string; query?: string; tag?: string }): void {
     if (msg.type === 'openDetail' && msg.id) {
       vscode.commands.executeCommand('workbench.action.chat.open', {
-        query: `@mem /detail ${msg.id}`,
+        query: `@baton /detail ${msg.id}`,
       });
     } else if (msg.type === 'copyId' && msg.id) {
       vscode.env.clipboard.writeText(msg.id);
@@ -111,7 +111,7 @@ export class MemoryTimelinePanel {
       );
     } else if (msg.type === 'openSearch' && msg.query) {
       vscode.commands.executeCommand('workbench.action.chat.open', {
-        query: `@mem /search ${msg.query}`,
+        query: `@baton /search ${msg.query}`,
       });
     } else if (msg.type === 'togglePin' && msg.id) {
       void (async () => {
@@ -154,9 +154,9 @@ export class MemoryTimelinePanel {
       })();
     } else if (msg.type === 'verify' && msg.id) {
       // Surface verification through the chat participant so the UX stays
-      // consistent with @mem /verify and we don't duplicate the renderer.
+      // consistent with @baton /verify and we don't duplicate the renderer.
       vscode.commands.executeCommand('workbench.action.chat.open', {
-        query: `@mem /verify ${msg.id}`,
+        query: `@baton /verify ${msg.id}`,
       });
     } else if (msg.type === 'correct' && msg.id) {
       void (async () => {
@@ -170,7 +170,7 @@ export class MemoryTimelinePanel {
         )?.trim();
         if (!text) return;
         vscode.commands.executeCommand('workbench.action.chat.open', {
-          query: `@mem /correct ${msg.id} ${text}`,
+          query: `@baton /correct ${msg.id} ${text}`,
         });
       })();
     } else if (msg.type === 'retract' && msg.id) {

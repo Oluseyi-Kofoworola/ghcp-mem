@@ -6,6 +6,73 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [2.0.0] — 2026-06-07
+
+**Rebrand to Baton.** This is a marketing-and-identity release: the project formerly known as **GHCP-MEM** is now **Baton**. The npm package is renamed from `ghcp-mem` to `baton-mem`, the VS Code Marketplace itemName is now `itcredibl.baton-mem`, the chat participant is `@baton`, settings live under `baton.*`, and MCP tools use the `baton_*` prefix. **No retrieval, ranking, grounding, or capture behaviour changed.** The auditable session-memory architecture you got in v1.6.0–v1.6.3 is intact — only the wrapper is different.
+
+The major version bump is justified by the breaking changes to extension identity, settings keys, command IDs, MCP tool names, env vars, and disk-mirror paths. Most users will not feel them because v2.0.0 ships transparent migration for everything the new extension can reach.
+
+### Why the rename
+The `ghcp-mem` name (originally "GitHub Copilot Memory") implied Copilot-only scope and embedded a third-party trademark in our product identity. Both blocked the next phase of work: extending Baton to be a model-agnostic memory layer that any AI coding assistant — Copilot, Cursor, Cline, Claude Code, Continue, raw MCP — can consume. The MCP server in v1.6.x already worked with all of these; v2.0.0 commits to that positioning at the brand level.
+
+The actual model-agnostic split (extracting `baton-core` as a pure-TS engine, `baton-mcp` as a standalone server, `baton-vscode` as a thin extension wrapper) lands in v2.1.0. v2.0.0 is the foundation-layer rename so v2.1.0 doesn't have to do both at once.
+
+### Migration guide for v1.x users
+
+<!-- baton:preserve-old-names -->
+If you're upgrading from `itcredibl.ghcp-mem` v1.6.x to `itcredibl.baton-mem` v2.0.0, here's what happens automatically and what (if anything) you need to do.
+
+**What migrates automatically on first activation:**
+- **Disk-mirror file**: `~/.ghcp-mem/sessions.json` → `~/.baton-mem/sessions.json`. Copied if the new location is empty; never clobbers a freshly-installed Baton install. Your standalone MCP server keeps seeing the same session history.
+- **User and workspace settings**: every `ghcpMem.*` setting you had configured is copied to the equivalent `baton.*` setting. Defaults are not migrated (only explicit overrides). An explicit `baton.*` setting always wins over a legacy `ghcpMem.*` one.
+- **MCP tool aliases**: the v1.x tool names (`ghcpMem_search`, `ghcpMem_recent`, `ghcpMem_timeline`, `ghcpMem_get`, `ghcpMem_store`, `ghcpMem_delete`, `ghcpMem_entity`, `ghcpMem_snippets`, `ghcpMem_conflicts`, `ghcpMem_lineage`, `ghcpMem_explain`, `ghcpMem_graph`, `ghcpMem_route`) are still accepted by `baton-mem-mcp`. Existing MCP client configs in Cursor / Cline / Claude Code / Continue keep working unchanged — calls are transparently routed to the new canonical `baton_*` names. The legacy names are advertised in `tools/list` with a `[DEPRECATED — use baton_X instead]` note in the description so AI agents see the deprecation but humans don't have to rewrite configs.
+- **Environment variables**: `GHCP_MEM_SECRET_SALT`, `GHCP_MEM_ALLOW_MCP_WRITE`, `GHCP_MEM_READONLY`, `GHCP_MEM_STORE_PATH` are still read by both the extension and the MCP server. The new `BATON_*` names take precedence when set.
+
+**What does NOT migrate automatically (and why):**
+- **VS Code globalState** (the in-extension session DB): VS Code sandboxes Memento storage per-extension-identity, so the new `itcredibl.baton-mem` extension starts with empty globalState by design. **The disk-mirror migration above handles the meaningful state**, and the MCP server reads the migrated mirror directly. The first time you open the Sessions tree in v2.0.0, you'll see whatever was in `~/.ghcp-mem/sessions.json`. If you want to also seed the in-extension DB from the mirror, use `Baton: Import Memory from JSON…` and point it at the migrated `~/.baton-mem/sessions.json`.
+- **Chat history**: VS Code chat history references the old `@ghcp-mem` participant by ID. Past chat threads will show "unknown participant" entries for `@ghcp-mem` — that's a VS Code limitation, not something we can rewrite. New chats use `@baton`.
+- **Keybindings**: if you bound a keyboard shortcut to a `ghcpMem.*` command (e.g. `ghcpMem.captureSnapshot`), the binding will silently stop working because the new extension registers commands under the `baton.*` prefix. Edit your `keybindings.json` and change `"command": "ghcpMem.captureSnapshot"` to `"command": "baton.captureSnapshot"`.
+
+**One-time notification**: on first activation, if anything was migrated (mirror file or settings), you'll see a single info notification: "GHCP-MEM is now Baton: copied your existing memory mirror from ~/.ghcp-mem to ~/.baton-mem; migrated N settings from ghcpMem.* to baton.*. Your data has been preserved." Click "Open Settings" to inspect the migrated `baton.*` keys. The migration runs at most once per install (idempotent flag `baton.migrationFromGhcpMem` in globalState).
+
+**Uninstalling the old extension**: once Baton is working, you can safely uninstall `itcredibl.ghcp-mem` from the Marketplace. Your `~/.ghcp-mem/` directory will remain on disk untouched until you remove it manually — Baton never deletes it, only reads from it.
+<!-- /baton:preserve-old-names -->
+
+### Changed — Brand surfaces
+- **Extension identity**: `itcredibl.ghcp-mem` → `itcredibl.baton-mem` on the VS Code Marketplace and in npm.
+- **Display name**: `GHCP-MEM` → `Baton` everywhere user-facing.
+- **Chat participant**: `@mem` (id `ghcp-mem`) → `@baton` (id `baton`, fullName `Baton — Session Memory`).
+- **Settings prefix**: 29 settings moved from `ghcpMem.*` → `baton.*` (full list in package.json).
+- **Command IDs**: 30+ commands moved from `ghcpMem.*` → `baton.*`. Affects keybindings (see migration guide above).
+- **MCP tool prefix**: 15 tools renamed from `ghcpMem_*` → `baton_*` with full v1.x aliases.
+- **CLI binaries**: `ghcp-mem-mcp` → `baton-mem-mcp`, `ghcp-mem-ci-seed` → `baton-mem-ci-seed`.
+- **Storage paths**: `~/.ghcp-mem/sessions.json` → `~/.baton-mem/sessions.json` (auto-migrated).
+- **Env vars**: `GHCP_MEM_*` → `BATON_*` (legacy still honoured).
+
+### Added — Migration infrastructure
+- **`src/migration.ts`** (new file, 8.3 KB): one-time `runOneTimeMigration()` function called from `extension.ts:activate`. Pure-logic with injected fs / config providers so it's fully testable. Idempotent via `baton.migrationFromGhcpMem` globalState flag. Handles settings migration (skips defaults, respects explicit overrides), mirror-file copy (never clobbers a fresh install), and a one-time user notification.
+- **`src/test/migration.test.ts`** (10 new tests): no-op when nothing to migrate, idempotent re-run, mirror copy, no-clobber on existing target, global + workspace settings, default-equal skip, explicit-override-wins, notification triggered, notification suppressed when nothing migrated.
+- **`src/test/mcpAliases.test.ts`** (2 new tests): pins the legacy → canonical alias map shape so a future refactor that drops an alias is caught by CI.
+- **`scripts/rename-to-baton.mjs`** + **`scripts/rename-at-mem.mjs`**: the mass-rename helpers used to execute this release. Kept in the repo for audit trail (the rename rules are explicit and reproducible) and as a template for future renames.
+
+### Changed — MCP server
+- **Tool dispatch normalizes legacy names before the switch** (`src/mcpServer.ts:handleCall`). `LEGACY_TOOL_ALIASES` is exported so tests can pin it.
+- **`tools/list` now advertises both canonical and legacy names** (`ADVERTISED_TOOLS`). Legacy entries get a `[DEPRECATED — use baton_X instead]` prefix on the description so AI agents that read tool descriptions see the deprecation.
+- **Env-var resolution refactored** (`readEnv()` helper). Reads in preference order: `BATON_*` first, then `GHCP_MEM_*` fallback, then default. Same pattern in `redactor.ts` for `BATON_SECRET_SALT` / `GHCP_MEM_SECRET_SALT`.
+
+### Validation
+- `npm run lint --max-warnings=0`: 0 warnings, 0 errors
+- `npm run typecheck`: clean
+- `npm test`: **335 / 335 pass** (323 v1.6.3 baseline + 10 migration + 2 alias)
+- `npm run check:release`: 4 / 4 pass
+- `npm run bundle:prod`: 215 KB `out/extension.js`
+- `npm audit --audit-level=high`: 0 vulnerabilities
+
+### What's next (v2.1.0 preview)
+The model-agnostic monorepo split: extract `baton-core` (pure-TS engine, no VS Code), `baton-mcp` (standalone server consumable by Cursor / Cline / Claude Code / raw CLI), `baton-vscode` (thin extension wrapper) into a workspaces monorepo. The three god-objects (`contextProvider.ts` 2,550 lines, `extension.ts` 1,748 lines, `contextStore.ts` 1,274 lines) get split along package boundaries during the move. Encryption-at-rest (the `baton.storageEncryption: off | os-keychain | passphrase` setting promised in v1.6.1's CHANGELOG) ships in v2.2.0.
+
+---
+
 ## [1.6.3] — 2026-06-07
 
 Pure maintenance release. No extension behaviour changes — every fix here is in the build/CI/security plumbing the v1.6.2 audit (and the 10 stuck Dependabot PRs that resulted from it) surfaced.
@@ -115,7 +182,7 @@ All 323 tests still passing after the Prettier sweep and the test-runner refacto
 
 ### Added — Phase 3: entity layer + lineage + decay + eval
 - **Entity aggregation** (new `src/entity.ts`). `buildEntityRecord(key, sessions)` rolls up every session touching a file or LSP symbol into a single record: decisions, problems, topics, observation-type breakdown, recent-sessions list, supersession lineage chain, and an `allSupersededOrRetracted` flag. `/entity <path>` (or `<path>#<symbol>`) chat command renders it; falls back to the active editor's file when called with no args.
-- **Multi-hop retrieval** (`src/contextStore.ts:getLineage` + `enrichWithMultiHop`). `/search` results now show inline `🧭 Lineage: A → B → C` and `🔗 See also: @mem /entity X` hints — one retrieval hop carries the full narrative + entity pointers instead of forcing follow-up queries.
+- **Multi-hop retrieval** (`src/contextStore.ts:getLineage` + `enrichWithMultiHop`). `/search` results now show inline `🧭 Lineage: A → B → C` and `🔗 See also: @baton /entity X` hints — one retrieval hop carries the full narrative + entity pointers instead of forcing follow-up queries.
 - **Time-based confidence decay** (new `src/decay.ts`). Pure `effectiveConfidence(session, now)` with 60-day half-life, capped at 30% haircut. Recent retrieval / accept resets the decay clock. Integrated into `search()` ranking and the trust badge renderer; the original `confidence` is preserved on disk so we never destroy provenance.
 - **nDCG@K + gold-corpus eval gate** (`src/eval.ts`, `scripts/eval-check.js`, new `scripts/eval-gold.json`). New `ndcgAtK()` and `runGoldEval(store, queries)`. `scripts/eval-check.js --gold <path>` runs the gate against a hand-curated 12-query corpus; baseline gains an `ndcg` floor. Regression on any of recall@5 / MRR / nDCG@5 fails the gate.
 
@@ -126,7 +193,7 @@ All 323 tests still passing after the Prettier sweep and the test-runner refacto
 
 ### Added — Phase 5: adaptive ranking + federated packs + NER-lite
 - **Adaptive ranking weights** (new `src/adaptiveWeights.ts`). Per-signal multipliers (`keyword`, `recency`, `confidence`, `reinforcement`, `feedback`) learned from accept/reject telemetry via avg-of-accepted vs avg-of-rejected delta. Bounded `[0.75, 1.25]`, capped at ±5% per round, requires ≥10 samples before kicking in. Persisted under its own `baton.adaptiveWeights` `globalState` key. `ContextStore` snapshots per-signal values at search time and feeds them back on accept/reject; new `getAdaptiveWeights`, `getAdaptiveSampleCount`, `resetAdaptiveWeights` accessors.
-- **Federated pack lineage merge** (`src/packs.ts`). `importPack` now returns `conflictsRaised` count; supersession links (`supersedes` / `supersededBy` / `correctionOf`) and `retractedReason` propagate across the import boundary. The import status-bar message surfaces conflict count with `@mem /conflicts` pointer for follow-up review.
+- **Federated pack lineage merge** (`src/packs.ts`). `importPack` now returns `conflictsRaised` count; supersession links (`supersedes` / `supersededBy` / `correctionOf`) and `retractedReason` propagate across the import boundary. The import status-bar message surfaces conflict count with `@baton /conflicts` pointer for follow-up review.
 - **Custom-entity redaction (NER-lite, no ML)** (`src/redactor.ts`, `src/types.ts`, new `baton.customSensitiveEntities` config). Each entry compiles to a literal, case-insensitive, word-boundary-anchored regex. Multi-word entries handled via `\s+` substitution; respects identifier boundaries (won't mis-match `"Project Hydra"` inside `ProjectHydraService`). Use for organisation, project, or codename terms that don't match a built-in pattern.
 
 ### Added — Phase 6: explainability + visualisation
@@ -162,7 +229,7 @@ All ten weaknesses from the upstream architectural critique are now addressed: h
 `out/extension.js` 162 KB → 208 KB (+46 KB for nine new modules + UI). `out/mcpServer.js` 30 KB → 38 KB (+8 KB for six new tools). Zero native dependencies — `npm install` does no compilation step.
 
 ### Added — Phase 9: auto-routing primer + cost recommender
-- **Routing primer in the auto-injected memory file** (`src/contextProvider.ts:buildStartupContext`). Every new Copilot session now opens with a short stanza that teaches the agent: prefer Baton MCP/chat tools for history questions ("why / what / how / who / when") and only open files when the task is a MODIFY. The primer cites the concrete tools (`@mem /entity`, `@mem /snippet`, `@mem /search`, `@mem /lineage`, `@mem /why`, `@mem /route`) with approximate token costs so the agent can self-route from message one — no extra round-trip required.
+- **Routing primer in the auto-injected memory file** (`src/contextProvider.ts:buildStartupContext`). Every new Copilot session now opens with a short stanza that teaches the agent: prefer Baton MCP/chat tools for history questions ("why / what / how / who / when") and only open files when the task is a MODIFY. The primer cites the concrete tools (`@baton /entity`, `@baton /snippet`, `@baton /search`, `@baton /lineage`, `@baton /why`, `@baton /route`) with approximate token costs so the agent can self-route from message one — no extra round-trip required.
 - **`/route <query>` chat command + `baton_route` MCP tool** (new `src/router.ts`). Classifies a request as `lookup` / `modify` / `investigate` / `mixed` / `unknown`, estimates the token cost of every action, and returns the cheapest plan. The chat surface auto-resolves file sizes from the workspace so estimates reflect reality. The MCP tool lets non-Copilot agents (Cursor, Cline, Windsurf, Claude Desktop, Copilot CLI) self-route at any time.
 - **Strengthened MCP tool descriptions** (`src/mcpServer.ts:TOOLS`). The descriptions for `baton_search`, `baton_entity`, and `baton_snippets` now explicitly state the typical token saving vs file open, with concrete numbers — so agents reading the catalog learn the routing rule from the catalog itself.
 
@@ -206,7 +273,7 @@ The release-consistency gate in **1.5.1** lives outside the extension — as an 
   - Returns typed `IntegrityIssue[]` with severities (`error` / `warning` / `info`).
   - `formatAuditReport()` produces a clickable markdown report grouped by severity.
 - **Three surfaces, same auditor:**
-  - 💬 **`@mem /audit`** — chat slash command, streams a compact issue list with fix-it suggestions and an "Open full audit report" button.
+  - 💬 **`@baton /audit`** — chat slash command, streams a compact issue list with fix-it suggestions and an "Open full audit report" button.
   - 🤖 **`#batonAudit`** — `vscode.lm` agent tool (`MemoryAuditTool`). Copilot can spot-check the workspace mid-flow. Always available — read-only, no write surface.
   - 🎛 **`Baton: Run Workspace Integrity Audit`** — command palette entry. Opens the full markdown report as a preview tab. Status bar flashes `$(alert) N integrity error(s)` when blocking issues exist.
 - **`src/test/integrityChecker.test.ts`** — 9 new tests. One of them, "catches README ≠ package.json (the reviewer's exact bug)", asserts the exact pattern the external review flagged (`package.json` at 1.5.1, README footer at 1.5.0) is now caught instantly.
@@ -214,7 +281,7 @@ The release-consistency gate in **1.5.1** lives outside the extension — as an 
 ### How it composes with the release-consistency gate
 | When | Surface | What runs |
 |---|---|---|
-| You're editing | `@mem /audit` in chat | the auditor (in-editor) |
+| You're editing | `@baton /audit` in chat | the auditor (in-editor) |
 | You're editing | `#batonAudit` in agent prompt | the auditor (Copilot-driven) |
 | You hit ⌘⇧P | `Baton: Run Workspace Integrity Audit` | the auditor (palette) |
 | CI runs on PR | `npm run check:release` | the gate (doc-only mode) |
@@ -311,7 +378,7 @@ For anyone tracking the May review verbatim — these were flagged as recommenda
 ### Changed — Honest-claims pass (responding to external review)
 An external reviewer rated Baton 7.4/10 and flagged several over-claims in our marketing copy. This patch addresses what we could land in a single release; the rest is on the deferred roadmap below.
 
-- **`README.md`** — `@mem /savings` mentions now label the number as an **estimate** with a one-line caveat that it is derived from typical Copilot context windows rather than measured against real Copilot sessions. Four places updated: hero overview, getting-started step, command table, and chat-participant table.
+- **`README.md`** — `@baton /savings` mentions now label the number as an **estimate** with a one-line caveat that it is derived from typical Copilot context windows rather than measured against real Copilot sessions. Four places updated: hero overview, getting-started step, command table, and chat-participant table.
 - **`README.md`** — Version footer + badge sweep to `1.4.10`.
 - **`docs/DEMO.md`** — Version references updated to `1.4.10`.
 
@@ -378,7 +445,7 @@ These are real gaps; tracking publicly so adopters can plan:
 ## [1.4.4] — 2026-05-31
 
 ### Fixed
-- **`README.md`** — Replaced overclaiming language ("Copilot already knows", "hands context back automatically", "zero network") with accurate descriptions; added "Who it is built for" positioning section; labeled token savings as estimates; corrected `@mem` command count from 15 to 20; updated footer to v1.4.4.
+- **`README.md`** — Replaced overclaiming language ("Copilot already knows", "hands context back automatically", "zero network") with accurate descriptions; added "Who it is built for" positioning section; labeled token savings as estimates; corrected `@baton` command count from 15 to 20; updated footer to v1.4.4.
 
 ---
 
@@ -393,15 +460,15 @@ These are real gaps; tracking publicly so adopters can plan:
 
 ### Added — Developer Intelligence commands (Batch 3)
 
-- **`@mem /whereami`** — Interruption-recovery brief: reads the last 5 sessions, extracts open TODO/WIP signals, surfaces the most recent active files and decisions, and uses the LM to generate a concise AI re-entry brief ("You were doing X, left off at Y, suggested next step: Z"). Status bar proactive hint also surfaces session count when any file is opened.
-- **`@mem /debt`** — Technical debt ledger: scans session history for TODO, FIXME, HACK, WORKAROUND, quick-fix, refactor, fragile, and 15+ debt-signal patterns. Groups items by age buckets (🔴 >30d, 🟡 8–30d, 🟢 ≤7d) and generates an AI-prioritised action plan of the top 5 items.
-- **`@mem /adr [topic]`** — Formal Architecture Decision Record generator: collects decisions and topics from matching sessions, passes them to the LM to produce a structured ADR (Title / Status / Context / Decision / Options Considered / Consequences / Related Files). Topic filter narrows to specific subsystems.
-- **`@mem /pr [branch|PR#]`** — PR review context injection: runs `git diff --name-only <base>` (or `gh pr view <N> --json files`) to get changed files, finds all sessions that touched those files, renders a session history per file, and generates a reviewer briefing via LM.
-- **`@mem /precommit`** — Pre-commit architectural consistency check: reads staged files via `git diff --cached --name-only`, finds sessions that previously touched those files, collects relevant decisions, and asks the LM to produce a ✅/⚠️ consistency verdict before you commit.
+- **`@baton /whereami`** — Interruption-recovery brief: reads the last 5 sessions, extracts open TODO/WIP signals, surfaces the most recent active files and decisions, and uses the LM to generate a concise AI re-entry brief ("You were doing X, left off at Y, suggested next step: Z"). Status bar proactive hint also surfaces session count when any file is opened.
+- **`@baton /debt`** — Technical debt ledger: scans session history for TODO, FIXME, HACK, WORKAROUND, quick-fix, refactor, fragile, and 15+ debt-signal patterns. Groups items by age buckets (🔴 >30d, 🟡 8–30d, 🟢 ≤7d) and generates an AI-prioritised action plan of the top 5 items.
+- **`@baton /adr [topic]`** — Formal Architecture Decision Record generator: collects decisions and topics from matching sessions, passes them to the LM to produce a structured ADR (Title / Status / Context / Decision / Options Considered / Consequences / Related Files). Topic filter narrows to specific subsystems.
+- **`@baton /pr [branch|PR#]`** — PR review context injection: runs `git diff --name-only <base>` (or `gh pr view <N> --json files`) to get changed files, finds all sessions that touched those files, renders a session history per file, and generates a reviewer briefing via LM.
+- **`@baton /precommit`** — Pre-commit architectural consistency check: reads staged files via `git diff --cached --name-only`, finds sessions that previously touched those files, collects relevant decisions, and asks the LM to produce a ✅/⚠️ consistency verdict before you commit.
 
 ### Added — Proactive prediction
 
-- **Proactive file-open context hint** — `onDidOpenTextDocument` and `onDidChangeActiveTextEditor` listeners silently surface a transient status-bar message (`$(history) N mem sessions for file.ts · last: 2h ago — @mem /related`) when opening any file that has session history. Zero friction, no popup, 8-second TTL.
+- **Proactive file-open context hint** — `onDidOpenTextDocument` and `onDidChangeActiveTextEditor` listeners silently surface a transient status-bar message (`$(history) N mem sessions for file.ts · last: 2h ago — @baton /related`) when opening any file that has session history. Zero friction, no popup, 8-second TTL.
 
 ### Added — Team intelligence
 
@@ -409,13 +476,13 @@ These are real gaps; tracking publicly so adopters can plan:
 
 ### Added — AI-powered commands
 
-- **`@mem /standup`** — AI-generated daily standup note from yesterday's compressed sessions, formatted as "What I did · What I'm doing today · Any blockers".
-- **`@mem /commit`** — AI conventional commit message synthesised from staged diff content plus matching session history; paste straight into the commit dialog.
-- **`@mem /ask <question>`** — RAG Q&A: finds the top-5 sessions most relevant to the question, synthesises an answer with inline session citations.
-- **`@mem /recap [7d|30d|90d]`** — Narrative engineering recap showing "what shipped, key decisions, patterns" for sprint retros and manager updates.
-- **`@mem /related`** — Sessions that touched the currently open file (exact path · suffix · basename match), ranked by recency.
-- **`@mem /decisions [keyword]`** — ADR-style decision log deduped across all sessions, grouped by observation type. Shows date, branch, session ID. AI synthesis when ≥5 decisions found.
-- **`@mem /savings`** — Lifetime token savings breakdown: per-session rows with raw chars vs compact chars, totals, avg compression ratio, and GPT-4o dollar-equivalent ($5/1M tokens).
+- **`@baton /standup`** — AI-generated daily standup note from yesterday's compressed sessions, formatted as "What I did · What I'm doing today · Any blockers".
+- **`@baton /commit`** — AI conventional commit message synthesised from staged diff content plus matching session history; paste straight into the commit dialog.
+- **`@baton /ask <question>`** — RAG Q&A: finds the top-5 sessions most relevant to the question, synthesises an answer with inline session citations.
+- **`@baton /recap [7d|30d|90d]`** — Narrative engineering recap showing "what shipped, key decisions, patterns" for sprint retros and manager updates.
+- **`@baton /related`** — Sessions that touched the currently open file (exact path · suffix · basename match), ranked by recency.
+- **`@baton /decisions [keyword]`** — ADR-style decision log deduped across all sessions, grouped by observation type. Shows date, branch, session ID. AI synthesis when ≥5 decisions found.
+- **`@baton /savings`** — Lifetime token savings breakdown: per-session rows with raw chars vs compact chars, totals, avg compression ratio, and GPT-4o dollar-equivalent ($5/1M tokens).
 
 ### Added — Visual UX
 
@@ -437,7 +504,7 @@ These are real gaps; tracking publicly so adopters can plan:
 - **`src/extension.ts`** — Live status bar item shows spinner (⟳) during compression and error indicator on failure, plus tooltip with current session count.
 - **`src/extension.ts`** — Dedicated `Baton` output channel (`memLog`) with structured `log()` helper for diagnostics without VS Code notification spam.
 - **`src/extension.ts`** — MCP server auto-registered via feature-detected `vscode.lm.registerMcpServer` API (VS Code ≥1.101) with graceful fallback.
-- **`src/extension.ts`** — Follow-up provider registered with context-aware suggestions based on last `@mem` command used.
+- **`src/extension.ts`** — Follow-up provider registered with context-aware suggestions based on last `@baton` command used.
 - **`src/extension.ts`** — CLAUDE.md and `.cursor/rules` cross-editor instruction injection (hash-guarded to avoid duplicate writes).
 - **`src/mcpServer.ts`** — Two new MCP write tools: `baton_store` (persist an external session) and `baton_delete` (delete by ID prefix).
 - **`src/contextStore.ts`** — `getStats()` upgraded: now returns `lifetimeEstimatedTokensSaved`, `avgCompressionRatio`, `totalCompactTokens` with `RAW_EVENT_OVERHEAD_CHARS = 800` per-session estimate.
@@ -451,7 +518,7 @@ These are real gaps; tracking publicly so adopters can plan:
 
 ### Added — Documentation and README
 
-- **`README.md`** — Updated `@mem` commands table to list all 20 slash commands.
+- **`README.md`** — Updated `@baton` commands table to list all 20 slash commands.
 - **`README.md`** — New "Visual Timeline", "Session CodeLens", and "AI-powered chat commands" subsections under Core features.
 - **`README.md`** — Commands table includes `Baton: Open Visual Timeline` and `Baton: Show File Session History`.
 - **`README.md`** — External MCP tools section updated to list all 6 tools (including `baton_store` and `baton_delete`).
@@ -694,7 +761,7 @@ These are real gaps; tracking publicly so adopters can plan:
   backups.
 - Azure context enrichment: Bicep, Terraform, AZD, Functions, AKS, Container Apps,
   Key Vault, OpenAI, Storage, Service Bus, Cosmos DB detection + `az` CLI snapshot.
-- Chat participant `@mem` with `/search`, `/timeline`, `/detail`, `/azure`, `/health`
+- Chat participant `@baton` with `/search`, `/timeline`, `/detail`, `/azure`, `/health`
   slash commands.
 - Agent-mode LM tools (`baton_search`, `baton_store`) registered via
   `vscode.lm.registerTool`.

@@ -14,7 +14,7 @@
  *     the rollup. Well within retrieval-budget territory.
  *
  * Used by:
- *   - `@mem /entity <key>` chat command (renders a focused summary)
+ *   - `@baton /entity <key>` chat command (renders a focused summary)
  *   - Multi-hop retrieval (lifts entity context onto top search results)
  */
 

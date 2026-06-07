@@ -84,7 +84,7 @@ We built Baton because we hit the same wall: a Copilot that forgot everything, a
 |---|---|---|
 | **1. Install** | One click from the Marketplace, or `code --install-extension ITcredibl.baton-mem` | Activates on next VS Code launch. Zero config required. |
 | **2. Code normally** | Edit files, run terminals, push commits — your usual day | Captures events locally, redacts secrets, compresses sessions through your own Copilot subscription |
-| **3. Open a new chat** | Type `@mem` or just ask your usual question | Copilot starts with the prior session's decisions already cited. For "what / why / how" questions, the answer comes from local lookup — *no Copilot completion is spent* — which is where the headline token-cost reduction comes from. The synthetic benchmark estimates 5–20× savings on this query class; results on your real repo will vary with query mix. |
+| **3. Open a new chat** | Type `@baton` or just ask your usual question | Copilot starts with the prior session's decisions already cited. For "what / why / how" questions, the answer comes from local lookup — *no Copilot completion is spent* — which is where the headline token-cost reduction comes from. The synthetic benchmark estimates 5–20× savings on this query class; results on your real repo will vary with query mix. |
 
 That's it. No daemon to keep running. No cloud account to register. No vector DB to provision.
 
@@ -115,8 +115,8 @@ Without a memory layer that proves itself, the cost compounds session by session
 With Baton, the failure modes above are designed-out:
 
 - 🟢 **Your Copilot resumes where you left off.** The auto-injected memory file makes every new session start with context already loaded.
-- 🟢 **Every decision is cited.** `@mem /entity src/auth.ts` shows you the supersession chain, the evidence, the contributors — in 500 tokens.
-- 🟢 **Wrong rank? You see why.** `@mem /why <q> :: <id>` breaks down every signal that contributed to a ranking — when the system is wrong, it tells you exactly why.
+- 🟢 **Every decision is cited.** `@baton /entity src/auth.ts` shows you the supersession chain, the evidence, the contributors — in 500 tokens.
+- 🟢 **Wrong rank? You see why.** `@baton /why <q> :: <id>` breaks down every signal that contributed to a ranking — when the system is wrong, it tells you exactly why.
 - 🟢 **Contradictions surface before they bite.** `/conflicts` flags "we picked X *instead of* Y" decisions that overlap with older choices.
 - 🟢 **Token bill goes down.** The startup primer biases Copilot toward MCP queries (~200–500 tokens) over file opens (~2,000–10,000 tokens) for history questions. 5–20× cheaper from message one.
 - 🟢 **Security review takes 5 minutes.** `/compliance` prints the audit report. You hand it to the reviewer and move on.
@@ -129,14 +129,14 @@ With Baton, the failure modes above are designed-out:
 
 | Pillar | What it delivers | Try it |
 |---|---|---|
-| **🧠 Memory** | Persistent, structured record of what you changed, decided, fixed, deployed — captured locally from real editor events | `@mem /recent` · `@mem /entity src/<file>` |
-| **💰 Tokens** | Auto-routing primer in every Copilot session steers the agent to cheap MCP queries over file opens | `@mem /route <question>` shows the cost estimate |
-| **⚡ Performance** | Hybrid retrieval — BM25 + recency + embeddings + match-ratio + decayed confidence + reinforcement, tuned by per-user adaptive weights, gated by nDCG@K regression suite | `@mem /why <q> :: <id>` decomposes the score |
+| **🧠 Memory** | Persistent, structured record of what you changed, decided, fixed, deployed — captured locally from real editor events | `@baton /recent` · `@baton /entity src/<file>` |
+| **💰 Tokens** | Auto-routing primer in every Copilot session steers the agent to cheap MCP queries over file opens | `@baton /route <question>` shows the cost estimate |
+| **⚡ Performance** | Hybrid retrieval — BM25 + recency + embeddings + match-ratio + decayed confidence + reinforcement, tuned by per-user adaptive weights, gated by nDCG@K regression suite | `@baton /why <q> :: <id>` decomposes the score |
 | **🤖 AI agentic coding** | Full MCP parity (13 tools), evidence-grounded decisions, conflict detection, score explainer, Mermaid graph export — for Cursor, Cline, Windsurf, Claude Desktop, Copilot CLI | `npx baton-mem-mcp` exposes all tools over stdio |
 
 It surfaces memory through:
 
-- the **`@mem`** chat participant (34 commands including `/savings`, `/entity`, `/snippet`, `/why`, `/graph`, `/compliance`, `/route`)
+- the **`@baton`** chat participant (34 commands including `/savings`, `/entity`, `/snippet`, `/why`, `/graph`, `/compliance`, `/route`)
 - native Copilot **agent tools** (`#batonSearch`, `#batonStore`, `#batonAudit`)
 - a bundled **stdio MCP server** with 13 tools for Cursor, Cline, Windsurf, Claude Desktop, and GitHub Copilot CLI
 
@@ -250,10 +250,10 @@ Then it debounces, redacts, classifies, and compresses those events into structu
 
 Use:
 
-- `@mem /recent`
-- `@mem /search`
-- `@mem /timeline`
-- `@mem /detail`
+- `@baton /recent`
+- `@baton /search`
+- `@baton /timeline`
+- `@baton /detail`
 - `#batonSearch`
 - `#batonStore`
 
@@ -268,8 +268,8 @@ Stop burning tokens on catch-up. Install Baton and capture your first snapshot:
 1. Install **Baton**
 2. Open any workspace
 3. Run **`Baton: Capture Session Snapshot Now`**
-4. Open Copilot Chat and try **`@mem /recent`**
-5. Run **`@mem /savings`** after a few sessions to see session-by-session and lifetime token-savings _estimates_
+4. Open Copilot Chat and try **`@baton /recent`**
+5. Run **`@baton /savings`** after a few sessions to see session-by-session and lifetime token-savings _estimates_
 
 <details>
 <summary><b>📺 Watch the install in 5 seconds</b></summary>
@@ -390,35 +390,35 @@ A `📚 N sessions touched this file` lens appears at the top of every opened so
 
 | Command | What it generates |
 |---|---|
-| `@mem /standup` | Daily standup note from yesterday's sessions |
-| `@mem /commit` | Conventional commit message from staged diff + recent sessions |
-| `@mem /ask <question>` | Cited answer pulled from matching sessions via RAG |
-| `@mem /recap [7d\|30d\|90d]` | Narrative engineering recap for sprint retros |
-| `@mem /related` | Sessions that touched the active file, grouped by recency |
-| `@mem /decisions [keyword]` | ADR-style decision log deduped across all sessions |
-| `@mem /savings` | Session and lifetime token-savings _estimates_ plus GPT-4o dollar-equivalent |
-| `@mem /whereami` | Interruption-recovery brief: what you were doing, where you left off, your next step |
-| `@mem /debt` | Technical debt ledger — TODO/FIXME/HACK signals grouped by age and file |
-| `@mem /adr [topic]` | Formal Architecture Decision Record auto-generated from session history |
-| `@mem /pr [branch\|PR#]` | PR review context — surface sessions matching the PR's changed files |
-| `@mem /precommit` | Pre-commit check — verify staged changes against past architectural decisions |
+| `@baton /standup` | Daily standup note from yesterday's sessions |
+| `@baton /commit` | Conventional commit message from staged diff + recent sessions |
+| `@baton /ask <question>` | Cited answer pulled from matching sessions via RAG |
+| `@baton /recap [7d\|30d\|90d]` | Narrative engineering recap for sprint retros |
+| `@baton /related` | Sessions that touched the active file, grouped by recency |
+| `@baton /decisions [keyword]` | ADR-style decision log deduped across all sessions |
+| `@baton /savings` | Session and lifetime token-savings _estimates_ plus GPT-4o dollar-equivalent |
+| `@baton /whereami` | Interruption-recovery brief: what you were doing, where you left off, your next step |
+| `@baton /debt` | Technical debt ledger — TODO/FIXME/HACK signals grouped by age and file |
+| `@baton /adr [topic]` | Formal Architecture Decision Record auto-generated from session history |
+| `@baton /pr [branch\|PR#]` | PR review context — surface sessions matching the PR's changed files |
+| `@baton /precommit` | Pre-commit check — verify staged changes against past architectural decisions |
 
 ### Trust + lineage commands (added in 1.6.0)
 
 | Command | What it does |
 |---|---|
-| `@mem /entity <path>[#symbol]` | Aggregate every session that touched a file or LSP symbol — decisions, problems, topics, supersession lineage, recent sessions |
-| `@mem /snippet <query>` | Chunk-level retrieval — returns the exact decision/problem text matching the query (not whole sessions) |
-| `@mem /conflicts` / `/conflicts dismiss <id>` | List or dismiss pending heuristic conflict warnings (e.g. "use JWT *instead of* cookies" overlapping with an older cookie-session decision) |
-| `@mem /lineage <id>` | Cross-session causal chain — predecessors and successors sharing files within ±30 days, edge-labeled (`introduced_issue_fixed_by`, etc.) |
-| `@mem /verify <id>` | Re-run SHA-based grounding validation — per-file `verified` / `drifted` / `missing` breakdown |
-| `@mem /correct <id> <text>` | Capture a correction note that supersedes the original session (kept in the audit log) |
-| `@mem /supersede <newer> <older>` | Mark one session as superseding another; auto-acknowledges matching conflict warnings |
-| `@mem /retract <id> [reason]` / `/retract undo <id>` | Exclude a session from retrieval/injection (reversible) |
-| `@mem /accept <id>` / `/reject <id>` | Reinforcement signal — strengthens or weakens a session's retrieval ranking |
-| `@mem /why <query> :: <id>` | Score-decomposition explainer — break down every signal contribution (keyword, recency, confidence, feedback, …) |
-| `@mem /graph [file:<path>]` | Mermaid flowchart of the decision graph (supersession + correction + causal edges) for paste into PRs/ADRs |
-| `@mem /compliance` | One-shot audit report: grounding coverage, trust distribution, conflict counts, redaction stats |
+| `@baton /entity <path>[#symbol]` | Aggregate every session that touched a file or LSP symbol — decisions, problems, topics, supersession lineage, recent sessions |
+| `@baton /snippet <query>` | Chunk-level retrieval — returns the exact decision/problem text matching the query (not whole sessions) |
+| `@baton /conflicts` / `/conflicts dismiss <id>` | List or dismiss pending heuristic conflict warnings (e.g. "use JWT *instead of* cookies" overlapping with an older cookie-session decision) |
+| `@baton /lineage <id>` | Cross-session causal chain — predecessors and successors sharing files within ±30 days, edge-labeled (`introduced_issue_fixed_by`, etc.) |
+| `@baton /verify <id>` | Re-run SHA-based grounding validation — per-file `verified` / `drifted` / `missing` breakdown |
+| `@baton /correct <id> <text>` | Capture a correction note that supersedes the original session (kept in the audit log) |
+| `@baton /supersede <newer> <older>` | Mark one session as superseding another; auto-acknowledges matching conflict warnings |
+| `@baton /retract <id> [reason]` / `/retract undo <id>` | Exclude a session from retrieval/injection (reversible) |
+| `@baton /accept <id>` / `/reject <id>` | Reinforcement signal — strengthens or weakens a session's retrieval ranking |
+| `@baton /why <query> :: <id>` | Score-decomposition explainer — break down every signal contribution (keyword, recency, confidence, feedback, …) |
+| `@baton /graph [file:<path>]` | Mermaid flowchart of the decision graph (supersession + correction + causal edges) for paste into PRs/ADRs |
+| `@baton /compliance` | One-shot audit report: grounding coverage, trust distribution, conflict counts, redaction stats |
 
 ---
 
@@ -439,7 +439,7 @@ A `📚 N sessions touched this file` lens appears at the top of every opened so
 
 - 12-subsystem classifier across `bicep`, Terraform, `azd`, Functions, App Service, AKS, Container Apps, Storage, Key Vault, OpenAI, `az` CLI, and more
 - Live `az` snapshot with subscription, tenant, resource group, location, and up to 50 resource IDs
-- `@mem /azure` groups Azure-tagged sessions by subsystem
+- `@baton /azure` groups Azure-tagged sessions by subsystem
 - Azure-aware observation typing and redaction
 - Graceful fallback when `az` is missing or not signed in
 
@@ -490,30 +490,30 @@ Copilot agent mode can call these without a separate MCP setup:
 
 ---
 
-## `@mem` chat participant
+## `@baton` chat participant
 
 | Command | Example |
 |---|---|
-| `/status` | `@mem /status` |
-| `/recent` | `@mem /recent` |
-| `/search` | `@mem /search type:bugfix since:7d authentication` |
-| `/timeline` | `@mem /timeline 72h` or `@mem /timeline <id>` |
-| `/detail` | `@mem /detail a1b2c3d4` |
-| `/export` | `@mem /export a1b2c3d4` |
-| `/azure` | `@mem /azure key-vault` |
-| `/health` | `@mem /health` |
-| `/savings` | `@mem /savings` — per-session and lifetime token-savings _estimates_ with dollar-equivalent. Note: estimates derived from typical Copilot context windows, not measured against real Copilot sessions |
-| `/related` | `@mem /related` — sessions touching the currently open file |
-| `/decisions` | `@mem /decisions` or `@mem /decisions auth` — ADR-style decision log |
-| `/standup` | `@mem /standup` or `@mem /standup yesterday` — AI daily standup note |
-| `/commit` | `@mem /commit` — AI conventional commit message from staged diff + sessions |
-| `/ask` | `@mem /ask why did we change the auth flow?` — RAG Q&A over session history |
-| `/recap` | `@mem /recap 7d` / `30d` / `90d` — narrative engineering recap for retros |
-| `/whereami` | `@mem /whereami` — interruption recovery brief with AI re-entry suggestion |
-| `/debt` | `@mem /debt` — technical debt ledger from session signals, grouped by age |
-| `/adr` | `@mem /adr auth` — formal ADR auto-generated from session history |
-| `/pr` | `@mem /pr main` or `@mem /pr 42` — PR review context from session history |
-| `/precommit` | `@mem /precommit` — pre-commit architectural consistency check |
+| `/status` | `@baton /status` |
+| `/recent` | `@baton /recent` |
+| `/search` | `@baton /search type:bugfix since:7d authentication` |
+| `/timeline` | `@baton /timeline 72h` or `@baton /timeline <id>` |
+| `/detail` | `@baton /detail a1b2c3d4` |
+| `/export` | `@baton /export a1b2c3d4` |
+| `/azure` | `@baton /azure key-vault` |
+| `/health` | `@baton /health` |
+| `/savings` | `@baton /savings` — per-session and lifetime token-savings _estimates_ with dollar-equivalent. Note: estimates derived from typical Copilot context windows, not measured against real Copilot sessions |
+| `/related` | `@baton /related` — sessions touching the currently open file |
+| `/decisions` | `@baton /decisions` or `@baton /decisions auth` — ADR-style decision log |
+| `/standup` | `@baton /standup` or `@baton /standup yesterday` — AI daily standup note |
+| `/commit` | `@baton /commit` — AI conventional commit message from staged diff + sessions |
+| `/ask` | `@baton /ask why did we change the auth flow?` — RAG Q&A over session history |
+| `/recap` | `@baton /recap 7d` / `30d` / `90d` — narrative engineering recap for retros |
+| `/whereami` | `@baton /whereami` — interruption recovery brief with AI re-entry suggestion |
+| `/debt` | `@baton /debt` — technical debt ledger from session signals, grouped by age |
+| `/adr` | `@baton /adr auth` — formal ADR auto-generated from session history |
+| `/pr` | `@baton /pr main` or `@baton /pr 42` — PR review context from session history |
+| `/precommit` | `@baton /precommit` — pre-commit architectural consistency check |
 
 ---
 
@@ -649,7 +649,7 @@ Key modules:
 | `src/contextCompressor.ts` | LM compression, classification, and git branch tagging |
 | `src/contextStore.ts` | Persistent storage, indexing, eviction, backups, lifetime token stats |
 | `src/searchCore.ts` | Shared retrieval scoring (BM25 + RRF + recency decay) |
-| `src/contextProvider.ts` | `@mem` chat participant with 20 slash commands |
+| `src/contextProvider.ts` | `@baton` chat participant with 20 slash commands |
 | `src/memoryTool.ts` | Agent-mode tools |
 | `src/mcpServer.ts` | Stand-alone stdio MCP server (6 tools, read + write) |
 | `src/timelinePanel.ts` | Visual Memory Timeline WebviewPanel |
@@ -679,7 +679,7 @@ More detail: [docs/diagrams/pipeline.mmd](https://github.com/ITcredibl/baton-mem
 | Symptom | Likely cause / fix |
 |---|---|
 | Memory count stays at zero | Trigger `Capture Session Snapshot Now`, or lower autosave thresholds. |
-| `@mem` says no Copilot language model is available | Install and sign in to GitHub Copilot. |
+| `@baton` says no Copilot language model is available | Install and sign in to GitHub Copilot. |
 | `/azure` says Azure CLI is not signed in | Run `az login`; Baton degrades gracefully if Azure CLI is unavailable. |
 | `~/.baton-mem/sessions.json` does not exist | It is created on first successful persist. |
 | MCP client cannot see tools | Point it to `<extension-install-dir>/out/mcpServer.js` or use the built-in config command. |
@@ -713,4 +713,4 @@ MIT — see [LICENSE](https://github.com/ITcredibl/baton-mem/blob/main/LICENSE).
 
 [Report a bug](https://github.com/ITcredibl/baton-mem/issues) · [Request a feature](https://github.com/ITcredibl/baton-mem/issues) · [Live demo](https://github.com/ITcredibl/baton-mem/blob/main/docs/DEMO.md) · [Compare memory tools](https://github.com/ITcredibl/baton-mem/blob/main/docs/COMPARISON.md) · [Uninstall guide](https://github.com/ITcredibl/baton-mem/blob/main/docs/UNINSTALL.md) · [Configuration reference](https://github.com/ITcredibl/baton-mem/blob/main/docs/CONFIGURATION.md) · [Contributing](https://github.com/ITcredibl/baton-mem/blob/main/CONTRIBUTING.md) · [Security policy](https://github.com/ITcredibl/baton-mem/blob/main/SECURITY.md)
 
-<sub>**v1.6.3** · local-first memory for Copilot</sub>
+<sub>**v2.0.0** · local-first memory for Copilot</sub>

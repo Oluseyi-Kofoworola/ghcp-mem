@@ -18,7 +18,7 @@ interface RedactionRule {
 const LOCAL_SECRET_HASH_SALT = createHash('sha256')
   .update(
     [
-      process.env.GHCP_MEM_SECRET_SALT ?? '',
+      process.env.BATON_SECRET_SALT ?? process.env.GHCP_MEM_SECRET_SALT ?? '',
       process.env.USER ?? process.env.USERNAME ?? 'unknown-user',
       process.env.HOME ?? '',
     ].join('|'),

@@ -88,7 +88,7 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 | Dimension | **Baton v1.6.0** | **GitHub Copilot Memory** (public preview) |
 |---|---|---|
 | **Storage location** | 100% local: VS Code `globalState` + atomic mirror to `~/.baton-mem/sessions.json` (mode `0600`) | GitHub cloud, repo-scoped |
-| **Where it works** | VS Code (`@mem` chat, agent tools, status bar, sidebar, MCP for Cursor / Cline / Windsurf / Claude Desktop) | Copilot cloud agent · Copilot code review (web) · Copilot CLI |
+| **Where it works** | VS Code (`@baton` chat, agent tools, status bar, sidebar, MCP for Cursor / Cline / Windsurf / Claude Desktop) | Copilot cloud agent · Copilot code review (web) · Copilot CLI |
 | **Retention** | 90 days default, configurable (or **28 days when `githubCompatibleMode: true`**) | 28 days, fixed; successful re-use refreshes |
 | **Scope** | Configurable: `user` / `workspace` / `repo` (auto-detected from `.git/config`) | Repo only |
 | **Trigger** | Active capture: every edit, diagnostic, git op, debug, task, terminal command (debounced, glob-filtered) | Passive inference from PRs / agent sessions / code review actions |
@@ -157,7 +157,7 @@ These are the situations where Baton is genuinely the best fit — not because i
 1. **Locked-down enterprise developer machines.** No admin rights, no Bun, no Python, no `:37777`. Baton is a single `.vsix` file with zero runtime dependencies.
 2. **Privacy-sensitive codebases.** 21 redaction rules with dual-pass scrubbing (input + output of the LM), `<private>...</private>` tag stripping, glob-based exclusion of `.env*` / `*.pem` / `secrets/**` by default. Most competitors persist whatever they see.
 3. **Azure-shop workflows.** 12-subsystem classifier auto-tags `bicep` / `azd` / `aks` / `keyvault` / `functions` / `openai` / etc. Live `az` snapshot. 8 Azure-specific redaction rules. Unique in the category.
-4. **VS Code + Copilot users who want native integration.** `@mem` chat participant, `#batonSearch` / `#batonStore` agent-mode tools, auto-injection via `.github/instructions/*.md` — all using Copilot's native protocols, not shell-level hooks.
+4. **VS Code + Copilot users who want native integration.** `@baton` chat participant, `#batonSearch` / `#batonStore` agent-mode tools, auto-injection via `.github/instructions/*.md` — all using Copilot's native protocols, not shell-level hooks.
 5. **Air-gapped or audit-heavy environments.** No Baton backend or telemetry, no HTTP server, no native binaries. Compression may use the user's existing Copilot LM subscription. Smallest possible attack surface for locked-down enterprise environments.
 
 ## 🎯 Where another tool is the right choice
@@ -197,7 +197,7 @@ Every gap from the original v0.x analysis was closed before v1.0. Items shipped 
 Remaining research-level items:
 
 - 🔬 **Chat transcript capture** — depends on Copilot Chat APIs exposing user turns.
-- 🔬 **Intent-aware compression** — feed `@mem` the user's current prompt; rewrite the summary to emphasise relevant info (query-focused summarization).
+- 🔬 **Intent-aware compression** — feed `@baton` the user's current prompt; rewrite the summary to emphasise relevant info (query-focused summarization).
 - 🔬 **Cross-workspace knowledge graph** — extract `{entity, relation, entity}` triples from summaries.
 
 ---

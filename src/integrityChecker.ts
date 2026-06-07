@@ -8,7 +8,7 @@
  * in scripts/check-release-consistency.mjs — but unlike the gate, this
  * runs inside the extension host so it's available at any time:
  *
- *   • As a slash command:        @mem /audit
+ *   • As a slash command:        @baton /audit
  *   • As a Copilot agent tool:   #batonAudit
  *   • From the command palette:  Baton: Run Workspace Integrity Audit
  *

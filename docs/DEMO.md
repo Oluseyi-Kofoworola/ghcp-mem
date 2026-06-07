@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎬 Baton v1.6.3 — Live Demo
+# 🎬 Baton v2.0.0 — Live Demo
 
 ### A 6-minute walkthrough that exercises every capability
 
@@ -11,7 +11,7 @@
 </div>
 
 > [!NOTE]
-> **Prereqs:** Baton v1.6.3 installed (Marketplace search **Baton**, or `code --install-extension ITcredibl.baton-mem`) and VS Code reloaded. Open any workspace. No Azure subscription needed — the Azure steps degrade gracefully if `az` isn't installed or signed in.
+> **Prereqs:** Baton v2.0.0 installed (Marketplace search **Baton**, or `code --install-extension ITcredibl.baton-mem`) and VS Code reloaded. Open any workspace. No Azure subscription needed — the Azure steps degrade gracefully if `az` isn't installed or signed in.
 
 ---
 
@@ -19,13 +19,13 @@
 
 ```mermaid
 timeline
-    title Baton v1.6.3 — 6-minute live demo
+    title Baton v2.0.0 — 6-minute live demo
     section 🩺 Health
         0. Sanity check (10s)              : status bar glyph
         1. Seed Azure sessions (15s)       : Seed Azure Demo Sessions
         2. Health score (20s)              : Show Memory Health Score
     section 🔍 Retrieval
-        3. Progressive search (30s)        : @mem /search + /detail
+        3. Progressive search (30s)        : @baton /search + /detail
         4. Quick-filter bar (30s)          : sidebar filter chip
         5. Pinned tier (20s)               : pin a session, see it stick on top
         6. Content-hash dedup (15s)        : re-seed = no duplicates
@@ -97,7 +97,7 @@ flowchart LR
   - 🧬 Dedup ratio, retention headroom
   - 📝 Notes (e.g. *"X% sessions have no observation type"*)
 
-**Or** in chat: `@mem /health`.
+**Or** in chat: `@baton /health`.
 
 ---
 
@@ -106,21 +106,21 @@ flowchart LR
 In Copilot Chat:
 
 ```text
-@mem /search azure since:30d type:deployment
+@baton /search azure since:30d type:deployment
 ```
 
 Then drill into one with:
 
 ```text
-@mem /detail <id-prefix>
+@baton /detail <id-prefix>
 ```
 
 ```mermaid
 flowchart TB
-    Q["@mem /search<br/>azure since:30d type:deployment"] --> RRF{"RRF K=60<br/>+ 7-day decay"}
+    Q["@baton /search<br/>azure since:30d type:deployment"] --> RRF{"RRF K=60<br/>+ 7-day decay"}
     RRF --> RES["Top results · 1 line each"]
     RES --> SEL["Pick interesting ID"]
-    SEL --> DETAIL["@mem /detail &lt;id-prefix&gt;"]
+    SEL --> DETAIL["@baton /detail &lt;id-prefix&gt;"]
     DETAIL --> FULL["Full structured session"]
     classDef cmd fill:#7c3aed,stroke:#5b21b6,color:#fff
     classDef out fill:#22c55e,stroke:#15803d,color:#fff
@@ -166,7 +166,7 @@ Pinned sessions sort to the top of the tree under a 📌 group, and they get ext
 
 - Run **`Baton: Seed Azure Demo Sessions`** **a second time**.
 - Notice: the tree view does **not** double — duplicates with the same SHA-256 content hash are silently skipped.
-- Confirm in chat: `@mem /status` — total session count is unchanged.
+- Confirm in chat: `@baton /status` — total session count is unchanged.
 
 ---
 
@@ -282,7 +282,7 @@ Right-click any session in the tree → **Export Session as Diff-Friendly Markdo
 Or in chat:
 
 ```text
-@mem /export <id-prefix>
+@baton /export <id-prefix>
 ```
 
 The output is **byte-stable** (sorted arrays, ISO timestamps, deterministic ordering) so committing exports into a repo produces clean diffs across runs.
@@ -353,15 +353,15 @@ Plus the CI pipeline runs three additional gates: `npm run lint` → `npm test` 
 | # | Capability | One-line proof |
 |---|---|---|
 | 1 | 🩺 Health score | Status bar shows `MEM ●●○○○ 73` |
-| 2 | 💬 `/health` chat command | `@mem /health` returns scored breakdown |
-| 3 | 🔍 RRF + recency search | `@mem /search ... since:30d type:X` |
+| 2 | 💬 `/health` chat command | `@baton /health` returns scored breakdown |
+| 3 | 🔍 RRF + recency search | `@baton /search ... since:30d type:X` |
 | 4 | 🪟 Quick-filter bar | Sidebar funnel → scope/type/tag/days/text chip |
 | 5 | 📌 Pinned tier | Pin a session → it sticks on top + boosts startup brief |
 | 6 | 🧬 Dedup | Re-seed demo → tree count unchanged |
 | 7 | 🔄 Backups | Clear → Restore From Backup → restored |
 | 8 | 📦 Packs | Export → Clear → Import → Uninstall |
 | 9 | 🔌 MCP | `node out/mcpServer.js` → JSON-RPC ack |
-| 10 | 📝 Diff-friendly export | `@mem /export <id>` → byte-stable markdown |
+| 10 | 📝 Diff-friendly export | `@baton /export <id>` → byte-stable markdown |
 | 11 | 📊 Eval gate | `Run Retrieval Eval` → recall@5 + MRR table |
 | 12 | 🤝 GitHub-compatible mode | `githubCompatibleMode: true` → 28d + repo scope |
 
@@ -376,6 +376,6 @@ Plus the CI pipeline runs three additional gates: `npm run lint` → `npm test` 
 
 [← Back to README](../README.md) · [Competitive analysis](COMPARISON.md) · [Report an issue](https://github.com/ITcredibl/baton-mem/issues)
 
-<sub>**Demo script for Baton v1.6.3** · 307 tests · zero native deps · zero ports · CI ubuntu × windows × node 20</sub>
+<sub>**Demo script for Baton v2.0.0** · 307 tests · zero native deps · zero ports · CI ubuntu × windows × node 20</sub>
 
 </div>

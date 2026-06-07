@@ -234,7 +234,7 @@ export function renderComplianceReport(r: ComplianceReport): string {
   lines.push(`- **Sessions with reinforcement signal:** ${r.sessionsWithFeedback}`);
   lines.push(`- **Total accepts / rejects:** ${r.totalAccepts} 👍 / ${r.totalRejects} 👎`);
   lines.push(
-    `- **Heuristic conflicts pending review:** ${r.pendingConflicts}${r.pendingConflicts ? ' — run `@mem /conflicts`' : ''}`,
+    `- **Heuristic conflicts pending review:** ${r.pendingConflicts}${r.pendingConflicts ? ' — run `@baton /conflicts`' : ''}`,
   );
   lines.push('');
 

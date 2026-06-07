@@ -48,8 +48,19 @@ import { recommend } from './router';
 
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_NAME = 'baton-mem';
+// Env-var backward-compat: v1.x used GHCP_MEM_*; v2.0.0 prefers BATON_* but
+// honours the legacy names so existing user MCP configs and CI scripts keep
+// working unchanged. Read in preference order: new name first, then legacy.
+function readEnv(...names: string[]): string | undefined {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v !== undefined) return v;
+  }
+  return undefined;
+}
 const MCP_WRITE_ENABLED =
-  process.env.GHCP_MEM_ALLOW_MCP_WRITE !== 'false' && process.env.GHCP_MEM_READONLY !== 'true';
+  readEnv('BATON_ALLOW_MCP_WRITE', 'GHCP_MEM_ALLOW_MCP_WRITE') !== 'false' &&
+  readEnv('BATON_READONLY', 'GHCP_MEM_READONLY') !== 'true';
 // Read the package version at module load so we never drift from package.json.
 // Falls back to 'unknown' if the bundled package.json can't be located
 // (e.g. when this file is imported from out-test/ during the test compile).
@@ -85,7 +96,7 @@ type StoredSession = CompressedSession;
 type StoredDatabase = ContextDatabase;
 
 function storePath(): string {
-  return process.env.GHCP_MEM_STORE_PATH ?? join(homedir(), '.baton-mem', 'sessions.json');
+  return readEnv('BATON_STORE_PATH', 'GHCP_MEM_STORE_PATH') ?? join(homedir(), '.baton-mem', 'sessions.json');
 }
 
 // Cache the parsed database keyed by file mtime so that high-frequency tool
@@ -434,6 +445,48 @@ const TOOLS = [
   },
 ];
 
+/**
+ * Map of legacy v1.x MCP tool names to their v2.0.0 canonical equivalents.
+ * Kept exported so tests can assert that no canonical tool has been
+ * dropped without a corresponding alias. Existing MCP client configs
+ * (Cursor, Cline, Claude Code, etc.) that hardcoded ghcpMem_* tool names
+ * continue to work — the legacy name is translated to its canonical form
+ * before dispatch, and the legacy tool entries are advertised in
+ * tools/list with a deprecation note in the description.
+ */
+export const LEGACY_TOOL_ALIASES: Record<string, string> = {
+  ghcpMem_search: 'baton_search',
+  ghcpMem_recent: 'baton_recent',
+  ghcpMem_timeline: 'baton_timeline',
+  ghcpMem_get: 'baton_get',
+  ghcpMem_store: 'baton_store',
+  ghcpMem_delete: 'baton_delete',
+  ghcpMem_entity: 'baton_entity',
+  ghcpMem_snippets: 'baton_snippets',
+  ghcpMem_conflicts: 'baton_conflicts',
+  ghcpMem_lineage: 'baton_lineage',
+  ghcpMem_explain: 'baton_explain',
+  ghcpMem_graph: 'baton_graph',
+  ghcpMem_route: 'baton_route',
+};
+
+/** Tools list including v1.x-compatible aliases, advertised as deprecated. */
+const ADVERTISED_TOOLS = (() => {
+  const aliases = Object.entries(LEGACY_TOOL_ALIASES)
+    .map(([legacy, canonical]) => {
+      const src = TOOLS.find((t) => t.name === canonical);
+      if (!src) return null;
+      return {
+        ...src,
+        name: legacy,
+        description: `[DEPRECATED — use ${canonical} instead] ${src.description}`,
+      };
+    })
+    .filter((t): t is (typeof TOOLS)[number] => t !== null);
+  return [...TOOLS, ...aliases];
+})();
+
+
 /** Atomically write `db` back to disk (same rename pattern as the extension). */
 async function saveDatabase(db: StoredDatabase): Promise<void> {
   const p = storePath();
@@ -452,13 +505,15 @@ function textContent(obj: unknown): any {
 }
 
 async function handleCall(name: string, args: any): Promise<any> {
+  // Normalize legacy v1.x tool names to v2.0.0 canonical before dispatch.
+  const canonicalName = LEGACY_TOOL_ALIASES[name] ?? name;
   const db = await loadDatabase();
   const clamp = (n: any, def: number, max: number) => {
     const v = typeof n === 'number' ? Math.floor(n) : def;
     return Math.max(1, Math.min(max, v));
   };
 
-  switch (name) {
+  switch (canonicalName) {
     case 'baton_search': {
       const limit = clamp(args?.limit, 5, 25);
       const hits = searchSessions(
@@ -746,7 +801,7 @@ async function dispatch(req: JsonRpcRequest): Promise<JsonRpcResponse | undefine
       case 'ping':
         return { jsonrpc: '2.0', id, result: {} };
       case 'tools/list':
-        return { jsonrpc: '2.0', id, result: { tools: TOOLS } };
+        return { jsonrpc: '2.0', id, result: { tools: ADVERTISED_TOOLS } };
       case 'tools/call': {
         const { name, arguments: args } = req.params ?? {};
         const result = await handleCall(String(name), args ?? {});

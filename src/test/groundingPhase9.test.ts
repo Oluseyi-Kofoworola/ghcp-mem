@@ -180,9 +180,9 @@ test('buildStartupContext — emits a routing primer that teaches MCP-first beha
       const provider = new ContextProvider(store);
       const md = provider.buildStartupContext();
       assert.match(md, /How to gather context cheaply/, 'primer header missing');
-      assert.match(md, /@mem \/entity/, 'primer must teach the /entity command');
-      assert.match(md, /@mem \/search/, 'primer must teach the /search command');
-      assert.match(md, /@mem \/route/, 'primer must teach the /route command');
+      assert.match(md, /@baton \/entity/, 'primer must teach the /entity command');
+      assert.match(md, /@baton \/search/, 'primer must teach the /search command');
+      assert.match(md, /@baton \/route/, 'primer must teach the /route command');
       assert.match(md, /MODIFY/, 'primer must distinguish modify from lookup intent');
     });
 });

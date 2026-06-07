@@ -51,7 +51,7 @@ All settings live under the `baton` namespace and can be edited in VS Code Setti
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `baton.contextRetrievalCount` | number (1–50) | `5` | Number of top-ranked past sessions to inject into startup context and `@mem` responses. |
+| `baton.contextRetrievalCount` | number (1–50) | `5` | Number of top-ranked past sessions to inject into startup context and `@baton` responses. |
 | `baton.validateAgainstCodebase` | boolean | `true` | Drop or de-rank memories whose `keyFiles` no longer exist in the current workspace. |
 | `baton.freshnessFloor` | number (0–1) | `0.25` | Minimum freshness score required for a memory to survive validation. Lower = more lenient. `0` = accept all. |
 
