@@ -32,7 +32,7 @@ jobs:
           # and the latest commit on push events. fetch-depth: 0 gives it the
           # full history it needs in both cases without an extra fetch step.
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           # Required by gitleaks-action@v2 for pull_request scans. Without
           # this the action fails with: "GITHUB_TOKEN is now required to
