@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎬 GHCP-MEM v1.6.3 — Live Demo
+# 🎬 Baton v1.6.3 — Live Demo
 
 ### A 6-minute walkthrough that exercises every capability
 
@@ -11,7 +11,7 @@
 </div>
 
 > [!NOTE]
-> **Prereqs:** GHCP-MEM v1.6.3 installed (Marketplace search **GHCP-MEM**, or `code --install-extension ITcredibl.ghcp-mem`) and VS Code reloaded. Open any workspace. No Azure subscription needed — the Azure steps degrade gracefully if `az` isn't installed or signed in.
+> **Prereqs:** Baton v1.6.3 installed (Marketplace search **Baton**, or `code --install-extension ITcredibl.baton-mem`) and VS Code reloaded. Open any workspace. No Azure subscription needed — the Azure steps degrade gracefully if `az` isn't installed or signed in.
 
 ---
 
@@ -19,7 +19,7 @@
 
 ```mermaid
 timeline
-    title GHCP-MEM v1.6.3 — 6-minute live demo
+    title Baton v1.6.3 — 6-minute live demo
     section 🩺 Health
         0. Sanity check (10s)              : status bar glyph
         1. Seed Azure sessions (15s)       : Seed Azure Demo Sessions
@@ -70,9 +70,9 @@ Hover it → tooltip shows session counts + pending events + redactions.
 
 ## 1. Seed the demo store (15 sec)
 
-Press `Ctrl+Shift+P` (or `Cmd+Shift+P`) → run **`GHCP-MEM: Seed Azure Demo Sessions`** → click **Seed**.
+Press `Ctrl+Shift+P` (or `Cmd+Shift+P`) → run **`Baton: Seed Azure Demo Sessions`** → click **Seed**.
 
-You now have 5 realistic Azure sessions tagged `demo`. They'll show up in the **GHCP-MEM Sessions** tree view in the Activity Bar.
+You now have 5 realistic Azure sessions tagged `demo`. They'll show up in the **Baton Sessions** tree view in the Activity Bar.
 
 ```mermaid
 flowchart LR
@@ -90,7 +90,7 @@ flowchart LR
 
 ## 2. Memory health score (20 sec)
 
-- `Ctrl+Shift+P` → **`GHCP-MEM: Show Memory Health Score`**
+- `Ctrl+Shift+P` → **`Baton: Show Memory Health Score`**
 - A markdown doc opens with:
   - 🎯 Overall score (0–100) and density glyph
   - 🔒 Redaction coverage %, typed %, tagged %
@@ -135,7 +135,7 @@ flowchart TB
 
 ## 4. Quick-filter bar (30 sec)
 
-In the Sessions sidebar, click the funnel icon → **`GHCP-MEM: Filter Sessions...`**.
+In the Sessions sidebar, click the funnel icon → **`Baton: Filter Sessions...`**.
 
 Pick any combination of:
 - **Scope**: `workspace` / `repo` / `all`
@@ -144,7 +144,7 @@ Pick any combination of:
 - **Last N days** (free-text)
 - **Free-text query**
 
-The active filter shows as a clickable chip in the tree header. Click the chip (or run **`GHCP-MEM: Clear Filter`**) to reset.
+The active filter shows as a clickable chip in the tree header. Click the chip (or run **`Baton: Clear Filter`**) to reset.
 
 > [!TIP]
 > **What this demonstrates:** the quick-filter bar lets you slice 1000s of sessions in seconds without leaving the sidebar.
@@ -153,7 +153,7 @@ The active filter shows as a clickable chip in the tree header. Click the chip (
 
 ## 5. Pinned tier (20 sec)
 
-Right-click any session in the tree → **Pin/Unpin Session** (or run `GHCP-MEM: Pin/Unpin Session`).
+Right-click any session in the tree → **Pin/Unpin Session** (or run `Baton: Pin/Unpin Session`).
 
 Pinned sessions sort to the top of the tree under a 📌 group, and they get extra weight in the auto-injected startup-context brief.
 
@@ -164,7 +164,7 @@ Pinned sessions sort to the top of the tree under a 📌 group, and they get ext
 
 ## 6. Content-hash dedup (15 sec)
 
-- Run **`GHCP-MEM: Seed Azure Demo Sessions`** **a second time**.
+- Run **`Baton: Seed Azure Demo Sessions`** **a second time**.
 - Notice: the tree view does **not** double — duplicates with the same SHA-256 content hash are silently skipped.
 - Confirm in chat: `@mem /status` — total session count is unchanged.
 
@@ -176,7 +176,7 @@ Pinned sessions sort to the top of the tree under a 📌 group, and they get ext
 sequenceDiagram
     autonumber
     participant U as 👩‍💻 You
-    participant E as 🧠 GHCP-MEM
+    participant E as 🧠 Baton
     participant B as 🔄 Rolling Backups (5)
     U->>E: Clear All Stored Context
     E->>B: latest snapshot preserved
@@ -187,8 +187,8 @@ sequenceDiagram
     E-->>U: ✅ tree view repopulates
 ```
 
-- Run **`GHCP-MEM: Clear All Stored Context`** → confirm. (All sessions gone.)
-- Run **`GHCP-MEM: Restore From Backup`** → pick the most recent backup → confirm.
+- Run **`Baton: Clear All Stored Context`** → confirm. (All sessions gone.)
+- Run **`Baton: Restore From Backup`** → pick the most recent backup → confirm.
 - Tree view repopulates instantly.
 
 ---
@@ -200,7 +200,7 @@ sequenceDiagram
 
 **Export:**
 
-1. `Ctrl+Shift+P` → **`GHCP-MEM: Export Memory Pack...`**
+1. `Ctrl+Shift+P` → **`Baton: Export Memory Pack...`**
 2. Pack name: `azure-demo`
 3. Description: `Realistic Azure sessions for onboarding`
 4. Filter: **By tag** → enter `demo`
@@ -208,13 +208,13 @@ sequenceDiagram
 
 **Re-import:**
 
-1. **`GHCP-MEM: Clear All Stored Context`** → confirm.
-2. **`GHCP-MEM: Import Memory Pack...`** → pick the file → confirm modal.
+1. **`Baton: Clear All Stored Context`** → confirm.
+2. **`Baton: Import Memory Pack...`** → pick the file → confirm modal.
 3. Tree view shows the imported sessions, each tagged `pack:azure-demo`.
 
 **Uninstall:**
 
-1. **`GHCP-MEM: Uninstall Memory Pack...`** → pick `azure-demo` → confirm.
+1. **`Baton: Uninstall Memory Pack...`** → pick `azure-demo` → confirm.
 2. All 5 sessions gone (untagged sessions, if any, are untouched).
 
 </details>
@@ -226,9 +226,9 @@ sequenceDiagram
 
 ## 9. External MCP client (Cursor/Cline/Windsurf/Claude Desktop) (45 sec)
 
-1. `Ctrl+Shift+P` → **`GHCP-MEM: Show External MCP Client Config`**
+1. `Ctrl+Shift+P` → **`Baton: Show External MCP Client Config`**
 2. A markdown doc opens with:
-   - 🗂️ The store mirror path: `~/.ghcp-mem/sessions.json`
+   - 🗂️ The store mirror path: `~/.baton-mem/sessions.json`
    - 📡 The bundled stdio server path: `<extension>/out/mcpServer.js`
    - 📋 Copy-pasteable `mcp.json` snippets for Cursor / Cline / Windsurf / Claude Desktop
 
@@ -237,9 +237,9 @@ sequenceDiagram
     autonumber
     participant CLI as 🖥️ Terminal
     participant MCP as 🔌 mcpServer.js
-    participant STORE as 🗂️ ~/.ghcp-mem/<br/>sessions.json
+    participant STORE as 🗂️ ~/.baton-mem/<br/>sessions.json
     CLI->>MCP: initialize (JSON-RPC 2024-11-05)
-    MCP-->>CLI: serverInfo { name: ghcp-mem, version: 1.6.0 }
+    MCP-->>CLI: serverInfo { name: baton-mem, version: 1.6.0 }
     CLI->>MCP: notifications/initialized
     CLI->>MCP: tools/list
     MCP->>STORE: mtime check (cached)
@@ -249,7 +249,7 @@ sequenceDiagram
 **Quick verification** (POSIX shell, no other client needed):
 
 ```bash
-mcp="$(find ~/.vscode/extensions -name 'mcpServer.js' -path '*ghcp-mem*' | head -1)"
+mcp="$(find ~/.vscode/extensions -name 'mcpServer.js' -path '*baton-mem*' | head -1)"
 {
   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"d","version":"1"}}}'
   echo '{"jsonrpc":"2.0","method":"notifications/initialized"}'
@@ -260,7 +260,7 @@ mcp="$(find ~/.vscode/extensions -name 'mcpServer.js' -path '*ghcp-mem*' | head 
 PowerShell equivalent:
 
 ```powershell
-$mcp = (Get-ChildItem "$env:USERPROFILE\.vscode\extensions\*ghcp-mem*\out\mcpServer.js" | Select-Object -First 1).FullName
+$mcp = (Get-ChildItem "$env:USERPROFILE\.vscode\extensions\*baton-mem*\out\mcpServer.js" | Select-Object -First 1).FullName
 @'
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"d","version":"1"}}}
 {"jsonrpc":"2.0","method":"notifications/initialized"}
@@ -268,7 +268,7 @@ $mcp = (Get-ChildItem "$env:USERPROFILE\.vscode\extensions\*ghcp-mem*\out\mcpSer
 '@ | node $mcp
 ```
 
-Returns the 6-tool catalog: `ghcpMem_search`, `ghcpMem_recent`, `ghcpMem_timeline`, `ghcpMem_get`, `ghcpMem_store`, `ghcpMem_delete`.
+Returns the 6-tool catalog: `baton_search`, `baton_recent`, `baton_timeline`, `baton_get`, `baton_store`, `baton_delete`.
 
 > [!TIP]
 > **What this demonstrates:** Copilot-only is gone; any MCP client can read the store over a stdio JSON-RPC channel.
@@ -277,7 +277,7 @@ Returns the 6-tool catalog: `ghcpMem_search`, `ghcpMem_recent`, `ghcpMem_timelin
 
 ## 10. Diff-friendly markdown export (30 sec)
 
-Right-click any session in the tree → **Export Session as Diff-Friendly Markdown...** (or run `GHCP-MEM: Export Session as Diff-Friendly Markdown...`). Pick a save location.
+Right-click any session in the tree → **Export Session as Diff-Friendly Markdown...** (or run `Baton: Export Session as Diff-Friendly Markdown...`). Pick a save location.
 
 Or in chat:
 
@@ -294,7 +294,7 @@ The output is **byte-stable** (sorted arrays, ISO timestamps, deterministic orde
 
 ## 11. Retrieval eval gate (30 sec)
 
-`Ctrl+Shift+P` → **`GHCP-MEM: Run Retrieval Eval`**.
+`Ctrl+Shift+P` → **`Baton: Run Retrieval Eval`**.
 
 A markdown report opens showing **recall@5** and **MRR** for three retrieval configurations:
 
@@ -313,7 +313,7 @@ This is the same suite the CI eval-gate runs (`scripts/eval-check.js`) — and t
 
 ## 12. GitHub-compatible mode (15 sec)
 
-Open Settings → search `ghcpMem.githubCompatibleMode` → toggle **on**.
+Open Settings → search `baton.githubCompatibleMode` → toggle **on**.
 
 Effective changes:
 - `retentionDays` is pinned to `28` (overrides whatever you have set)
@@ -374,8 +374,8 @@ Plus the CI pipeline runs three additional gates: `npm run lint` → `npm test` 
 
 <div align="center">
 
-[← Back to README](../README.md) · [Competitive analysis](COMPARISON.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
+[← Back to README](../README.md) · [Competitive analysis](COMPARISON.md) · [Report an issue](https://github.com/ITcredibl/baton-mem/issues)
 
-<sub>**Demo script for GHCP-MEM v1.6.3** · 307 tests · zero native deps · zero ports · CI ubuntu × windows × node 20</sub>
+<sub>**Demo script for Baton v1.6.3** · 307 tests · zero native deps · zero ports · CI ubuntu × windows × node 20</sub>
 
 </div>

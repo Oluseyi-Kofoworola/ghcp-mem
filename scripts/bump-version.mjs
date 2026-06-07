@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 //
-// Atomic version bump for GHCP-MEM — single command, no human sweep.
+// Atomic version bump for Baton — single command, no human sweep.
 //
 // Updates EVERY surface that the release-consistency gate checks:
 //   - package.json .version
@@ -127,7 +127,7 @@ console.log(`  3. Commit:              git commit -am 'release: v${NEW} — <one
 console.log(`  4. Tag:                 git tag -a v${NEW} -m 'Release v${NEW}'`);
 console.log(`  5. Push HEAD + tag:     git push origin main && git push origin v${NEW}`);
 console.log(
-  `  6. Publish:             npm run package && npx vsce publish --packagePath ghcp-mem-${NEW}.vsix`,
+  `  6. Publish:             npm run package && npx vsce publish --packagePath baton-mem-${NEW}.vsix`,
 );
 console.log('');
 console.log(`Or run them in sequence:`);
@@ -135,4 +135,4 @@ console.log(
   `  npm test && git commit -am 'release: v${NEW}' && git tag -a v${NEW} -m 'v${NEW}' \\`,
 );
 console.log(`    && git push origin main v${NEW} && npm run package \\`);
-console.log(`    && npx vsce publish --packagePath ghcp-mem-${NEW}.vsix`);
+console.log(`    && npx vsce publish --packagePath baton-mem-${NEW}.vsix`);

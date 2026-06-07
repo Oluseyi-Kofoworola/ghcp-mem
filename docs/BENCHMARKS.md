@@ -1,4 +1,4 @@
-# GHCP-MEM Benchmarks
+# Baton Benchmarks
 
 ## Measured areas
 

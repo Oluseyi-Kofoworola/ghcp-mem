@@ -80,13 +80,13 @@ jobs:
         run: npm run bundle:prod
 
       - name: Package vsix
-        run: npx --yes @vscode/vsce package --out ghcp-mem.vsix --no-dependencies
+        run: npx --yes @vscode/vsce package --out baton-mem.vsix --no-dependencies
 
       - name: Upload vsix artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ghcp-mem-${{ matrix.os }}.vsix
-          path: ghcp-mem.vsix
+          name: baton-mem-${{ matrix.os }}.vsix
+          path: baton-mem.vsix
           retention-days: 14
 
   release:
@@ -99,10 +99,10 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ghcp-mem-ubuntu-latest.vsix
+          name: baton-mem-ubuntu-latest.vsix
           path: ./dist
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./dist/ghcp-mem.vsix
+          files: ./dist/baton-mem.vsix
           generate_release_notes: true

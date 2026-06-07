@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🗑️ Uninstalling GHCP-MEM
+# 🗑️ Uninstalling Baton
 
 ### A complete clean-removal guide — extension, data, and injected files
 
@@ -14,13 +14,13 @@ Before removing anything, preserve your sessions if you want to re-import them l
 
 **Full backup:**
 ```
-Ctrl+Shift+P → GHCP-MEM: Export Memory to JSON...
+Ctrl+Shift+P → Baton: Export Memory to JSON...
 ```
 Save the file somewhere outside the VS Code extensions folder.
 
 **Selective pack:**
 ```
-Ctrl+Shift+P → GHCP-MEM: Export Memory Pack...
+Ctrl+Shift+P → Baton: Export Memory Pack...
 ```
 Filter by tag, type, or date to keep only what matters.
 
@@ -28,10 +28,10 @@ Filter by tag, type, or date to keep only what matters.
 
 ## 2. Clear stored data from VS Code global state
 
-GHCP-MEM stores all sessions in VS Code's `globalState`. Run this before uninstalling so the storage is cleanly released:
+Baton stores all sessions in VS Code's `globalState`. Run this before uninstalling so the storage is cleanly released:
 
 ```
-Ctrl+Shift+P → GHCP-MEM: Clear All Stored Context
+Ctrl+Shift+P → Baton: Clear All Stored Context
 ```
 
 Confirm when prompted. The Sessions sidebar will empty immediately.
@@ -46,7 +46,7 @@ Confirm when prompted. The Sessions sidebar will empty immediately.
 ### Via the Extensions sidebar
 
 1. Open the Extensions sidebar (`Ctrl+Shift+X` / `Cmd+Shift+X`)
-2. Search for **GHCP-MEM**
+2. Search for **Baton**
 3. Click the gear icon → **Uninstall**
 4. Reload VS Code when prompted
 
@@ -55,46 +55,46 @@ Confirm when prompted. The Sessions sidebar will empty immediately.
 ```
 Ctrl+Shift+P → Extensions: Show Installed Extensions
 ```
-Find GHCP-MEM → gear → Uninstall.
+Find Baton → gear → Uninstall.
 
 ### Via the terminal
 
 ```bash
-code --uninstall-extension ITcredibl.ghcp-mem
+code --uninstall-extension ITcredibl.baton-mem
 ```
 
 ---
 
 ## 4. Delete the mirror file
 
-GHCP-MEM mirrors sessions to a local JSON file for MCP client access:
+Baton mirrors sessions to a local JSON file for MCP client access:
 
 | OS | Path |
 |---|---|
-| macOS / Linux | `~/.ghcp-mem/sessions.json` |
-| Windows | `%USERPROFILE%\.ghcp-mem\sessions.json` |
+| macOS / Linux | `~/.baton-mem/sessions.json` |
+| Windows | `%USERPROFILE%\.baton-mem\sessions.json` |
 
 Delete it and the directory:
 
 ```bash
 # macOS / Linux
-rm -rf ~/.ghcp-mem
+rm -rf ~/.baton-mem
 
 # Windows (PowerShell)
-Remove-Item -Recurse -Force "$env:USERPROFILE\.ghcp-mem"
+Remove-Item -Recurse -Force "$env:USERPROFILE\.baton-mem"
 ```
 
 ---
 
 ## 5. Remove the workspace instruction file
 
-GHCP-MEM writes a context-injection file to your workspace:
+Baton writes a context-injection file to your workspace:
 
 ```
 .github/instructions/session-memory.instructions.md
 ```
 
-It is automatically excluded from git by an entry GHCP-MEM adds to `.gitignore`. To fully clean up:
+It is automatically excluded from git by an entry Baton adds to `.gitignore`. To fully clean up:
 
 ```bash
 # From the workspace root
@@ -107,41 +107,41 @@ If the `.github/instructions/` directory is now empty, you can remove it too:
 rmdir .github/instructions   # macOS / Linux
 ```
 
-Also remove the `.gitignore` entry GHCP-MEM added (look for a block beginning with `# ghcp-mem`).
+Also remove the `.gitignore` entry Baton added (look for a block beginning with `# baton-mem`).
 
 ---
 
 ## 6. Remove cross-editor injection files (if present)
 
-If GHCP-MEM injected context into Claude or Cursor, remove those files:
+If Baton injected context into Claude or Cursor, remove those files:
 
 ```bash
 # Claude Code
-rm CLAUDE.md            # or just remove the ghcp-mem block inside it
+rm CLAUDE.md            # or just remove the baton-mem block inside it
 
 # Cursor
-rm .cursor/rules/ghcp-mem.md
+rm .cursor/rules/baton-mem.md
 ```
 
-Both files are hash-guarded so GHCP-MEM will not re-create them after uninstall.
+Both files are hash-guarded so Baton will not re-create them after uninstall.
 
 ---
 
 ## 7. Remove MCP client config entries (if configured)
 
-If you wired GHCP-MEM into an external MCP client (Cursor, Cline, Windsurf, Claude Desktop), remove the entry from your client's `mcp.json`:
+If you wired Baton into an external MCP client (Cursor, Cline, Windsurf, Claude Desktop), remove the entry from your client's `mcp.json`:
 
 ```json
 // Remove the block that looks like this:
 {
-  "ghcp-mem": {
+  "baton-mem": {
     "command": "node",
     "args": ["<path-to-extension>/out/mcpServer.js"]
   }
 }
 ```
 
-Run **`GHCP-MEM: Show External MCP Client Config`** before uninstalling to see which files were configured on your machine.
+Run **`Baton: Show External MCP Client Config`** before uninstalling to see which files were configured on your machine.
 
 ---
 
@@ -150,9 +150,9 @@ Run **`GHCP-MEM: Show External MCP Client Config`** before uninstalling to see w
 After completing the steps above:
 
 - ✅ Sessions sidebar is gone from the Activity Bar
-- ✅ `~/.ghcp-mem/` directory no longer exists
+- ✅ `~/.baton-mem/` directory no longer exists
 - ✅ `.github/instructions/session-memory.instructions.md` is removed
-- ✅ No `GHCP-MEM` entries in `Ctrl+Shift+P` autocomplete
+- ✅ No `Baton` entries in `Ctrl+Shift+P` autocomplete
 
 ---
 
@@ -161,25 +161,25 @@ After completing the steps above:
 If you want to reinstall and start fresh:
 
 ```bash
-code --install-extension ITcredibl.ghcp-mem
+code --install-extension ITcredibl.baton-mem
 ```
 
 To restore a previous backup:
 
 ```
-Ctrl+Shift+P → GHCP-MEM: Import Memory from JSON...
+Ctrl+Shift+P → Baton: Import Memory from JSON...
 ```
 
 Or to share a curated set with your team:
 
 ```
-Ctrl+Shift+P → GHCP-MEM: Import Memory Pack...
+Ctrl+Shift+P → Baton: Import Memory Pack...
 ```
 
 ---
 
 <div align="center">
 
-[← Back to README](../README.md) · [Demo walkthrough](DEMO.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
+[← Back to README](../README.md) · [Demo walkthrough](DEMO.md) · [Report an issue](https://github.com/ITcredibl/baton-mem/issues)
 
 </div>

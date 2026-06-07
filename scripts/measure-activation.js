@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Activation-cost benchmark for GHCP-MEM.
+// Activation-cost benchmark for Baton.
 //
 // We can't easily spawn a real VS Code extension host headlessly, so we
 // approximate the cold-start cost by measuring the things that dominate it:
@@ -109,7 +109,7 @@ function makeSession(i) {
 async function measureStore(n) {
   const memento = new vscode.InMemoryMemento();
   // Pre-seed the underlying store so construction loads it
-  memento.update('ghcpMem.contextDatabase', {
+  memento.update('baton.contextDatabase', {
     version: 2,
     sessions: Array.from({ length: n }, (_, i) => makeSession(i)),
     lastUpdated: Date.now(),

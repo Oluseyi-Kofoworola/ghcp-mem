@@ -12,7 +12,7 @@
  *
  * The recommender is consumed two ways:
  *   1. `@mem /route <query>` — surfaces the recommendation to humans
- *   2. `ghcpMem_route` MCP tool — lets agents (Copilot, Cursor, Cline)
+ *   2. `baton_route` MCP tool — lets agents (Copilot, Cursor, Cline)
  *      query the router themselves before deciding context, so they pick
  *      tools without an attach round-trip.
  *
@@ -127,16 +127,16 @@ export function extractMentionedPaths(query: string): string[] {
 
 /** Rough per-call cost for MCP tools that return compact JSON. */
 const MCP_TOOL_TOKEN_COST: Record<string, number> = {
-  ghcpMem_search: 250,
-  ghcpMem_get: 400,
-  ghcpMem_entity: 500,
-  ghcpMem_snippets: 450,
-  ghcpMem_lineage: 350,
-  ghcpMem_conflicts: 400,
-  ghcpMem_explain: 400,
-  ghcpMem_graph: 800, // mermaid graph can be larger
-  ghcpMem_recent: 300,
-  ghcpMem_timeline: 300,
+  baton_search: 250,
+  baton_get: 400,
+  baton_entity: 500,
+  baton_snippets: 450,
+  baton_lineage: 350,
+  baton_conflicts: 400,
+  baton_explain: 400,
+  baton_graph: 800, // mermaid graph can be larger
+  baton_recent: 300,
+  baton_timeline: 300,
 };
 
 /**
@@ -180,7 +180,7 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
       kind: 'attach',
       paths: mentioned.length ? mentioned : ['(file the user means)'],
       rationale:
-        'MCP tools not wired up — fall back to file attach. Run `npx ghcp-mem-mcp` to enable cheaper routes.',
+        'MCP tools not wired up — fall back to file attach. Run `npx baton-mem-mcp` to enable cheaper routes.',
       estimatedTokens: naiveAttachTokens,
     });
     return {
@@ -198,12 +198,12 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
       // Lookups: prefer the most-specific MCP tool given the queryIntent.
       const tool =
         qIntent === 'decision' || qIntent === 'problem'
-          ? 'ghcpMem_snippets'
+          ? 'baton_snippets'
           : mentioned.length
-            ? 'ghcpMem_entity'
-            : 'ghcpMem_search';
+            ? 'baton_entity'
+            : 'baton_search';
       const args: Record<string, unknown> =
-        tool === 'ghcpMem_entity' && mentioned[0] ? { key: mentioned[0] } : { query };
+        tool === 'baton_entity' && mentioned[0] ? { key: mentioned[0] } : { query };
       actions.push({
         kind: 'mcp',
         tool,
@@ -218,11 +218,11 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
       // source we'll attach the winning files based on those results.
       actions.push({
         kind: 'mcp',
-        tool: 'ghcpMem_snippets',
+        tool: 'baton_snippets',
         args: { query },
         rationale:
           'Investigation intent: snippet search returns the matching decision/problem text plus the source session ID. If you then need the actual code, attach only the file(s) returned.',
-        estimatedTokens: MCP_TOOL_TOKEN_COST.ghcpMem_snippets,
+        estimatedTokens: MCP_TOOL_TOKEN_COST.baton_snippets,
       });
       break;
     }
@@ -245,11 +245,11 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
       if (mentioned[0]) {
         actions.push({
           kind: 'mcp',
-          tool: 'ghcpMem_entity',
+          tool: 'baton_entity',
           args: { key: mentioned[0] },
           rationale:
             'Lift prior decisions about this file so the change respects past architectural choices.',
-          estimatedTokens: MCP_TOOL_TOKEN_COST.ghcpMem_entity,
+          estimatedTokens: MCP_TOOL_TOKEN_COST.baton_entity,
         });
       }
       break;
@@ -258,11 +258,11 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
       // Mixed: do the lookup first (cheap), then attach.
       actions.push({
         kind: 'mcp',
-        tool: 'ghcpMem_search',
+        tool: 'baton_search',
         args: { query },
         rationale:
           'Mixed intent: surface prior context cheaply first, then attach files only when the change actually requires editing them.',
-        estimatedTokens: MCP_TOOL_TOKEN_COST.ghcpMem_search,
+        estimatedTokens: MCP_TOOL_TOKEN_COST.baton_search,
       });
       if (mentioned.length) {
         actions.push({
@@ -283,11 +283,11 @@ export function recommend(query: string, ctx: RouteContext = {}): RouteRecommend
       // can iterate without burning the attach budget.
       actions.push({
         kind: 'mcp',
-        tool: 'ghcpMem_search',
+        tool: 'baton_search',
         args: { query },
         rationale:
           'Intent unclear: try the cheap search probe first. Re-route with a more specific question once results land.',
-        estimatedTokens: MCP_TOOL_TOKEN_COST.ghcpMem_search,
+        estimatedTokens: MCP_TOOL_TOKEN_COST.baton_search,
       });
       break;
     }

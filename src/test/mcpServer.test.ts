@@ -24,19 +24,19 @@ function mkSession(o: any = {}) {
 test('mcpServer — TOOLS catalog exposes the full surface', () => {
   const names = TOOLS.map((t) => t.name).sort();
   assert.deepEqual(names, [
-    'ghcpMem_conflicts',
-    'ghcpMem_delete',
-    'ghcpMem_entity',
-    'ghcpMem_explain',
-    'ghcpMem_get',
-    'ghcpMem_graph',
-    'ghcpMem_lineage',
-    'ghcpMem_recent',
-    'ghcpMem_route',
-    'ghcpMem_search',
-    'ghcpMem_snippets',
-    'ghcpMem_store',
-    'ghcpMem_timeline',
+    'baton_conflicts',
+    'baton_delete',
+    'baton_entity',
+    'baton_explain',
+    'baton_get',
+    'baton_graph',
+    'baton_lineage',
+    'baton_recent',
+    'baton_route',
+    'baton_search',
+    'baton_snippets',
+    'baton_store',
+    'baton_timeline',
   ]);
 });
 

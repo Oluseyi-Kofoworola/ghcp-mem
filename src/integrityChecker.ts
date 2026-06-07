@@ -9,8 +9,8 @@
  * runs inside the extension host so it's available at any time:
  *
  *   • As a slash command:        @mem /audit
- *   • As a Copilot agent tool:   #ghcpMemAudit
- *   • From the command palette:  GHCP-MEM: Run Workspace Integrity Audit
+ *   • As a Copilot agent tool:   #batonAudit
+ *   • From the command palette:  Baton: Run Workspace Integrity Audit
  *
  * Why duplicate the gate? Different audiences, different timing:
  *   - Gate runs in CI/pre-publish, blocks vsce publish, no UX.
@@ -232,7 +232,7 @@ export async function runWorkspaceAudit(
 /** Format the audit findings as a markdown document. */
 export function formatAuditReport(issues: IntegrityIssue[], rulesRun: string[]): string {
   const lines: string[] = [];
-  lines.push('# 🩺 GHCP-MEM Workspace Integrity Audit');
+  lines.push('# 🩺 Baton Workspace Integrity Audit');
   lines.push('');
   lines.push(`- generated: ${new Date().toISOString()}`);
   lines.push(`- rules run: ${rulesRun.join(', ') || '(none)'}`);

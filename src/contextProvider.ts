@@ -63,7 +63,7 @@ export class ContextProvider implements vscode.Disposable {
   constructor(private readonly store: ContextStore) {}
 
   register(): void {
-    const p = vscode.chat.createChatParticipant('ghcp-mem', this.handle.bind(this));
+    const p = vscode.chat.createChatParticipant('baton-mem', this.handle.bind(this));
     p.iconPath = new vscode.ThemeIcon('history');
     p.followupProvider = {
       provideFollowups(
@@ -79,13 +79,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'debt',
                 label: '$(warning) Show tech debt',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'standup',
                 label: '$(calendar) Daily standup',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'debt':
@@ -94,13 +94,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'precommit',
                 label: '$(git-commit) Pre-commit check',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'decisions',
                 label: '$(list-ordered) Architecture decisions',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'adr':
@@ -109,13 +109,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'decisions',
                 label: '$(list-ordered) All decisions',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'precommit',
                 label: '$(git-commit) Pre-commit check',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'precommit':
@@ -124,13 +124,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'commit',
                 label: '$(git-commit) Generate commit message',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'debt',
                 label: '$(warning) Show tech debt',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'pr':
@@ -139,13 +139,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'decisions',
                 label: '$(list-ordered) Architecture decisions',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'search',
                 label: '$(search) Search sessions',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'standup':
@@ -154,13 +154,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'recap',
                 label: '$(book) Weekly recap',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'commit',
                 label: '$(git-commit) Generate commit',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'commit':
@@ -169,7 +169,7 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'standup',
                 label: '$(calendar) Daily standup',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'ask':
@@ -179,13 +179,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'standup',
                 label: '$(calendar) Daily standup',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'search',
                 label: '$(search) Search sessions',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'search':
@@ -194,13 +194,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'recent',
                 label: '$(history) Show recent sessions',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'health',
                 label: '$(pulse) Check memory health',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'recent':
@@ -209,13 +209,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'search',
                 label: '$(search) Search sessions…',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'timeline',
                 label: '$(calendar) View timeline',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'timeline':
@@ -224,7 +224,7 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'search',
                 label: '$(search) Search sessions…',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           case 'health':
@@ -233,7 +233,7 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'status',
                 label: '$(info) Show status',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
           default:
@@ -242,13 +242,13 @@ export class ContextProvider implements vscode.Disposable {
                 prompt: '',
                 command: 'recent',
                 label: '$(history) Recent sessions',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
               {
                 prompt: '',
                 command: 'health',
                 label: '$(pulse) Memory health',
-                participant: 'ghcp-mem',
+                participant: 'baton-mem',
               },
             ];
         }
@@ -389,7 +389,7 @@ export class ContextProvider implements vscode.Disposable {
       );
     }
     stream.button({
-      command: 'ghcpMem.runIntegrityAudit',
+      command: 'baton.runIntegrityAudit',
       title: 'Open full audit report',
     });
   }
@@ -546,7 +546,7 @@ export class ContextProvider implements vscode.Disposable {
       .filter((s) => !!s.azureContext || s.userTags.includes('azure'));
     if (all.length === 0) {
       stream.markdown(
-        '_No Azure-tagged sessions yet. Try `GHCP-MEM: Seed Azure Demo Sessions` to see examples, or edit a `.bicep`/`azure.yaml` file._\n',
+        '_No Azure-tagged sessions yet. Try `Baton: Seed Azure Demo Sessions` to see examples, or edit a `.bicep`/`azure.yaml` file._\n',
       );
       return;
     }
@@ -600,7 +600,7 @@ export class ContextProvider implements vscode.Disposable {
     }
 
     stream.markdown(
-      `\n_Use \`@mem /detail <id>\` to expand one. Tip: \`#ghcpMemSearch\` in agent mode filters by Azure too._\n`,
+      `\n_Use \`@mem /detail <id>\` to expand one. Tip: \`#batonSearch\` in agent mode filters by Azure too._\n`,
     );
   }
 
@@ -1127,28 +1127,28 @@ export class ContextProvider implements vscode.Disposable {
     const config = getConfig();
     const recent = this.store.getStartupCandidates(config.startupContextSessionCount);
     if (recent.length === 0) return '';
-    // Phase 9 routing primer: teaches the agent to prefer GHCP-MEM MCP/chat
+    // Phase 9 routing primer: teaches the agent to prefer Baton MCP/chat
     // tools over file open for lookup-style questions. Prepended once per
     // injection so every new Copilot session starts with the routing rule
     // in scope — zero extra round-trips required for "auto" routing.
     const lines = [
-      '## Previous Session Context (auto-injected by GHCP-MEM)',
+      '## Previous Session Context (auto-injected by Baton)',
       '',
       '### How to gather context cheaply',
       'Before reading source files, check whether the question is about',
       'project HISTORY (what was decided / fixed / why) vs CODE (need to',
-      'modify or read current state). Prefer GHCP-MEM tools for history:',
+      'modify or read current state). Prefer Baton tools for history:',
       '',
       '- "why did we / what was decided / how does X work" →',
-      '  `@mem /entity <path>`, `@mem /snippet <q>`, or MCP `ghcpMem_entity` / `ghcpMem_snippets` (~200–500 tokens vs typically 2000–10000 for a file).',
+      '  `@mem /entity <path>`, `@mem /snippet <q>`, or MCP `baton_entity` / `baton_snippets` (~200–500 tokens vs typically 2000–10000 for a file).',
       '- "find where X is used / show me past errors / who touched Y" →',
-      '  `@mem /search <q>` or MCP `ghcpMem_search` (~250 tokens).',
+      '  `@mem /search <q>` or MCP `baton_search` (~250 tokens).',
       '- "what is the supersession chain / lineage for X" →',
-      '  `@mem /lineage <id>` or MCP `ghcpMem_lineage` (~350 tokens).',
+      '  `@mem /lineage <id>` or MCP `baton_lineage` (~350 tokens).',
       '- "explain why this session ranked above that one" →',
-      '  `@mem /why <q> :: <id>` or MCP `ghcpMem_explain`.',
+      '  `@mem /why <q> :: <id>` or MCP `baton_explain`.',
       '- Unsure which is cheaper? Call `@mem /route <question>` or MCP',
-      '  `ghcpMem_route` first — it returns a token-cost estimate per option.',
+      '  `baton_route` first — it returns a token-cost estimate per option.',
       '',
       'Only open / attach files when you need to MODIFY or read current',
       'source. For "what / why / when / who" questions about project',
@@ -1277,7 +1277,7 @@ export class ContextProvider implements vscode.Disposable {
     await this.streamLm(prompt, stream, request, token);
 
     stream.markdown(
-      `\n\n---\n_Powered by GHCP-MEM · [@mem /recap](command:) for a weekly narrative · [@mem /commit](command:) for a commit message_\n`,
+      `\n\n---\n_Powered by Baton · [@mem /recap](command:) for a weekly narrative · [@mem /commit](command:) for a commit message_\n`,
     );
   }
 
@@ -1538,7 +1538,7 @@ export class ContextProvider implements vscode.Disposable {
     const all = this.store.getAllSessions();
     if (all.length === 0) {
       stream.markdown(
-        '_No sessions found. Start coding and GHCP-MEM will track your work automatically._\n',
+        '_No sessions found. Start coding and Baton will track your work automatically._\n',
       );
       return;
     }
@@ -1634,7 +1634,7 @@ export class ContextProvider implements vscode.Disposable {
     const all = this.store.getAllSessions();
     if (all.length === 0) {
       stream.markdown(
-        '_No sessions found yet — GHCP-MEM will detect debt signals automatically as you code._\n',
+        '_No sessions found yet — Baton will detect debt signals automatically as you code._\n',
       );
       return;
     }
@@ -1706,7 +1706,7 @@ export class ContextProvider implements vscode.Disposable {
       stream.markdown('## 🏆 Technical Debt Ledger\n\n');
       stream.markdown('_No debt signals detected in session history. Keep it clean!_\n\n');
       stream.markdown(
-        '_GHCP-MEM looks for: TODO, FIXME, HACK, workaround, quick fix, refactor, fragile, and similar signals._\n',
+        '_Baton looks for: TODO, FIXME, HACK, workaround, quick fix, refactor, fragile, and similar signals._\n',
       );
       return;
     }
@@ -1794,7 +1794,7 @@ export class ContextProvider implements vscode.Disposable {
       stream.markdown(
         query
           ? `_No sessions found matching "${query}". Try a broader term or run \`@mem /decisions\` to see all recorded decisions._\n`
-          : '_No sessions with decisions found yet. GHCP-MEM extracts decisions automatically as you code._\n',
+          : '_No sessions with decisions found yet. Baton extracts decisions automatically as you code._\n',
       );
       return;
     }
@@ -2280,7 +2280,7 @@ export class ContextProvider implements vscode.Disposable {
       stream.markdown(
         query
           ? `_No decisions found matching "${query}"._\n`
-          : '_No decisions recorded yet. GHCP-MEM will extract decisions automatically as you code._\n',
+          : '_No decisions recorded yet. Baton will extract decisions automatically as you code._\n',
       );
       return;
     }
@@ -2374,7 +2374,7 @@ export class ContextProvider implements vscode.Disposable {
 
     if (stats.totalSessions === 0) {
       stream.markdown(
-        '_No sessions stored yet. Keep coding — GHCP-MEM will start tracking context savings automatically._\n',
+        '_No sessions stored yet. Keep coding — Baton will start tracking context savings automatically._\n',
       );
       return;
     }
@@ -2400,7 +2400,7 @@ export class ContextProvider implements vscode.Disposable {
       );
     });
 
-    stream.markdown(`## 💰 GHCP-MEM Token Savings Report\n\n`);
+    stream.markdown(`## 💰 Baton Token Savings Report\n\n`);
 
     // ── Today ──
     stream.markdown(
@@ -2451,7 +2451,7 @@ export class ContextProvider implements vscode.Disposable {
         : 0;
     stream.markdown(`\n### 💡 What This Means\n\n`);
     stream.markdown(
-      `- Each new Copilot chat saves you ~**${fmt(perConvSaved)} tokens** on average — context GHCP-MEM already knows.\n`,
+      `- Each new Copilot chat saves you ~**${fmt(perConvSaved)} tokens** on average — context Baton already knows.\n`,
     );
     stream.markdown(
       `- You have **${fmt(stats.totalCompactTokens)} tokens** of knowledge compressed and ready to auto-inject — without re-explaining anything.\n`,

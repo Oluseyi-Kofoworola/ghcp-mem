@@ -84,7 +84,7 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<TreeNode>, 
         vscode.TreeItemCollapsibleState.None,
         'header',
       );
-      header.tooltip = 'GHCP-MEM statistics';
+      header.tooltip = 'Baton statistics';
       nodes.push(header);
 
       if (this.hasActiveFilter()) {
@@ -95,7 +95,7 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<TreeNode>, 
           'filter',
         );
         filterNode.tooltip = 'Click to clear filter';
-        filterNode.command = { command: 'ghcpMem.clearFilter', title: 'Clear filter' };
+        filterNode.command = { command: 'baton.clearFilter', title: 'Clear filter' };
         nodes.push(filterNode);
       }
 
@@ -162,7 +162,7 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<TreeNode>, 
           : tagDesc;
         n.id = s.id;
         n.command = {
-          command: 'ghcpMem.openSession',
+          command: 'baton.openSession',
           title: 'Open',
           arguments: [s.id],
         };

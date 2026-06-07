@@ -1,4 +1,4 @@
-# Contributing to GHCP-MEM
+# Contributing to Baton
 
 Thank you for your interest in contributing! This guide covers everything you need to get a dev build running, the project conventions, and the PR process.
 
@@ -24,8 +24,8 @@ Thank you for your interest in contributing! This guide covers everything you ne
 - Git
 
 ```bash
-git clone https://github.com/ITcredibl/ghcp-mem.git
-cd ghcp-mem
+git clone https://github.com/ITcredibl/baton-mem.git
+cd baton-mem
 npm install
 ```
 
@@ -130,10 +130,10 @@ For significant changes, open an issue first to discuss the approach.
 Use the [Bug Report](.github/ISSUE_TEMPLATE/bug_report.md) template. Include:
 
 - VS Code version (`Help → About`)
-- GHCP-MEM version (Extensions sidebar)
+- Baton version (Extensions sidebar)
 - Steps to reproduce
 - What you expected vs what happened
-- Relevant output from the `GHCP-MEM` output channel (`View → Output → GHCP-MEM`)
+- Relevant output from the `Baton` output channel (`View → Output → Baton`)
 
 ---
 

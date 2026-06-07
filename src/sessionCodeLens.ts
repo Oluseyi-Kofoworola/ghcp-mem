@@ -10,7 +10,7 @@ import { CompressedSession } from './types';
  *
  *   🧠 3 sessions · Last: feature  2h ago  ·  show history
  *
- * Click → `ghcpMem.showFileHistory` which opens a quick-pick listing all
+ * Click → `baton.showFileHistory` which opens a quick-pick listing all
  * sessions that touched the file, with a preview of each summary.
  */
 export class SessionCodeLensProvider implements vscode.CodeLensProvider, vscode.Disposable {
@@ -36,9 +36,9 @@ export class SessionCodeLensProvider implements vscode.CodeLensProvider, vscode.
 
     const lens = new vscode.CodeLens(new vscode.Range(0, 0, 0, 0), {
       title: label,
-      command: 'ghcpMem.showFileHistory',
+      command: 'baton.showFileHistory',
       arguments: [relPath, hits],
-      tooltip: `GHCP-MEM: ${hits.length} coding session(s) touched this file. Click to browse.`,
+      tooltip: `Baton: ${hits.length} coding session(s) touched this file. Click to browse.`,
     });
 
     return [lens];

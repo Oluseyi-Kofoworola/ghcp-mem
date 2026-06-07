@@ -33,8 +33,8 @@ import {
   defaultWeights,
 } from './adaptiveWeights';
 
-const DB_KEY = 'ghcpMem.contextDatabase';
-const ADAPTIVE_KEY = 'ghcpMem.adaptiveWeights';
+const DB_KEY = 'baton.contextDatabase';
+const ADAPTIVE_KEY = 'baton.adaptiveWeights';
 const DB_VERSION = 2;
 const MAX_BACKUPS = 5;
 const BACKUP_MIN_INTERVAL_MS = 5 * 60 * 1000;
@@ -162,7 +162,7 @@ export class ContextStore implements vscode.Disposable {
       const warnings = detectConflicts(session, this.db.sessions);
       for (const w of warnings) this.pendingConflicts.push(w);
     } catch (err) {
-      console.warn('[GHCP-MEM] conflict detection failed (non-fatal):', err);
+      console.warn('[Baton] conflict detection failed (non-fatal):', err);
     }
 
     this.db.sessions.push(session);
@@ -881,7 +881,7 @@ export class ContextStore implements vscode.Disposable {
       // but it indicates a real bug — surface it so the user can find it in
       // the developer console instead of silently degrading retrieval.
       console.warn(
-        '[GHCP-MEM] filterByFreshness validator failed; returning unfiltered slice:',
+        '[Baton] filterByFreshness validator failed; returning unfiltered slice:',
         err,
       );
       return sessions.slice(0, limit);
@@ -1239,10 +1239,10 @@ export class ContextStore implements vscode.Disposable {
     try {
       await this.writeBackup(this.db);
     } catch (err) {
-      console.warn('[GHCP-MEM] backup failed:', err);
+      console.warn('[Baton] backup failed:', err);
     }
     await this.globalState.update(DB_KEY, this.db);
-    // Best-effort mirror to ~/.ghcp-mem/sessions.json so the standalone
+    // Best-effort mirror to ~/.baton-mem/sessions.json so the standalone
     // MCP server (used by Cursor/Cline/Windsurf) can read our store.
     // Serialised through a queue to prevent interleaved writes from rapid
     // successive addSession / tag / delete calls.
@@ -1251,7 +1251,7 @@ export class ContextStore implements vscode.Disposable {
   }
 
   /**
-   * Mirror the database to `~/.ghcp-mem/sessions.json` for the standalone
+   * Mirror the database to `~/.baton-mem/sessions.json` for the standalone
    * MCP server. Non-fatal on error (e.g. sandboxed FS, read-only HOME).
    *
    * Writes via tmp-file + rename so concurrent MCP readers never observe a
@@ -1267,7 +1267,7 @@ export class ContextStore implements vscode.Disposable {
       const os = require('os') as typeof import('os');
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const path = require('path') as typeof import('path');
-      const dir = path.join(os.homedir(), '.ghcp-mem');
+      const dir = path.join(os.homedir(), '.baton-mem');
       await fs.mkdir(dir, { recursive: true });
       // Restrict directory to owner-only on creation (best-effort on non-POSIX).
       try {
@@ -1303,12 +1303,12 @@ export class ContextStore implements vscode.Disposable {
       await vscode.workspace.fs.createDirectory(this.backupDir);
       const now = new Date();
       const stamp = now.toISOString().replace(/[:.]/g, '-');
-      const file = vscode.Uri.joinPath(this.backupDir, `ghcp-mem-${stamp}.json`);
+      const file = vscode.Uri.joinPath(this.backupDir, `baton-mem-${stamp}.json`);
       await vscode.workspace.fs.writeFile(file, Buffer.from(JSON.stringify(db), 'utf-8'));
       // Prune old backups
       const entries = await vscode.workspace.fs.readDirectory(this.backupDir);
       const backups = entries
-        .filter(([n]) => n.startsWith('ghcp-mem-') && n.endsWith('.json'))
+        .filter(([n]) => n.startsWith('baton-mem-') && n.endsWith('.json'))
         .map(([n]) => n)
         .sort();
       while (backups.length > MAX_BACKUPS) {
@@ -1330,7 +1330,7 @@ export class ContextStore implements vscode.Disposable {
     try {
       const entries = await vscode.workspace.fs.readDirectory(this.backupDir);
       return entries
-        .filter(([n]) => n.startsWith('ghcp-mem-') && n.endsWith('.json'))
+        .filter(([n]) => n.startsWith('baton-mem-') && n.endsWith('.json'))
         .map(([n]) => ({ name: n, uri: vscode.Uri.joinPath(this.backupDir!, n) }))
         .sort((a, b) => b.name.localeCompare(a.name));
     } catch {

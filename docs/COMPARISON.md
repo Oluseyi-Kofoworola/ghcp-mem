@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔍 GHCP-MEM — Technical Comparison
+# 🔍 Baton — Technical Comparison
 
 ### You're picking a memory tool. Don't pick the wrong one.
 
@@ -25,12 +25,12 @@ This page exists because picking wrong costs you real time:
 
 ## Meet your guide for this decision
 
-We're the maintainers of GHCP-MEM. We're going to tell you when **not** to pick our project — because there are several situations where another tool is the right call, and we'd rather you ship than evaluate.
+We're the maintainers of Baton. We're going to tell you when **not** to pick our project — because there are several situations where another tool is the right call, and we'd rather you ship than evaluate.
 
 **The honest reality:**
 
 > [!NOTE]
-> **This is a technical comparison, not a popularity contest.** GHCP-MEM is a young, focused project — most of the tools below have larger communities and longer track records. The point of this page is to help you pick the right tool for **your environment and constraints**, not to claim a winner.
+> **This is a technical comparison, not a popularity contest.** Baton is a young, focused project — most of the tools below have larger communities and longer track records. The point of this page is to help you pick the right tool for **your environment and constraints**, not to claim a winner.
 
 ---
 
@@ -42,11 +42,11 @@ Different tools optimise for different things. Pick the row that matches your si
 |---|---|
 | **You have Copilot Pro/Pro+ and want zero-setup repo-scoped memory across the cloud agent, code review, and CLI.** | [**GitHub Copilot Memory**](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) (public preview, cloud-hosted, free with Pro). |
 | **You live in Claude Code, want the largest community, and are fine installing Bun + uv + a local HTTP worker.** | [`thedotmack/claude-mem`](https://github.com/thedotmack/claude-mem) (the category leader, 75k★+). |
-| **You live in VS Code + GitHub Copilot, work inside an enterprise, can't open ports, and need defensible privacy guarantees.** | **GHCP-MEM** (this project). |
+| **You live in VS Code + GitHub Copilot, work inside an enterprise, can't open ports, and need defensible privacy guarantees.** | **Baton** (this project). |
 | **You want a cloud-hosted MCP service.** | [contextstream](https://github.com/contextstream/mcp-server) or similar. |
 | **You want a transcript-driven memory specifically for Claude Code.** | [`hjertefolger/cortex`](https://github.com/hjertefolger/cortex). |
 
-GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, secret-redacted by default, evidence-grounded.** If you need any of those things, the trade-offs below are worth it. If you don't, one of the larger projects is probably a better fit.
+Baton is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, secret-redacted by default, evidence-grounded.** If you need any of those things, the trade-offs below are worth it. If you don't, one of the larger projects is probably a better fit.
 
 ### What happens if you pick wrong
 
@@ -70,7 +70,7 @@ GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, se
 
 | Project | Target tool(s) | Storage | Retrieval | VS Code native? |
 |---|---|---|---|---|
-| **GHCP-MEM** (this repo) | VS Code + GitHub Copilot Chat | VS Code `globalState` + JSON mirror + inverted index | RRF (keyword + recency + embeddings) | ✅ |
+| **Baton** (this repo) | VS Code + GitHub Copilot Chat | VS Code `globalState` + JSON mirror + inverted index | RRF (keyword + recency + embeddings) | ✅ |
 | [GitHub Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) (preview) | Copilot cloud agent · code review (web) · CLI | GitHub-hosted (cloud, repo-scoped) | LLM-inferred patterns, citation-validated | ❌ (no VS Code surface yet) |
 | [`plures/pluresLM-vscode`](https://github.com/plures/pluresLM-vscode) | Copilot Chat (`@memory`) | MCP service + optional SQLite + vector embeddings | Vector + keyword | ✅ |
 | [`NiclasOlofsson/remember-mcp-vscode`](https://github.com/NiclasOlofsson/remember-mcp-vscode) | Copilot Chat via MCP | Markdown + YAML frontmatter | Copilot-driven | ✅ (requires Python + pipx) |
@@ -81,13 +81,13 @@ GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, se
 
 ---
 
-## 🆚 GHCP-MEM ↔ GitHub Copilot Memory (the closest cousin)
+## 🆚 Baton ↔ GitHub Copilot Memory (the closest cousin)
 
-GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) as a public preview in 2026 — it's the only other "memory layer for Copilot" with first-party backing. Both projects aim at the same goal but make opposite bets on **where memory lives**. GHCP-MEM v1.6.0 ships a `githubCompatibleMode` setting that mirrors Copilot Memory's contract (28-day retention + repo-scoped retrieval) for users who want the same semantics offline.
+GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) as a public preview in 2026 — it's the only other "memory layer for Copilot" with first-party backing. Both projects aim at the same goal but make opposite bets on **where memory lives**. Baton v1.6.0 ships a `githubCompatibleMode` setting that mirrors Copilot Memory's contract (28-day retention + repo-scoped retrieval) for users who want the same semantics offline.
 
-| Dimension | **GHCP-MEM v1.6.0** | **GitHub Copilot Memory** (public preview) |
+| Dimension | **Baton v1.6.0** | **GitHub Copilot Memory** (public preview) |
 |---|---|---|
-| **Storage location** | 100% local: VS Code `globalState` + atomic mirror to `~/.ghcp-mem/sessions.json` (mode `0600`) | GitHub cloud, repo-scoped |
+| **Storage location** | 100% local: VS Code `globalState` + atomic mirror to `~/.baton-mem/sessions.json` (mode `0600`) | GitHub cloud, repo-scoped |
 | **Where it works** | VS Code (`@mem` chat, agent tools, status bar, sidebar, MCP for Cursor / Cline / Windsurf / Claude Desktop) | Copilot cloud agent · Copilot code review (web) · Copilot CLI |
 | **Retention** | 90 days default, configurable (or **28 days when `githubCompatibleMode: true`**) | 28 days, fixed; successful re-use refreshes |
 | **Scope** | Configurable: `user` / `workspace` / `repo` (auto-detected from `.git/config`) | Repo only |
@@ -105,8 +105,8 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 ### When to pick which
 
 - **Use GitHub Copilot Memory if** you're a Pro user, your code lives on github.com, you mostly work through cloud agents / PR review / the CLI, and you want zero local setup. Memory is shared across everyone on the repo automatically.
-- **Use GHCP-MEM if** you ship from VS Code, you work inside an enterprise / on a locked-down laptop / in an air-gapped environment, you need explicit secret redaction, your codebase is on Azure (not just GitHub), or you want to query memory from non-Copilot AI clients via MCP.
-- **Use both if** you want — they target different surfaces and don't conflict. Enable `ghcpMem.githubCompatibleMode` and the local store mirrors Copilot Memory's 28-day repo-scoped semantics, so users moving between cloud agent and IDE see consistent behaviour.
+- **Use Baton if** you ship from VS Code, you work inside an enterprise / on a locked-down laptop / in an air-gapped environment, you need explicit secret redaction, your codebase is on Azure (not just GitHub), or you want to query memory from non-Copilot AI clients via MCP.
+- **Use both if** you want — they target different surfaces and don't conflict. Enable `baton.githubCompatibleMode` and the local store mirrors Copilot Memory's 28-day repo-scoped semantics, so users moving between cloud agent and IDE see consistent behaviour.
 
 ---
 
@@ -117,7 +117,7 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 <details open>
 <summary><b>🔬 Full feature comparison</b></summary>
 
-| Dimension | **GHCP-MEM v1.6.0** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
+| Dimension | **Baton v1.6.0** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
 |---|---|---|---|---|---|---|
 | No external service / port | ✅ | ❌ (service by default) | ❌ (needs pipx + Python server) | ✅ | ✅ | ❌ (`:37777` worker) |
 | No native deps | ✅ | 🟡 (better-sqlite3 in legacy) | ❌ | ✅ | ❌ (sql-wasm, Nomic) | ❌ (SQLite, Chroma, Bun) |
@@ -150,29 +150,29 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 
 ---
 
-## 🎯 Where GHCP-MEM is the right tool
+## 🎯 Where Baton is the right tool
 
-These are the situations where GHCP-MEM is genuinely the best fit — not because it's "better," but because nothing else in the category was designed for them:
+These are the situations where Baton is genuinely the best fit — not because it's "better," but because nothing else in the category was designed for them:
 
-1. **Locked-down enterprise developer machines.** No admin rights, no Bun, no Python, no `:37777`. GHCP-MEM is a single `.vsix` file with zero runtime dependencies.
+1. **Locked-down enterprise developer machines.** No admin rights, no Bun, no Python, no `:37777`. Baton is a single `.vsix` file with zero runtime dependencies.
 2. **Privacy-sensitive codebases.** 21 redaction rules with dual-pass scrubbing (input + output of the LM), `<private>...</private>` tag stripping, glob-based exclusion of `.env*` / `*.pem` / `secrets/**` by default. Most competitors persist whatever they see.
 3. **Azure-shop workflows.** 12-subsystem classifier auto-tags `bicep` / `azd` / `aks` / `keyvault` / `functions` / `openai` / etc. Live `az` snapshot. 8 Azure-specific redaction rules. Unique in the category.
-4. **VS Code + Copilot users who want native integration.** `@mem` chat participant, `#ghcpMemSearch` / `#ghcpMemStore` agent-mode tools, auto-injection via `.github/instructions/*.md` — all using Copilot's native protocols, not shell-level hooks.
-5. **Air-gapped or audit-heavy environments.** No GHCP-MEM backend or telemetry, no HTTP server, no native binaries. Compression may use the user's existing Copilot LM subscription. Smallest possible attack surface for locked-down enterprise environments.
+4. **VS Code + Copilot users who want native integration.** `@mem` chat participant, `#batonSearch` / `#batonStore` agent-mode tools, auto-injection via `.github/instructions/*.md` — all using Copilot's native protocols, not shell-level hooks.
+5. **Air-gapped or audit-heavy environments.** No Baton backend or telemetry, no HTTP server, no native binaries. Compression may use the user's existing Copilot LM subscription. Smallest possible attack surface for locked-down enterprise environments.
 
 ## 🎯 Where another tool is the right choice
 
 Equally important to acknowledge:
 
 - **If you primarily use Claude Code** and want the most battle-tested option with the largest community, [`thedotmack/claude-mem`](https://github.com/thedotmack/claude-mem) is the obvious pick. It has 75k★+, 270+ releases, and active development.
-- **If you want a cloud-hosted memory service**, GHCP-MEM intentionally won't do that — pick a hosted MCP server.
-- **If you need cross-editor support across many AI tools**, claude-mem's hook system covers more clients than GHCP-MEM's VS Code-only surface.
+- **If you want a cloud-hosted memory service**, Baton intentionally won't do that — pick a hosted MCP server.
+- **If you need cross-editor support across many AI tools**, claude-mem's hook system covers more clients than Baton's VS Code-only surface.
 
 ---
 
 ## 🔬 Design trade-offs
 
-GHCP-MEM made specific bets that not every user will agree with:
+Baton made specific bets that not every user will agree with:
 
 | Bet | Trade-off |
 |---|---|
@@ -204,8 +204,8 @@ Remaining research-level items:
 
 <div align="center">
 
-[← Back to README](../README.md) · [Live demo](DEMO.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
+[← Back to README](../README.md) · [Live demo](DEMO.md) · [Report an issue](https://github.com/ITcredibl/baton-mem/issues)
 
-<sub>**Comparison for GHCP-MEM v1.6.0** · last refreshed June 2026</sub>
+<sub>**Comparison for Baton v1.6.0** · last refreshed June 2026</sub>
 
 </div>

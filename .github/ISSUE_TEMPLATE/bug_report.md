@@ -29,13 +29,13 @@ What actually happened.
 | Field | Value |
 |---|---|
 | VS Code version | (Help → About) |
-| GHCP-MEM version | (Extensions sidebar) |
+| Baton version | (Extensions sidebar) |
 | OS | macOS / Windows / Linux |
 | GitHub Copilot plan | Free / Pro / Business / Enterprise |
 
 ## Relevant output
 
-Paste any relevant output from **View → Output → GHCP-MEM**:
+Paste any relevant output from **View → Output → Baton**:
 
 ```
 (paste here)

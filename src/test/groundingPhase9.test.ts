@@ -144,14 +144,14 @@ test('recommend — token total never exceeds naive attach for lookup intents', 
 
 // ─── MCP catalog wiring ─────────────────────────────────────────────────────
 
-test('mcpServer — ghcpMem_route tool is declared with `query` required', () => {
-  const t = TOOLS.find((t) => t.name === 'ghcpMem_route');
-  assert.ok(t, 'ghcpMem_route must be in the MCP catalog');
+test('mcpServer — baton_route tool is declared with `query` required', () => {
+  const t = TOOLS.find((t) => t.name === 'baton_route');
+  assert.ok(t, 'baton_route must be in the MCP catalog');
   assert.deepEqual(t!.inputSchema.required, ['query']);
 });
 
 test('mcpServer — strengthened descriptions mention PREFER routing guidance', () => {
-  for (const name of ['ghcpMem_search', 'ghcpMem_entity', 'ghcpMem_snippets']) {
+  for (const name of ['baton_search', 'baton_entity', 'baton_snippets']) {
     const t = TOOLS.find((t) => t.name === name);
     assert.ok(t, `tool ${name} must exist`);
     assert.match(

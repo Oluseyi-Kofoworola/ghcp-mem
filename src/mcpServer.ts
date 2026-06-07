@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 /**
- * GHCP-MEM MCP stdio server.
+ * Baton MCP stdio server.
  *
  * Minimal JSON-RPC 2.0 implementation of the Model Context Protocol (MCP)
- * over stdio. Exposes the GHCP-MEM session memory to any MCP-compatible
+ * over stdio. Exposes the Baton session memory to any MCP-compatible
  * client (Cursor, Cline, Windsurf, Claude Desktop, etc.) without requiring
  * the @modelcontextprotocol/sdk dependency.
  *
- * Storage: reads from `~/.ghcp-mem/sessions.json`, which the VS Code
+ * Storage: reads from `~/.baton-mem/sessions.json`, which the VS Code
  * extension mirrors on every persist (see contextStore.syncToDisk).
  *
- * Launch:   npx ghcp-mem-mcp
+ * Launch:   npx baton-mem-mcp
  * Or:       node out/mcpServer.js
  *
  * Protocol methods implemented:
  *   - initialize
  *   - tools/list
- *   - tools/call   (ghcpMem_search | ghcpMem_timeline | ghcpMem_recent | ghcpMem_get)
+ *   - tools/call   (baton_search | baton_timeline | baton_recent | baton_get)
  *   - ping
  *   - shutdown
  */
@@ -47,7 +47,7 @@ import { buildMermaidGraph } from './graphExport';
 import { recommend } from './router';
 
 const PROTOCOL_VERSION = '2024-11-05';
-const SERVER_NAME = 'ghcp-mem';
+const SERVER_NAME = 'baton-mem';
 const MCP_WRITE_ENABLED =
   process.env.GHCP_MEM_ALLOW_MCP_WRITE !== 'false' && process.env.GHCP_MEM_READONLY !== 'true';
 // Read the package version at module load so we never drift from package.json.
@@ -85,7 +85,7 @@ type StoredSession = CompressedSession;
 type StoredDatabase = ContextDatabase;
 
 function storePath(): string {
-  return process.env.GHCP_MEM_STORE_PATH ?? join(homedir(), '.ghcp-mem', 'sessions.json');
+  return process.env.GHCP_MEM_STORE_PATH ?? join(homedir(), '.baton-mem', 'sessions.json');
 }
 
 // Cache the parsed database keyed by file mtime so that high-frequency tool
@@ -212,9 +212,9 @@ export function timelineSessions(db: StoredDatabase, days = 7, limit = 10): Stor
 
 const TOOLS = [
   {
-    name: 'ghcpMem_search',
+    name: 'baton_search',
     description:
-      'Search GHCP-MEM session memory for past decisions, problems solved, files touched, and topics across all workspaces. PREFER THIS over opening files when the user is asking *about* the project history ("why / what / when / who") — typically returns the answer in ~250 tokens vs 1000–10000 for a file open.',
+      'Search Baton session memory for past decisions, problems solved, files touched, and topics across all workspaces. PREFER THIS over opening files when the user is asking *about* the project history ("why / what / when / who") — typically returns the answer in ~250 tokens vs 1000–10000 for a file open.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -241,8 +241,8 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_recent',
-    description: 'Return the N most recent GHCP-MEM sessions.',
+    name: 'baton_recent',
+    description: 'Return the N most recent Baton sessions.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -260,7 +260,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_timeline',
+    name: 'baton_timeline',
     description: 'Return sessions within a time window (days around now).',
     inputSchema: {
       type: 'object',
@@ -271,7 +271,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_get',
+    name: 'baton_get',
     description: 'Get full detail of a session by ID or ID prefix.',
     inputSchema: {
       type: 'object',
@@ -282,9 +282,9 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_store',
+    name: 'baton_store',
     description:
-      'Persist a note or session summary into GHCP-MEM so it will be recalled in future sessions. Use for durable facts, decisions, or preferences.',
+      'Persist a note or session summary into Baton so it will be recalled in future sessions. Use for durable facts, decisions, or preferences.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -323,8 +323,8 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_delete',
-    description: 'Delete a GHCP-MEM session by ID or ID prefix.',
+    name: 'baton_delete',
+    description: 'Delete a Baton session by ID or ID prefix.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -335,7 +335,7 @@ const TOOLS = [
   },
   // ── Phase 7: MCP parity with chat participant ────────────────────────────
   {
-    name: 'ghcpMem_entity',
+    name: 'baton_entity',
     description:
       'Aggregate every session that touched a file path or LSP symbol into a single focused summary. Key auto-detects: "src/auth.ts" → file entity, "src/auth.ts#hashPassword" → symbol entity (anything containing "#"). PREFER THIS over opening the file when the user asks "what do we know about <file/symbol>?" or "what decisions exist for <thing>?" — returns ~500 tokens vs typically 2000–10000 for the raw source.',
     inputSchema: {
@@ -350,7 +350,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_snippets',
+    name: 'baton_snippets',
     description:
       'Chunk-level retrieval — returns matching decisions, problems, summaries, or topics across all stored sessions (not just whole-session results). PREFER THIS over file open when the user wants the exact decision/error text matching some keywords — typically 200–500 tokens vs file size.',
     inputSchema: {
@@ -366,13 +366,13 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_conflicts',
+    name: 'baton_conflicts',
     description:
       'List pending conflict warnings — decisions whose text contained contradiction markers (e.g. "instead of", "deprecated") and that overlap with older sessions on file/topic. Useful for spotting unresolved supersessions in a team-shared store.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'ghcpMem_lineage',
+    name: 'baton_lineage',
     description:
       'Return the cross-session causal chain (predecessors + successors) for a session. Edges include semantic labels: "introduced_issue_fixed_by" (feature→bugfix), "extends" (feature→refactor), "tests" (feature→test), "continues_work_from" (fallback).',
     inputSchema: {
@@ -388,7 +388,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_explain',
+    name: 'baton_explain',
     description:
       'Score-decomposition explainer — break down why a session ranked where it did for a specific query. Returns per-signal contributions (keyword rank, recency decay, confidence, reinforcement, feedback, intent boosts, supersession penalty).',
     inputSchema: {
@@ -401,7 +401,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_graph',
+    name: 'baton_graph',
     description:
       'Emit a Mermaid flowchart of the decision graph (supersession + correction + causal edges). Ready to paste into a PR description, ADR, or README. Optional file filter restricts to sessions touching a path.',
     inputSchema: {
@@ -416,7 +416,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'ghcpMem_route',
+    name: 'baton_route',
     description:
       'Context-acquisition recommender. Call BEFORE deciding whether to open a file: given the user question, returns the cheapest path to an answer (MCP tools vs file open), with per-action token estimates and a structured reasoning string. Use this to avoid uploading large files when a cheaper memory query would suffice. Off by default unless you want explicit cost guidance.',
     inputSchema: {
@@ -459,7 +459,7 @@ async function handleCall(name: string, args: any): Promise<any> {
   };
 
   switch (name) {
-    case 'ghcpMem_search': {
+    case 'baton_search': {
       const limit = clamp(args?.limit, 5, 25);
       const hits = searchSessions(
         db,
@@ -475,7 +475,7 @@ async function handleCall(name: string, args: any): Promise<any> {
       );
       return textContent({ count: hits.length, results: hits.map(summarizeForMcp) });
     }
-    case 'ghcpMem_recent': {
+    case 'baton_recent': {
       const limit = clamp(args?.limit, 5, 25);
       let recent = [...db.sessions].sort((a, b) => b.endTime - a.endTime);
       if (args?.workspaceId) recent = recent.filter((s) => s.workspaceId === args.workspaceId);
@@ -488,13 +488,13 @@ async function handleCall(name: string, args: any): Promise<any> {
         results: recent.slice(0, limit).map(summarizeForMcp),
       });
     }
-    case 'ghcpMem_timeline': {
+    case 'baton_timeline': {
       const days = clamp(args?.days, 7, 365);
       const limit = clamp(args?.limit, 10, 50);
       const hits = timelineSessions(db, days, limit);
       return textContent({ count: hits.length, days, results: hits.map(summarizeForMcp) });
     }
-    case 'ghcpMem_get': {
+    case 'baton_get': {
       const id = String(args?.id ?? '');
       const hit = db.sessions.find((s) => s.id === id || s.id.startsWith(id));
       if (!hit) return textContent({ error: `No session matching id "${id}"` });
@@ -507,7 +507,7 @@ async function handleCall(name: string, args: any): Promise<any> {
         endTime: new Date(hit.endTime).toISOString(),
       });
     }
-    case 'ghcpMem_store': {
+    case 'baton_store': {
       if (!MCP_WRITE_ENABLED) throw new Error('MCP write tools are disabled by policy');
       const now = Date.now();
       const session: StoredSession = {
@@ -533,7 +533,7 @@ async function handleCall(name: string, args: any): Promise<any> {
       await saveDatabase(storeDb);
       return textContent({ stored: true, id: session.id, shortId: session.id.substring(0, 8) });
     }
-    case 'ghcpMem_delete': {
+    case 'baton_delete': {
       if (!MCP_WRITE_ENABLED) throw new Error('MCP write tools are disabled by policy');
       const delId = String(args?.id ?? '');
       const delDb = await loadDatabase();
@@ -545,7 +545,7 @@ async function handleCall(name: string, args: any): Promise<any> {
     }
 
     // ── Phase 7: parity tools ─────────────────────────────────────────────
-    case 'ghcpMem_entity': {
+    case 'baton_entity': {
       const key = String(args?.key ?? '').trim();
       if (!key) return textContent({ error: 'key is required' });
       const rec = buildEntityRecord(key, db.sessions);
@@ -574,7 +574,7 @@ async function handleCall(name: string, args: any): Promise<any> {
         sessions: rec.sessions,
       });
     }
-    case 'ghcpMem_snippets': {
+    case 'baton_snippets': {
       const query = String(args?.query ?? '');
       const limit = clamp(args?.limit, 10, 50);
       const sinceMs = args?.sinceDays ? Date.now() - clamp(args.sinceDays, 7, 365) * 86_400_000 : 0;
@@ -615,7 +615,7 @@ async function handleCall(name: string, args: any): Promise<any> {
         results: scored.slice(0, limit).map((e) => snippetForMcp(e.sn)),
       });
     }
-    case 'ghcpMem_conflicts': {
+    case 'baton_conflicts': {
       // MCP server is stateless across processes — recompute conflicts
       // fresh on every call against the persisted store. This gives the
       // same listing the in-extension /conflicts surface would show,
@@ -645,7 +645,7 @@ async function handleCall(name: string, args: any): Promise<any> {
         })),
       });
     }
-    case 'ghcpMem_lineage': {
+    case 'baton_lineage': {
       const id = String(args?.id ?? '');
       const limit = clamp(args?.limit, 5, 25);
       const target = db.sessions.find((s) => s.id === id || s.id.startsWith(id));
@@ -674,7 +674,7 @@ async function handleCall(name: string, args: any): Promise<any> {
         })),
       });
     }
-    case 'ghcpMem_explain': {
+    case 'baton_explain': {
       const query = String(args?.query ?? '');
       const id = String(args?.id ?? '');
       const target = db.sessions.find((s) => s.id === id || s.id.startsWith(id));
@@ -682,7 +682,7 @@ async function handleCall(name: string, args: any): Promise<any> {
       const e = explainScore(target, query, { allSessions: db.sessions });
       return textContent(e);
     }
-    case 'ghcpMem_graph': {
+    case 'baton_graph': {
       const fileFilter = typeof args?.file === 'string' ? args.file.toLowerCase() : undefined;
       const pool = fileFilter
         ? db.sessions.filter((s) => s.keyFiles.some((f) => f.toLowerCase().includes(fileFilter)))
@@ -694,7 +694,7 @@ async function handleCall(name: string, args: any): Promise<any> {
         mermaid,
       });
     }
-    case 'ghcpMem_route': {
+    case 'baton_route': {
       const query = String(args?.query ?? '');
       const fileSizes =
         args?.fileSizes && typeof args.fileSizes === 'object'
@@ -810,7 +810,7 @@ function main(): void {
     tryExit();
   });
   // Never write logs to stdout — reserved for JSON-RPC frames.
-  process.stderr.write(`[ghcp-mem-mcp] listening on stdio, store=${storePath()}\n`);
+  process.stderr.write(`[baton-mem-mcp] listening on stdio, store=${storePath()}\n`);
 }
 
 // Only run the server when invoked as a script (not when required by tests)

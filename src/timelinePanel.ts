@@ -33,8 +33,8 @@ export class MemoryTimelinePanel {
     private readonly context: vscode.ExtensionContext,
   ) {
     this.panel = vscode.window.createWebviewPanel(
-      'ghcpMemTimeline',
-      '🧠 GHCP-MEM Timeline',
+      'batonTimeline',
+      '🧠 Baton Timeline',
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -119,10 +119,10 @@ export class MemoryTimelinePanel {
         if (!s) return;
         if (s.userTags.includes('pinned')) {
           await this.store.removeTag(msg.id!, 'pinned');
-          vscode.window.setStatusBarMessage('GHCP-MEM: session unpinned', 2000);
+          vscode.window.setStatusBarMessage('Baton: session unpinned', 2000);
         } else {
           await this.store.addTag(msg.id!, 'pinned');
-          vscode.window.setStatusBarMessage('GHCP-MEM: session pinned', 2000);
+          vscode.window.setStatusBarMessage('Baton: session pinned', 2000);
         }
       })();
     } else if (msg.type === 'addTag' && msg.id) {
@@ -136,7 +136,7 @@ export class MemoryTimelinePanel {
         )?.trim();
         if (!tag) return;
         await this.store.addTag(msg.id!, tag);
-        vscode.window.setStatusBarMessage(`GHCP-MEM: tagged with #${tag}`, 2000);
+        vscode.window.setStatusBarMessage(`Baton: tagged with #${tag}`, 2000);
       })();
     } else if (msg.type === 'deleteSession' && msg.id) {
       void (async () => {
@@ -150,7 +150,7 @@ export class MemoryTimelinePanel {
         );
         if (choice !== 'Delete') return;
         await this.store.deleteSession(msg.id!);
-        vscode.window.setStatusBarMessage('GHCP-MEM: session pruned', 2000);
+        vscode.window.setStatusBarMessage('Baton: session pruned', 2000);
       })();
     } else if (msg.type === 'verify' && msg.id) {
       // Surface verification through the chat participant so the UX stays
@@ -179,7 +179,7 @@ export class MemoryTimelinePanel {
         if (!s) return;
         if (s.retracted) {
           await this.store.undoRetract(s.id);
-          vscode.window.setStatusBarMessage('GHCP-MEM: retraction undone', 2500);
+          vscode.window.setStatusBarMessage('Baton: retraction undone', 2500);
           return;
         }
         const reason = await vscode.window.showInputBox({
@@ -188,7 +188,7 @@ export class MemoryTimelinePanel {
         });
         if (reason === undefined) return; // user pressed Esc
         await this.store.setRetracted(s.id, reason.trim() || undefined);
-        vscode.window.setStatusBarMessage('GHCP-MEM: session retracted', 2500);
+        vscode.window.setStatusBarMessage('Baton: session retracted', 2500);
       })();
     } else if (msg.type === 'gotoFile' && msg.id) {
       // msg.id encodes "<sessionId>::<workspaceRelativePath>" so the renderer
@@ -208,7 +208,7 @@ export class MemoryTimelinePanel {
         relPath.split(/[\\/]/).includes('..')
       ) {
         vscode.window.setStatusBarMessage(
-          `GHCP-MEM: refused unsafe path "${relPath.substring(0, 60)}"`,
+          `Baton: refused unsafe path "${relPath.substring(0, 60)}"`,
           4000,
         );
         return;
@@ -217,7 +217,7 @@ export class MemoryTimelinePanel {
       if (!ws) return;
       const target = vscode.Uri.joinPath(ws.uri, relPath);
       void vscode.window.showTextDocument(target).then(undefined, () => {
-        vscode.window.setStatusBarMessage(`GHCP-MEM: cannot open ${relPath}`, 3000);
+        vscode.window.setStatusBarMessage(`Baton: cannot open ${relPath}`, 3000);
       });
     }
   }
@@ -273,7 +273,7 @@ export class MemoryTimelinePanel {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GHCP-MEM Timeline</title>
+<title>Baton Timeline</title>
 <style>
   :root {
     --bg: var(--vscode-editor-background, #0d1117);
@@ -479,7 +479,7 @@ export class MemoryTimelinePanel {
   <div class="empty-state">
     <span class="icon">🌱</span>
     <div>No sessions yet.</div>
-    <div>Start coding and GHCP-MEM will automatically capture your sessions.</div>
+    <div>Start coding and Baton will automatically capture your sessions.</div>
   </div>`
       : dayHtml
   }

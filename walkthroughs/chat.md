@@ -1,6 +1,6 @@
 # Chat with your memory
 
-GHCP-MEM registers a Copilot chat participant named **@mem** with progressive-disclosure commands:
+Baton registers a Copilot chat participant named **@mem** with progressive-disclosure commands:
 
 | Command              | What it does                                                      |
 | -------------------- | ----------------------------------------------------------------- |
@@ -35,4 +35,4 @@ Search and timeline accept inline filters:
 
 ## Beyond Copilot
 
-GHCP-MEM also ships a JSON-RPC stdio MCP server (`node out/mcpServer.js`) so non-Copilot agents (Claude Code, Cline, etc.) can query the same memory. The server exposes 6 tools: `ghcpMem_search`, `ghcpMem_recent`, `ghcpMem_timeline`, `ghcpMem_get`, `ghcpMem_store`, and `ghcpMem_delete`.
+Baton also ships a JSON-RPC stdio MCP server (`node out/mcpServer.js`) so non-Copilot agents (Claude Code, Cline, etc.) can query the same memory. The server exposes 6 tools: `baton_search`, `baton_recent`, `baton_timeline`, `baton_get`, `baton_store`, and `baton_delete`.

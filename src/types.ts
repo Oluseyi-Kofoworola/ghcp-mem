@@ -328,7 +328,7 @@ export interface PluginConfig {
   enabled: boolean;
   compressionIntervalMinutes: number;
   maxStoredSessions: number;
-  /** Soft cap on the on-disk size of ~/.ghcp-mem/sessions.json (MB). */
+  /** Soft cap on the on-disk size of ~/.baton-mem/sessions.json (MB). */
   maxStoreSizeMB: number;
   retentionDays: number;
   captureFileEdits: boolean;
@@ -378,7 +378,7 @@ export interface PluginConfig {
   customSensitiveEntities: string[];
 }
 
-/** A user-defined redaction rule injected via `ghcpMem.customRedactionRules`. */
+/** A user-defined redaction rule injected via `baton.customRedactionRules`. */
 export interface CustomRedactionRule {
   /** Human-readable label shown in audit output. */
   name: string;
@@ -397,7 +397,7 @@ function clampNum(raw: unknown, lo: number, hi: number, fallback: number): numbe
 }
 
 export function getConfig(): PluginConfig {
-  const cfg = vscode.workspace.getConfiguration('ghcpMem');
+  const cfg = vscode.workspace.getConfiguration('baton');
   const githubCompatibleMode = cfg.get('githubCompatibleMode', false);
   const scope = cfg.get<MemoryScope>('scope', 'user');
   return {

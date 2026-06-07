@@ -161,7 +161,7 @@ ${eventLog}`;
       }
       return session;
     } catch (err) {
-      console.warn('[GHCP-MEM] LM compression failed:', err);
+      console.warn('[Baton] LM compression failed:', err);
       return this.fallbackCompress(
         events,
         sessionStartTime,

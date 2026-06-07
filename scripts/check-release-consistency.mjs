@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable no-console */
 //
-// Release-consistency gate for GHCP-MEM.
+// Release-consistency gate for Baton.
 //
 // Single source of truth: package.json `.version`. Every other surface
 // (README footer, DEMO.md, CHANGELOG.md, git tag, GitHub remote) is

@@ -1,4 +1,4 @@
-# GHCP-MEM Security
+# Baton Security
 
 ## Supported versions
 
@@ -15,7 +15,7 @@
 
 Report security issues privately via GitHub's built-in security advisory:
 
-👉 [https://github.com/ITcredibl/ghcp-mem/security/advisories/new](https://github.com/ITcredibl/ghcp-mem/security/advisories/new)
+👉 [https://github.com/ITcredibl/baton-mem/security/advisories/new](https://github.com/ITcredibl/baton-mem/security/advisories/new)
 
 Or email: **security@itcredibl.com**
 
@@ -23,13 +23,13 @@ Please include:
 - A description of the vulnerability
 - Steps to reproduce or a proof of concept
 - The potential impact
-- Your VS Code and GHCP-MEM versions
+- Your VS Code and Baton versions
 
 You will receive an acknowledgement within **48 hours** and a status update within **7 days**. We follow responsible disclosure — please give us time to patch before publishing.
 
 ## Security model
 
-GHCP-MEM is designed with privacy and least-privilege in mind:
+Baton is designed with privacy and least-privilege in mind:
 
 - **All data stays local** — no telemetry, no cloud sync, no outbound network calls beyond your existing GitHub Copilot subscription
 - **No open ports** — the MCP server communicates via stdin/stdout only
@@ -45,4 +45,4 @@ GHCP-MEM is designed with privacy and least-privilege in mind:
 ## Known limitations
 
 - The LM compression call goes through your existing Copilot subscription (GitHub's servers). Do not include secrets in source code comments — while redaction is comprehensive, defence in depth means not relying on it exclusively.
-- The `~/.ghcp-mem/sessions.json` mirror is a plaintext file on your filesystem, protected by OS-level user permissions only. Encrypt your home directory if you need additional protection.
+- The `~/.baton-mem/sessions.json` mirror is a plaintext file on your filesystem, protected by OS-level user permissions only. Encrypt your home directory if you need additional protection.

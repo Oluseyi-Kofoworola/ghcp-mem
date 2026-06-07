@@ -119,7 +119,7 @@ async function readGitRemote(workspaceUri: vscode.Uri): Promise<string | undefin
   // but is still O(n) work the engine doesn't need to do on a 100MB file).
   if (bytes.byteLength > MAX_GIT_CONFIG_BYTES) {
     console.warn(
-      `[GHCP-MEM] .git/config too large (${bytes.byteLength} bytes), skipping remote detection`,
+      `[Baton] .git/config too large (${bytes.byteLength} bytes), skipping remote detection`,
     );
     return undefined;
   }

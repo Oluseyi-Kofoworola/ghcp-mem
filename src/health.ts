@@ -134,7 +134,7 @@ export function fillGlyph(used: number, capacity: number, segments = 5): string 
 
 export function formatHealthMarkdown(h: HealthScore): string {
   const lines: string[] = [
-    `# GHCP-MEM Health: ${h.score}/100  ${h.densityGlyph}`,
+    `# Baton Health: ${h.score}/100  ${h.densityGlyph}`,
     '',
     `- **Total sessions:** ${h.totalSessions}`,
     `- **Redaction coverage:** ${h.redactionCoveragePct}%`,

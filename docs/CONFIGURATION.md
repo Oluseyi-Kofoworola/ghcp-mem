@@ -1,6 +1,6 @@
-# GHCP-MEM — Configuration Reference
+# Baton — Configuration Reference
 
-All settings live under the `ghcpMem` namespace and can be edited in VS Code Settings (`Ctrl+,` / `Cmd+,`) or directly in `settings.json`.
+All settings live under the `baton` namespace and can be edited in VS Code Settings (`Ctrl+,` / `Cmd+,`) or directly in `settings.json`.
 
 ---
 
@@ -8,9 +8,9 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `ghcpMem.enabled` | boolean | `true` | Master switch — disable to pause all capture and injection. |
-| `ghcpMem.scope` | `"user"` \| `"workspace"` \| `"repo"` | `"user"` | Retrieval scope. `user` = all sessions; `workspace` = current VS Code workspace only; `repo` = same git origin URL across machines. |
-| `ghcpMem.githubCompatibleMode` | boolean | `false` | Mirror GitHub Copilot's agentic-memory contract: forces `retentionDays = 28` and `scope = repo`. Overrides those two settings when enabled. |
+| `baton.enabled` | boolean | `true` | Master switch — disable to pause all capture and injection. |
+| `baton.scope` | `"user"` \| `"workspace"` \| `"repo"` | `"user"` | Retrieval scope. `user` = all sessions; `workspace` = current VS Code workspace only; `repo` = same git origin URL across machines. |
+| `baton.githubCompatibleMode` | boolean | `false` | Mirror GitHub Copilot's agentic-memory contract: forces `retentionDays = 28` and `scope = repo`. Overrides those two settings when enabled. |
 
 ---
 
@@ -18,11 +18,11 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `ghcpMem.captureFileEdits` | boolean | `true` | Capture file edit, create, delete, rename, open, and close events. |
-| `ghcpMem.captureTerminalCommands` | boolean | `true` | Capture terminal activity (requires VS Code 1.93+ shell integration). |
-| `ghcpMem.captureDiagnostics` | boolean | `true` | Capture error/warning diagnostic transitions. |
-| `ghcpMem.captureGitOps` | boolean | `true` | Capture git state changes (branch, commit, merge, rebase). |
-| `ghcpMem.excludeGlobs` | string[] | `["**/.env*", "**/*.pem", "**/*.key", "**/secrets/**", "**/node_modules/**"]` | Glob patterns whose file events are silently skipped. |
+| `baton.captureFileEdits` | boolean | `true` | Capture file edit, create, delete, rename, open, and close events. |
+| `baton.captureTerminalCommands` | boolean | `true` | Capture terminal activity (requires VS Code 1.93+ shell integration). |
+| `baton.captureDiagnostics` | boolean | `true` | Capture error/warning diagnostic transitions. |
+| `baton.captureGitOps` | boolean | `true` | Capture git state changes (branch, commit, merge, rebase). |
+| `baton.excludeGlobs` | string[] | `["**/.env*", "**/*.pem", "**/*.key", "**/secrets/**", "**/node_modules/**"]` | Glob patterns whose file events are silently skipped. |
 
 ---
 
@@ -30,10 +30,10 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `ghcpMem.compressionIntervalMinutes` | number (1–1440) | `15` | How often the timer-based compression job runs. |
-| `ghcpMem.autosave.enabled` | boolean | `true` | Enable context-pressure autosave (flush when event count or wall clock threshold is hit). |
-| `ghcpMem.autosave.eventThreshold` | number (1–10000) | `40` | Trigger autosave once this many events are buffered. |
-| `ghcpMem.autosave.minutesThreshold` | number (1–1440) | `20` | Trigger autosave after this many minutes since the last flush (with any pending events). |
+| `baton.compressionIntervalMinutes` | number (1–1440) | `15` | How often the timer-based compression job runs. |
+| `baton.autosave.enabled` | boolean | `true` | Enable context-pressure autosave (flush when event count or wall clock threshold is hit). |
+| `baton.autosave.eventThreshold` | number (1–10000) | `40` | Trigger autosave once this many events are buffered. |
+| `baton.autosave.minutesThreshold` | number (1–1440) | `20` | Trigger autosave after this many minutes since the last flush (with any pending events). |
 
 ---
 
@@ -41,9 +41,9 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `ghcpMem.maxStoredSessions` | number (1–10000) | `50` | Maximum number of compressed sessions to keep. Oldest are evicted first when the cap is reached. |
-| `ghcpMem.maxStoreSizeMB` | number (1–1024) | `25` | Soft cap on `~/.ghcp-mem/sessions.json` disk size. Oldest sessions are evicted until under cap (after count and age eviction). |
-| `ghcpMem.retentionDays` | number (0–3650) | `90` | Delete sessions older than this many days. Set to `0` to disable age-based eviction. |
+| `baton.maxStoredSessions` | number (1–10000) | `50` | Maximum number of compressed sessions to keep. Oldest are evicted first when the cap is reached. |
+| `baton.maxStoreSizeMB` | number (1–1024) | `25` | Soft cap on `~/.baton-mem/sessions.json` disk size. Oldest sessions are evicted until under cap (after count and age eviction). |
+| `baton.retentionDays` | number (0–3650) | `90` | Delete sessions older than this many days. Set to `0` to disable age-based eviction. |
 
 ---
 
@@ -51,9 +51,9 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `ghcpMem.contextRetrievalCount` | number (1–50) | `5` | Number of top-ranked past sessions to inject into startup context and `@mem` responses. |
-| `ghcpMem.validateAgainstCodebase` | boolean | `true` | Drop or de-rank memories whose `keyFiles` no longer exist in the current workspace. |
-| `ghcpMem.freshnessFloor` | number (0–1) | `0.25` | Minimum freshness score required for a memory to survive validation. Lower = more lenient. `0` = accept all. |
+| `baton.contextRetrievalCount` | number (1–50) | `5` | Number of top-ranked past sessions to inject into startup context and `@mem` responses. |
+| `baton.validateAgainstCodebase` | boolean | `true` | Drop or de-rank memories whose `keyFiles` no longer exist in the current workspace. |
+| `baton.freshnessFloor` | number (0–1) | `0.25` | Minimum freshness score required for a memory to survive validation. Lower = more lenient. `0` = accept all. |
 
 ---
 
@@ -61,9 +61,9 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `ghcpMem.redactSecrets` | boolean | `true` | Run dual-pass redaction (24 patterns) on all captured text before storage. Strongly recommended. |
-| `ghcpMem.honorPrivateTags` | boolean | `true` | Exclude content wrapped in `<private>...</private>` markers from persistence. |
-| `ghcpMem.policySource` | string | `""` | Optional remote URL to a validated JSON array of redaction rules. Loaded on startup and after settings changes, then appended to the built-in policy set. |
+| `baton.redactSecrets` | boolean | `true` | Run dual-pass redaction (24 patterns) on all captured text before storage. Strongly recommended. |
+| `baton.honorPrivateTags` | boolean | `true` | Exclude content wrapped in `<private>...</private>` markers from persistence. |
+| `baton.policySource` | string | `""` | Optional remote URL to a validated JSON array of redaction rules. Loaded on startup and after settings changes, then appended to the built-in policy set. |
 
 ---
 
@@ -71,9 +71,9 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 | Setting | Type | Default | Description |
 |---|---|---|---|
-| `ghcpMem.autoInjectStartupContext` | boolean | `true` | On startup and after each compression, write `.github/instructions/session-memory.instructions.md` (Copilot auto-injection), `CLAUDE.md`, and `.cursor/rules` with recent session context. |
-| `ghcpMem.startupContextSessionCount` | number | `5` | How many recent sessions (1–20) to include in the auto-injected instructions file. |
-| `ghcpMem.healthAlertThreshold` | number (0–100) | `30` | Show a warning notification if the memory health score falls below this value. Set to `0` to disable. |
+| `baton.autoInjectStartupContext` | boolean | `true` | On startup and after each compression, write `.github/instructions/session-memory.instructions.md` (Copilot auto-injection), `CLAUDE.md`, and `.cursor/rules` with recent session context. |
+| `baton.startupContextSessionCount` | number | `5` | How many recent sessions (1–20) to include in the auto-injected instructions file. |
+| `baton.healthAlertThreshold` | number (0–100) | `30` | Show a warning notification if the memory health score falls below this value. Set to `0` to disable. |
 
 ---
 
@@ -83,10 +83,10 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 ```json
 {
-  "ghcpMem.compressionIntervalMinutes": 30,
-  "ghcpMem.autosave.eventThreshold": 80,
-  "ghcpMem.healthAlertThreshold": 0,
-  "ghcpMem.captureDiagnostics": false
+  "baton.compressionIntervalMinutes": 30,
+  "baton.autosave.eventThreshold": 80,
+  "baton.healthAlertThreshold": 0,
+  "baton.captureDiagnostics": false
 }
 ```
 
@@ -94,10 +94,10 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 ```json
 {
-  "ghcpMem.maxStoredSessions": 500,
-  "ghcpMem.maxStoreSizeMB": 100,
-  "ghcpMem.retentionDays": 365,
-  "ghcpMem.contextRetrievalCount": 10
+  "baton.maxStoredSessions": 500,
+  "baton.maxStoreSizeMB": 100,
+  "baton.retentionDays": 365,
+  "baton.contextRetrievalCount": 10
 }
 ```
 
@@ -105,7 +105,7 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 ```json
 {
-  "ghcpMem.githubCompatibleMode": true
+  "baton.githubCompatibleMode": true
 }
 ```
 
@@ -113,15 +113,15 @@ Forces 28-day retention and repo-scoped retrieval to match GitHub's hosted Copil
 
 ### GitHub Copilot CLI + MCP
 
-GitHub Copilot CLI can attach to the bundled stdio MCP server with its `/mcp` command. Use the extension command **GHCP-MEM: Show External MCP Client Config** to copy the current server path, then add the same `node <extension>/out/mcpServer.js` command in Copilot CLI's MCP configuration.
+GitHub Copilot CLI can attach to the bundled stdio MCP server with its `/mcp` command. Use the extension command **Baton: Show External MCP Client Config** to copy the current server path, then add the same `node <extension>/out/mcpServer.js` command in Copilot CLI's MCP configuration.
 
 ### Repo-scoped team setup
 
 ```json
 {
-  "ghcpMem.scope": "repo",
-  "ghcpMem.retentionDays": 60,
-  "ghcpMem.maxStoredSessions": 200
+  "baton.scope": "repo",
+  "baton.retentionDays": 60,
+  "baton.maxStoredSessions": 200
 }
 ```
 

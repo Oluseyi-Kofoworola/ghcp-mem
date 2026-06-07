@@ -66,11 +66,11 @@ export async function refreshPolicyRedactionRules(source: string | undefined): P
   try {
     url = new URL(trimmed);
   } catch {
-    throw new Error('ghcpMem.policySource must be a valid URL');
+    throw new Error('baton.policySource must be a valid URL');
   }
 
   if (url.protocol !== 'https:' && url.protocol !== 'http:') {
-    throw new Error('ghcpMem.policySource must use http: or https:');
+    throw new Error('baton.policySource must use http: or https:');
   }
 
   const fetchFn = globalThis.fetch;

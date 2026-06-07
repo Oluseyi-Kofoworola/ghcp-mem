@@ -4,18 +4,18 @@
 
 ```json
 {
-  "ghcpMem.enterpriseMode": true,
-  "ghcpMem.captureTerminalCommands": false,
-  "ghcpMem.captureCodeSnippets": false,
-  "ghcpMem.allowMcpWriteAccess": false,
-  "ghcpMem.allowTeamExport": false,
-  "ghcpMem.previewBeforePersist": true
+  "baton.enterpriseMode": true,
+  "baton.captureTerminalCommands": false,
+  "baton.captureCodeSnippets": false,
+  "baton.allowMcpWriteAccess": false,
+  "baton.allowTeamExport": false,
+  "baton.previewBeforePersist": true
 }
 ```
 
 ## Policy options
 
-- Use `ghcpMem.policySource` for centrally managed redaction rules.
+- Use `baton.policySource` for centrally managed redaction rules.
 - Prefer workspace settings for team-wide defaults.
 - Use the memory audit view before sharing or exporting context.
 

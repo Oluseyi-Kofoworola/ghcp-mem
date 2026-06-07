@@ -193,7 +193,7 @@ export function buildComplianceReport(
  */
 export function renderComplianceReport(r: ComplianceReport): string {
   const lines: string[] = [];
-  lines.push(`## 🛡 GHCP-MEM Compliance Report`);
+  lines.push(`## 🛡 Baton Compliance Report`);
   lines.push(`_Generated: ${r.generatedAt}_`);
   lines.push('');
 

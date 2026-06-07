@@ -1,6 +1,6 @@
 {
-  "name": "ghcp-mem",
-  "displayName": "GHCP-MEM",
+  "name": "baton-mem",
+  "displayName": "Baton",
   "description": "A local, auditable session-memory layer for VS Code and GitHub Copilot, built for engineers who need persistent project context without relying on a cloud memory backend.",
   "version": "1.6.3",
   "publisher": "itcredibl",
@@ -8,12 +8,12 @@
   "icon": "images/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ITcredibl/ghcp-mem.git"
+    "url": "https://github.com/ITcredibl/baton-mem.git"
   },
   "bugs": {
-    "url": "https://github.com/ITcredibl/ghcp-mem/issues"
+    "url": "https://github.com/ITcredibl/baton-mem/issues"
   },
-  "homepage": "https://github.com/ITcredibl/ghcp-mem#readme",
+  "homepage": "https://github.com/ITcredibl/baton-mem#readme",
   "engines": {
     "vscode": "^1.93.0"
   },
@@ -45,160 +45,160 @@
   ],
   "main": "./out/extension.js",
   "bin": {
-    "ghcp-mem-mcp": "./out/mcpServer.js",
-    "ghcp-mem-ci-seed": "./out/ciSeeder.js"
+    "baton-mem-mcp": "./out/mcpServer.js",
+    "baton-mem-ci-seed": "./out/ciSeeder.js"
   },
   "contributes": {
     "commands": [
       {
-        "command": "ghcpMem.captureSnapshot",
-        "title": "GHCP-MEM: Capture Session Snapshot Now"
+        "command": "baton.captureSnapshot",
+        "title": "Baton: Capture Session Snapshot Now"
       },
       {
-        "command": "ghcpMem.showContext",
-        "title": "GHCP-MEM: Show Stored Context"
+        "command": "baton.showContext",
+        "title": "Baton: Show Stored Context"
       },
       {
-        "command": "ghcpMem.runPrivacyWizard",
-        "title": "GHCP-MEM: Run Privacy Wizard"
+        "command": "baton.runPrivacyWizard",
+        "title": "Baton: Run Privacy Wizard"
       },
       {
-        "command": "ghcpMem.auditMemory",
-        "title": "GHCP-MEM: Audit Memory"
+        "command": "baton.auditMemory",
+        "title": "Baton: Audit Memory"
       },
       {
-        "command": "ghcpMem.purgeMemory",
-        "title": "GHCP-MEM: Purge Memory..."
+        "command": "baton.purgeMemory",
+        "title": "Baton: Purge Memory..."
       },
       {
-        "command": "ghcpMem.clearMemory",
-        "title": "GHCP-MEM: Clear All Stored Context"
+        "command": "baton.clearMemory",
+        "title": "Baton: Clear All Stored Context"
       },
       {
-        "command": "ghcpMem.compressNow",
-        "title": "GHCP-MEM: Compress Current Session"
+        "command": "baton.compressNow",
+        "title": "Baton: Compress Current Session"
       },
       {
-        "command": "ghcpMem.exportMemory",
-        "title": "GHCP-MEM: Export Memory to JSON..."
+        "command": "baton.exportMemory",
+        "title": "Baton: Export Memory to JSON..."
       },
       {
-        "command": "ghcpMem.importMemory",
-        "title": "GHCP-MEM: Import Memory from JSON..."
+        "command": "baton.importMemory",
+        "title": "Baton: Import Memory from JSON..."
       },
       {
-        "command": "ghcpMem.deleteSession",
-        "title": "GHCP-MEM: Delete Session",
+        "command": "baton.deleteSession",
+        "title": "Baton: Delete Session",
         "icon": "$(trash)"
       },
       {
-        "command": "ghcpMem.tagSession",
-        "title": "GHCP-MEM: Tag Session...",
+        "command": "baton.tagSession",
+        "title": "Baton: Tag Session...",
         "icon": "$(tag)"
       },
       {
-        "command": "ghcpMem.togglePin",
-        "title": "GHCP-MEM: Pin/Unpin Session",
+        "command": "baton.togglePin",
+        "title": "Baton: Pin/Unpin Session",
         "icon": "$(pinned)"
       },
       {
-        "command": "ghcpMem.openSession",
-        "title": "GHCP-MEM: Open Session Detail",
+        "command": "baton.openSession",
+        "title": "Baton: Open Session Detail",
         "icon": "$(eye)"
       },
       {
-        "command": "ghcpMem.refreshView",
-        "title": "GHCP-MEM: Refresh",
+        "command": "baton.refreshView",
+        "title": "Baton: Refresh",
         "icon": "$(refresh)"
       },
       {
-        "command": "ghcpMem.restoreBackup",
-        "title": "GHCP-MEM: Restore From Backup..."
+        "command": "baton.restoreBackup",
+        "title": "Baton: Restore From Backup..."
       },
       {
-        "command": "ghcpMem.injectContextIntoChat",
-        "title": "GHCP-MEM: Inject Relevant Context Into Copilot Chat..."
+        "command": "baton.injectContextIntoChat",
+        "title": "Baton: Inject Relevant Context Into Copilot Chat..."
       },
       {
-        "command": "ghcpMem.captureAzureContext",
-        "title": "GHCP-MEM: Capture Azure Context Snapshot..."
+        "command": "baton.captureAzureContext",
+        "title": "Baton: Capture Azure Context Snapshot..."
       },
       {
-        "command": "ghcpMem.seedAzureDemo",
-        "title": "GHCP-MEM: Seed Azure Demo Sessions"
+        "command": "baton.seedAzureDemo",
+        "title": "Baton: Seed Azure Demo Sessions"
       },
       {
-        "command": "ghcpMem.showHealth",
-        "title": "GHCP-MEM: Show Memory Health Score"
+        "command": "baton.showHealth",
+        "title": "Baton: Show Memory Health Score"
       },
       {
-        "command": "ghcpMem.exportPack",
-        "title": "GHCP-MEM: Export Memory Pack..."
+        "command": "baton.exportPack",
+        "title": "Baton: Export Memory Pack..."
       },
       {
-        "command": "ghcpMem.importPack",
-        "title": "GHCP-MEM: Import Memory Pack..."
+        "command": "baton.importPack",
+        "title": "Baton: Import Memory Pack..."
       },
       {
-        "command": "ghcpMem.uninstallPack",
-        "title": "GHCP-MEM: Uninstall Memory Pack..."
+        "command": "baton.uninstallPack",
+        "title": "Baton: Uninstall Memory Pack..."
       },
       {
-        "command": "ghcpMem.showMcpInfo",
-        "title": "GHCP-MEM: Show External MCP Client Config"
+        "command": "baton.showMcpInfo",
+        "title": "Baton: Show External MCP Client Config"
       },
       {
-        "command": "ghcpMem.filterSessions",
-        "title": "GHCP-MEM: Filter Sessions...",
+        "command": "baton.filterSessions",
+        "title": "Baton: Filter Sessions...",
         "icon": "$(filter)"
       },
       {
-        "command": "ghcpMem.clearFilter",
-        "title": "GHCP-MEM: Clear Filter",
+        "command": "baton.clearFilter",
+        "title": "Baton: Clear Filter",
         "icon": "$(clear-all)"
       },
       {
-        "command": "ghcpMem.exportSessionMarkdown",
-        "title": "GHCP-MEM: Export Session as Diff-Friendly Markdown..."
+        "command": "baton.exportSessionMarkdown",
+        "title": "Baton: Export Session as Diff-Friendly Markdown..."
       },
       {
-        "command": "ghcpMem.runEval",
-        "title": "GHCP-MEM: Run Retrieval Eval"
+        "command": "baton.runEval",
+        "title": "Baton: Run Retrieval Eval"
       },
       {
-        "command": "ghcpMem.runIntegrityAudit",
-        "title": "GHCP-MEM: Run Workspace Integrity Audit",
+        "command": "baton.runIntegrityAudit",
+        "title": "Baton: Run Workspace Integrity Audit",
         "icon": "$(shield)"
       },
       {
-        "command": "ghcpMem.openTimeline",
-        "title": "GHCP-MEM: Open Visual Timeline",
+        "command": "baton.openTimeline",
+        "title": "Baton: Open Visual Timeline",
         "icon": "$(graph)"
       },
       {
-        "command": "ghcpMem.showFileHistory",
-        "title": "GHCP-MEM: Show File Session History",
+        "command": "baton.showFileHistory",
+        "title": "Baton: Show File Session History",
         "icon": "$(history)"
       },
       {
-        "command": "ghcpMem.exportTeamMemory",
-        "title": "GHCP-MEM: Export Team Memory Snapshot",
+        "command": "baton.exportTeamMemory",
+        "title": "Baton: Export Team Memory Snapshot",
         "icon": "$(organization)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "ghcpMem",
-          "title": "GHCP-MEM",
+          "id": "baton",
+          "title": "Baton",
           "icon": "$(history)"
         }
       ]
     },
     "views": {
-      "ghcpMem": [
+      "baton": [
         {
-          "id": "ghcpMem.sessionsView",
+          "id": "baton.sessionsView",
           "name": "Sessions",
           "icon": "$(history)"
         }
@@ -207,64 +207,64 @@
     "menus": {
       "view/title": [
         {
-          "command": "ghcpMem.filterSessions",
-          "when": "view == ghcpMem.sessionsView",
+          "command": "baton.filterSessions",
+          "when": "view == baton.sessionsView",
           "group": "navigation@1"
         },
         {
-          "command": "ghcpMem.clearFilter",
-          "when": "view == ghcpMem.sessionsView",
+          "command": "baton.clearFilter",
+          "when": "view == baton.sessionsView",
           "group": "navigation@2"
         },
         {
-          "command": "ghcpMem.refreshView",
-          "when": "view == ghcpMem.sessionsView",
+          "command": "baton.refreshView",
+          "when": "view == baton.sessionsView",
           "group": "navigation@3"
         },
         {
-          "command": "ghcpMem.captureSnapshot",
-          "when": "view == ghcpMem.sessionsView",
+          "command": "baton.captureSnapshot",
+          "when": "view == baton.sessionsView",
           "group": "navigation@4"
         },
         {
-          "command": "ghcpMem.openTimeline",
-          "when": "view == ghcpMem.sessionsView",
+          "command": "baton.openTimeline",
+          "when": "view == baton.sessionsView",
           "group": "navigation@5"
         }
       ],
       "editor/context": [
         {
-          "command": "ghcpMem.showFileHistory",
+          "command": "baton.showFileHistory",
           "when": "editorIsOpen",
-          "group": "ghcpMem@1"
+          "group": "baton@1"
         }
       ],
       "view/item/context": [
         {
-          "command": "ghcpMem.tagSession",
-          "when": "view == ghcpMem.sessionsView && viewItem == session",
+          "command": "baton.tagSession",
+          "when": "view == baton.sessionsView && viewItem == session",
           "group": "inline@1"
         },
         {
-          "command": "ghcpMem.togglePin",
-          "when": "view == ghcpMem.sessionsView && viewItem == session",
+          "command": "baton.togglePin",
+          "when": "view == baton.sessionsView && viewItem == session",
           "group": "inline@2"
         },
         {
-          "command": "ghcpMem.deleteSession",
-          "when": "view == ghcpMem.sessionsView && viewItem == session",
+          "command": "baton.deleteSession",
+          "when": "view == baton.sessionsView && viewItem == session",
           "group": "inline@3"
         },
         {
-          "command": "ghcpMem.exportSessionMarkdown",
-          "when": "view == ghcpMem.sessionsView && viewItem == session",
+          "command": "baton.exportSessionMarkdown",
+          "when": "view == baton.sessionsView && viewItem == session",
           "group": "1_export@1"
         }
       ]
     },
     "chatParticipants": [
       {
-        "id": "ghcp-mem",
+        "id": "baton-mem",
         "name": "mem",
         "fullName": "Session Memory",
         "description": "Query persistent coding session memory with progressive disclosure",
@@ -415,10 +415,10 @@
     ],
     "languageModelTools": [
       {
-        "name": "ghcpMem_search",
+        "name": "baton_search",
         "displayName": "Search Session Memory",
-        "modelDescription": "Search the user's persistent GHCP-MEM coding session memory for past decisions, problems solved, files touched, and topics. Use this BEFORE asking the user for repo context that might already be known. Returns a compact list of matching sessions with IDs, summaries, files, and decisions.",
-        "toolReferenceName": "ghcpMemSearch",
+        "modelDescription": "Search the user's persistent Baton coding session memory for past decisions, problems solved, files touched, and topics. Use this BEFORE asking the user for repo context that might already be known. Returns a compact list of matching sessions with IDs, summaries, files, and decisions.",
+        "toolReferenceName": "batonSearch",
         "canBeReferencedInPrompt": true,
         "icon": "$(history)",
         "tags": [
@@ -474,10 +474,10 @@
         }
       },
       {
-        "name": "ghcpMem_store",
+        "name": "baton_store",
         "displayName": "Save To Session Memory",
-        "modelDescription": "Persist a short, self-contained note into GHCP-MEM so it will be recalled in future sessions. Use when the user states a durable fact, decision, or preference the assistant should remember. Do NOT use for ephemeral chat context.",
-        "toolReferenceName": "ghcpMemStore",
+        "modelDescription": "Persist a short, self-contained note into Baton so it will be recalled in future sessions. Use when the user states a durable fact, decision, or preference the assistant should remember. Do NOT use for ephemeral chat context.",
+        "toolReferenceName": "batonStore",
         "canBeReferencedInPrompt": true,
         "icon": "$(save)",
         "tags": [
@@ -552,10 +552,10 @@
         }
       },
       {
-        "name": "ghcpMem_audit",
+        "name": "baton_audit",
         "displayName": "Audit Workspace Integrity",
-        "modelDescription": "Run GHCP-MEM's workspace integrity audit. Catches cross-file inconsistencies that erode release trust — most importantly, version drift between package.json, README footer, docs/DEMO.md, and CHANGELOG.md. Returns a list of errors and warnings with the offending file, line, and a suggested fix. Read-only — does not modify any file or memory.",
-        "toolReferenceName": "ghcpMemAudit",
+        "modelDescription": "Run Baton's workspace integrity audit. Catches cross-file inconsistencies that erode release trust — most importantly, version drift between package.json, README footer, docs/DEMO.md, and CHANGELOG.md. Returns a list of errors and warnings with the offending file, line, and a suggested fix. Read-only — does not modify any file or memory.",
+        "toolReferenceName": "batonAudit",
         "canBeReferencedInPrompt": true,
         "icon": "$(shield)",
         "tags": [
@@ -579,104 +579,104 @@
       }
     ],
     "configuration": {
-      "title": "GHCP-MEM",
+      "title": "Baton",
       "properties": {
-        "ghcpMem.enabled": {
+        "baton.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Enable automatic session capture"
         },
-        "ghcpMem.compressionIntervalMinutes": {
+        "baton.compressionIntervalMinutes": {
           "type": "number",
           "default": 15,
           "minimum": 1,
           "maximum": 1440,
           "description": "How often to compress captured events (minutes)"
         },
-        "ghcpMem.maxStoredSessions": {
+        "baton.maxStoredSessions": {
           "type": "number",
           "default": 50,
           "minimum": 1,
           "maximum": 10000,
           "description": "Maximum number of compressed sessions to retain"
         },
-        "ghcpMem.maxStoreSizeMB": {
+        "baton.maxStoreSizeMB": {
           "type": "number",
           "default": 25,
           "minimum": 1,
           "maximum": 1024,
-          "markdownDescription": "Soft cap on the on-disk size of `~/.ghcp-mem/sessions.json`. When exceeded, oldest sessions are evicted until under cap (count-based `#ghcpMem.maxStoredSessions#` and age-based `#ghcpMem.retentionDays#` still apply first)."
+          "markdownDescription": "Soft cap on the on-disk size of `~/.baton-mem/sessions.json`. When exceeded, oldest sessions are evicted until under cap (count-based `#baton.maxStoredSessions#` and age-based `#baton.retentionDays#` still apply first)."
         },
-        "ghcpMem.retentionDays": {
+        "baton.retentionDays": {
           "type": "number",
           "default": 90,
           "minimum": 0,
           "maximum": 3650,
           "description": "Delete sessions older than this many days (0 = disabled)"
         },
-        "ghcpMem.captureFileEdits": {
+        "baton.captureFileEdits": {
           "type": "boolean",
           "default": true,
           "description": "Capture file edit events"
         },
-        "ghcpMem.captureTerminalCommands": {
+        "baton.captureTerminalCommands": {
           "type": "boolean",
           "default": true,
           "description": "Capture terminal activity"
         },
-        "ghcpMem.captureDiagnostics": {
+        "baton.captureDiagnostics": {
           "type": "boolean",
           "default": true,
           "description": "Capture error/warning diagnostics changes"
         },
-        "ghcpMem.captureGitOps": {
+        "baton.captureGitOps": {
           "type": "boolean",
           "default": true,
           "description": "Capture git operations"
         },
-        "ghcpMem.enterpriseMode": {
+        "baton.enterpriseMode": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Strict mode for regulated environments. Disables terminal capture, raw snippets, team export, and MCP write tools, and stores only redacted summaries."
         },
-        "ghcpMem.captureCodeSnippets": {
+        "baton.captureCodeSnippets": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Store a short redacted snippet for file edits. Disabled automatically in enterprise mode."
         },
-        "ghcpMem.allowMcpWriteAccess": {
+        "baton.allowMcpWriteAccess": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Allow MCP write tools (memory-store, memory-delete, memory-correct, memory-retract, memory-supersede). **Default `false`** — MCP exposes read-only retrieval (search, recent, timeline, get) until you explicitly opt in. Disabled automatically in enterprise mode."
         },
-        "ghcpMem.allowTeamExport": {
+        "baton.allowTeamExport": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Allow team export and memory-pack export flows. Disabled automatically in enterprise mode."
         },
-        "ghcpMem.previewBeforePersist": {
+        "baton.previewBeforePersist": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "Show a preview before a compressed memory snapshot is persisted."
         },
-        "ghcpMem.contextRetrievalCount": {
+        "baton.contextRetrievalCount": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 50,
           "description": "Number of relevant past sessions to inject"
         },
-        "ghcpMem.redactSecrets": {
+        "baton.redactSecrets": {
           "type": "boolean",
           "default": true,
           "description": "Scan and redact secrets/PII before storing"
         },
-        "ghcpMem.honorPrivateTags": {
+        "baton.honorPrivateTags": {
           "type": "boolean",
           "default": true,
           "description": "Exclude content wrapped in <private>...</private> markers"
         },
-        "ghcpMem.excludeGlobs": {
+        "baton.excludeGlobs": {
           "type": "array",
           "items": {
             "type": "string"
@@ -690,26 +690,26 @@
           ],
           "description": "Glob patterns whose file events will be skipped"
         },
-        "ghcpMem.autoInjectStartupContext": {
+        "baton.autoInjectStartupContext": {
           "type": "boolean",
           "default": true,
           "description": "Write .github/instructions/session-memory.instructions.md on every VS Code startup and after each compression so Copilot always has recent session context."
         },
-        "ghcpMem.startupContextSessionCount": {
+        "baton.startupContextSessionCount": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 20,
           "description": "Number of recent sessions to include in the auto-injected instructions file."
         },
-        "ghcpMem.idleTimeoutSeconds": {
+        "baton.idleTimeoutSeconds": {
           "type": "number",
           "default": 30,
           "minimum": 0,
           "maximum": 300,
           "description": "Seconds of editor inactivity before idle-triggered compression fires (0 = disabled)"
         },
-        "ghcpMem.customRedactionRules": {
+        "baton.customRedactionRules": {
           "type": "array",
           "items": {
             "type": "object",
@@ -739,7 +739,7 @@
           "default": [],
           "description": "User-defined regex redaction rules applied after the built-in 26-rule set (enterprise compliance modes)"
         },
-        "ghcpMem.customSensitiveEntities": {
+        "baton.customSensitiveEntities": {
           "type": "array",
           "items": {
             "type": "string"
@@ -747,33 +747,33 @@
           "default": [],
           "description": "Plain-string entity names (organisations, products, codenames, customer aliases) to redact verbatim. Each entry is treated as a case-insensitive, word-boundary-anchored literal — no regex syntax needed. Example: [\"AcmeCorp internal\", \"Project Hydra\", \"Deal-2026-Q3\"]."
         },
-        "ghcpMem.autosave.enabled": {
+        "baton.autosave.enabled": {
           "type": "boolean",
           "default": true,
           "description": "Enable context-pressure autosave (flush based on event count + wall clock)"
         },
-        "ghcpMem.autosave.eventThreshold": {
+        "baton.autosave.eventThreshold": {
           "type": "number",
           "default": 40,
           "minimum": 1,
           "maximum": 10000,
           "description": "Trigger autosave once this many captured events are buffered"
         },
-        "ghcpMem.autosave.minutesThreshold": {
+        "baton.autosave.minutesThreshold": {
           "type": "number",
           "default": 20,
           "minimum": 1,
           "maximum": 1440,
           "description": "Trigger autosave after this many minutes since the last flush (with any pending events)"
         },
-        "ghcpMem.healthAlertThreshold": {
+        "baton.healthAlertThreshold": {
           "type": "number",
           "default": 30,
           "minimum": 0,
           "maximum": 100,
           "description": "Show a warning notification if memory health score falls below this value (0 = disabled)"
         },
-        "ghcpMem.scope": {
+        "baton.scope": {
           "type": "string",
           "enum": [
             "user",
@@ -783,24 +783,24 @@
           "default": "user",
           "markdownDescription": "Retrieval scope for stored sessions.\n\n- `user`: all sessions across all workspaces and repos.\n- `workspace`: sessions captured in the current VS Code workspace only.\n- `repo`: sessions captured against the same git origin URL (works across machines/clones)."
         },
-        "ghcpMem.validateAgainstCodebase": {
+        "baton.validateAgainstCodebase": {
           "type": "boolean",
           "default": true,
           "description": "Drop or de-rank retrieved memories whose key files no longer exist or are empty in the current codebase."
         },
-        "ghcpMem.freshnessFloor": {
+        "baton.freshnessFloor": {
           "type": "number",
           "default": 0.25,
           "minimum": 0,
           "maximum": 1,
           "description": "Minimum freshness score (0-1, fraction of key files still present) required for a memory to survive validation. Lower = more lenient."
         },
-        "ghcpMem.githubCompatibleMode": {
+        "baton.githubCompatibleMode": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Mirror GitHub Copilot's agentic-memory contract: 28-day retention and repo-scoped retrieval. When enabled, overrides `#ghcpMem.retentionDays#` and `#ghcpMem.scope#`."
+          "markdownDescription": "Mirror GitHub Copilot's agentic-memory contract: 28-day retention and repo-scoped retrieval. When enabled, overrides `#baton.retentionDays#` and `#baton.scope#`."
         },
-        "ghcpMem.policySource": {
+        "baton.policySource": {
           "type": "string",
           "default": "",
           "markdownDescription": "Optional remote URL to a validated JSON array of redaction rules. Loaded on startup and after settings changes, then appended to the built-in policy set."
@@ -809,39 +809,39 @@
     },
     "walkthroughs": [
       {
-        "id": "ghcpMem.getStarted",
-        "title": "Get started with GHCP-MEM",
+        "id": "baton.getStarted",
+        "title": "Get started with Baton",
         "description": "Persistent, redacted session memory for GitHub Copilot — set up in four steps.",
         "steps": [
           {
             "id": "privacy-wizard",
             "title": "Choose your privacy posture",
-            "description": "Run the privacy wizard to lock down capture, snippets, terminal commands, and exports before your first session.\n[Run privacy wizard](command:ghcpMem.runPrivacyWizard)",
+            "description": "Run the privacy wizard to lock down capture, snippets, terminal commands, and exports before your first session.\n[Run privacy wizard](command:baton.runPrivacyWizard)",
             "completionEvents": [
-              "onCommand:ghcpMem.runPrivacyWizard"
+              "onCommand:baton.runPrivacyWizard"
             ]
           },
           {
             "id": "open-view",
             "title": "Open the Sessions view",
-            "description": "GHCP-MEM stores compressed coding sessions in the **Memory** sidebar. Open it to confirm capture is active.\n[Open Sessions view](command:workbench.view.extension.ghcpMem)",
+            "description": "Baton stores compressed coding sessions in the **Memory** sidebar. Open it to confirm capture is active.\n[Open Sessions view](command:workbench.view.extension.baton)",
             "media": {
               "image": "images/demo/pipeline-animation.png",
-              "altText": "GHCP-MEM sessions sidebar"
+              "altText": "Baton sessions sidebar"
             },
             "completionEvents": [
-              "onView:ghcpMem.sessionsView"
+              "onView:baton.sessionsView"
             ]
           },
           {
             "id": "capture-snapshot",
             "title": "Capture your first snapshot",
-            "description": "Force-capture the current activity so you can see how compression and redaction work.\n[Capture snapshot](command:ghcpMem.captureSnapshot)",
+            "description": "Force-capture the current activity so you can see how compression and redaction work.\n[Capture snapshot](command:baton.captureSnapshot)",
             "media": {
               "markdown": "walkthroughs/capture.md"
             },
             "completionEvents": [
-              "onCommand:ghcpMem.captureSnapshot"
+              "onCommand:baton.captureSnapshot"
             ]
           },
           {
@@ -858,12 +858,12 @@
           {
             "id": "configure",
             "title": "Tune retention & GitHub-compatible mode",
-            "description": "Open Settings and adjust **Retention Days**, **Max Stored Sessions**, **Max Store Size MB**, or enable **GitHub Compatible Mode** to mirror Copilot's 28-day repo-scoped contract.\n[Open settings](command:workbench.action.openSettings?%22ghcpMem%22)",
+            "description": "Open Settings and adjust **Retention Days**, **Max Stored Sessions**, **Max Store Size MB**, or enable **GitHub Compatible Mode** to mirror Copilot's 28-day repo-scoped contract.\n[Open settings](command:workbench.action.openSettings?%22baton%22)",
             "media": {
               "markdown": "walkthroughs/configure.md"
             },
             "completionEvents": [
-              "onSettingChanged:ghcpMem.githubCompatibleMode"
+              "onSettingChanged:baton.githubCompatibleMode"
             ]
           }
         ]
@@ -871,25 +871,25 @@
     ],
     "keybindings": [
       {
-        "command": "ghcpMem.captureSnapshot",
+        "command": "baton.captureSnapshot",
         "key": "ctrl+shift+alt+s",
         "mac": "cmd+shift+alt+s"
       }
     ],
     "toolSets": [
       {
-        "id": "ghcp-mem",
-        "name": "GHCP-MEM",
-        "description": "Search and save to GHCP-MEM persistent session memory",
+        "id": "baton-mem",
+        "name": "Baton",
+        "description": "Search and save to Baton persistent session memory",
         "tools": [
-          "ghcpMem_search",
-          "ghcpMem_store"
+          "baton_search",
+          "baton_store"
         ]
       }
     ],
     "mcpServerDefinitionProviders": [
       {
-        "id": "ghcp-mem.mcp"
+        "id": "baton-mem.mcp"
       }
     ]
   },
@@ -911,7 +911,7 @@
     "check:release": "node scripts/check-release-consistency.mjs",
     "check:release:strict": "node scripts/check-release-consistency.mjs --strict",
     "bump:version": "node scripts/bump-version.mjs",
-    "package": "npm run vscode:prepublish && vsce package --out ghcp-mem.vsix",
+    "package": "npm run vscode:prepublish && vsce package --out baton-mem.vsix",
     "publish": "vsce publish"
   },
   "devDependencies": {

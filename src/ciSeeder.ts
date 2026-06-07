@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * GHCP-MEM CI Seeder — headless CLI for pre-populating memory from CI/CD pipelines.
+ * Baton CI Seeder — headless CLI for pre-populating memory from CI/CD pipelines.
  *
  * Reads a JSON memory payload from stdin, applies redaction, and merges into
- * ~/.ghcp-mem/sessions.json so that the next time a developer opens VS Code,
+ * ~/.baton-mem/sessions.json so that the next time a developer opens VS Code,
  * their AI assistant already has context from the live production environment,
  * infrastructure changes, or staging test results.
  *
@@ -11,7 +11,7 @@
  *   echo '{"sessions": [...], "observations": [...]}' | node out/ciSeeder.js
  *
  * Example GitHub Actions workflow:
- *   - name: Seed GHCP-MEM with prod context
+ *   - name: Seed Baton with prod context
  *     run: |
  *       gh release view prod --json body -q .body | \
  *       jq '{sessions: [.prod_summary], observations: .prod_alerts}' | \
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
 
     const jsonStr = lines.join('');
     if (!jsonStr.trim()) {
-      console.error('[GHCP-MEM-CI] No input from stdin.');
+      console.error('[Baton-CI] No input from stdin.');
       process.exit(1);
     }
 
@@ -58,17 +58,17 @@ async function main(): Promise<void> {
     try {
       payload = JSON.parse(jsonStr);
     } catch (err) {
-      console.error(`[GHCP-MEM-CI] Failed to parse stdin JSON: ${err}`);
+      console.error(`[Baton-CI] Failed to parse stdin JSON: ${err}`);
       process.exit(1);
     }
 
     if (!payload.sessions || !Array.isArray(payload.sessions)) {
-      console.error('[GHCP-MEM-CI] Payload must have a "sessions" array.');
+      console.error('[Baton-CI] Payload must have a "sessions" array.');
       process.exit(1);
     }
 
     // Load existing store
-    const storeDir = join(homedir(), '.ghcp-mem');
+    const storeDir = join(homedir(), '.baton-mem');
     const storePath = join(storeDir, 'sessions.json');
 
     let db: ContextDatabase;
@@ -163,10 +163,10 @@ async function main(): Promise<void> {
       // ignore
     }
 
-    console.log(`[GHCP-MEM-CI] Seeded ${mergedCount} session(s) into ~/.ghcp-mem/sessions.json`);
+    console.log(`[Baton-CI] Seeded ${mergedCount} session(s) into ~/.baton-mem/sessions.json`);
     process.exit(0);
   } catch (err) {
-    console.error(`[GHCP-MEM-CI] Fatal error: ${err}`);
+    console.error(`[Baton-CI] Fatal error: ${err}`);
     process.exit(1);
   }
 }
@@ -187,6 +187,6 @@ function generateContentHash(session: CompressedSession): string {
 }
 
 main().catch((err) => {
-  console.error(`[GHCP-MEM-CI] Uncaught error: ${err}`);
+  console.error(`[Baton-CI] Uncaught error: ${err}`);
   process.exit(1);
 });

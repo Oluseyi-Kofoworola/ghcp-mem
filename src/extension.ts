@@ -47,19 +47,19 @@ let recoveryFile: vscode.Uri | undefined;
 /** Promise that the (best-effort) shutdown compress is tracked through, so deactivate() can await it. */
 let shutdownCompress: Promise<void> | undefined;
 let reviewPromptInFlight = false;
-/** Structured log output channel — visible via View > Output > GHCP-MEM. */
+/** Structured log output channel — visible via View > Output > Baton. */
 let memLog: vscode.OutputChannel;
 
 function log(level: 'INFO' | 'WARN' | 'ERROR', msg: string): void {
   memLog?.appendLine(`[${new Date().toISOString()}] [${level}] ${msg}`);
 }
 
-const REVIEW_PROMPT_KEY = 'ghcpMem.reviewPromptState';
+const REVIEW_PROMPT_KEY = 'baton.reviewPromptState';
 const REVIEW_PROMPT_MIN_SUCCESSES = 3;
 const REVIEW_PROMPT_MIN_SESSIONS = 3;
 const REVIEW_PROMPT_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 const MARKETPLACE_REVIEW_URL =
-  'https://marketplace.visualstudio.com/items?itemName=itcredibl.ghcp-mem&ssr=false#review-details';
+  'https://marketplace.visualstudio.com/items?itemName=itcredibl.baton-mem&ssr=false#review-details';
 
 interface ReviewPromptState {
   successes: number;
@@ -69,7 +69,7 @@ interface ReviewPromptState {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  memLog = vscode.window.createOutputChannel('GHCP-MEM');
+  memLog = vscode.window.createOutputChannel('Baton');
   context.subscriptions.push(memLog);
 
   const config = getConfig();
@@ -100,27 +100,27 @@ export async function activate(context: vscode.ExtensionContext) {
   // recovery file even on parse error to avoid an infinite-restore loop.
   void restorePendingEvents();
 
-  vscode.window.registerTreeDataProvider('ghcpMem.sessionsView', tree);
+  vscode.window.registerTreeDataProvider('baton.sessionsView', tree);
 
   // Register the Language Model Tools so Copilot agent mode can auto-invoke memory search + store + audit.
   const toolDisposables: vscode.Disposable[] = [
-    vscode.lm.registerTool('ghcpMem_search', new MemorySearchTool(store)),
+    vscode.lm.registerTool('baton_search', new MemorySearchTool(store)),
     // Audit is always available — read-only workspace inspection, no write surface.
-    vscode.lm.registerTool('ghcpMem_audit', new MemoryAuditTool()),
+    vscode.lm.registerTool('baton_audit', new MemoryAuditTool()),
   ];
   if (!config.enterpriseMode && config.allowMcpWriteAccess) {
-    toolDisposables.push(vscode.lm.registerTool('ghcpMem_store', new MemoryStoreTool(store)));
+    toolDisposables.push(vscode.lm.registerTool('baton_store', new MemoryStoreTool(store)));
   }
   context.subscriptions.push(...toolDisposables);
 
-  // Auto-register the MCP server so other tools can access GHCP-MEM sessions over the MCP protocol.
+  // Auto-register the MCP server so other tools can access Baton sessions over the MCP protocol.
   const lmAny = vscode.lm as any;
   if (typeof lmAny.registerMcpServerDefinitionProvider === 'function') {
     const mcpBin = context.asAbsolutePath('out/mcpServer.js');
     context.subscriptions.push(
-      lmAny.registerMcpServerDefinitionProvider('ghcp-mem.mcp', {
+      lmAny.registerMcpServerDefinitionProvider('baton-mem.mcp', {
         resolve() {
-          return { label: 'GHCP-MEM', command: { command: process.execPath, args: [mcpBin] } };
+          return { label: 'Baton', command: { command: process.execPath, args: [mcpBin] } };
         },
       }),
     );
@@ -152,7 +152,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // Context-pressure autosave — flushes when either event count or wall-clock
   // threshold is exceeded, so we never lose an unfinished session to an IDE
   // crash or reload.
-  const cfg = vscode.workspace.getConfiguration('ghcpMem');
+  const cfg = vscode.workspace.getConfiguration('baton');
   const autoEnabled = cfg.get<boolean>('autosave.enabled', true);
   if (autoEnabled) {
     autosave = new AutosaveTrigger({
@@ -168,19 +168,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 50);
   statusBarItem.text = '$(history) MEM';
-  statusBarItem.tooltip = 'GHCP-MEM — Click to capture snapshot';
-  statusBarItem.command = 'ghcpMem.captureSnapshot';
+  statusBarItem.tooltip = 'Baton — Click to capture snapshot';
+  statusBarItem.command = 'baton.captureSnapshot';
   statusBarItem.show();
   updateStatusBar();
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('ghcpMem.captureSnapshot', async () => {
+    vscode.commands.registerCommand('baton.captureSnapshot', async () => {
       await compressAndStore();
-      vscode.window.setStatusBarMessage('$(check) GHCP-MEM: Snapshot captured.', 3000);
+      vscode.window.setStatusBarMessage('$(check) Baton: Snapshot captured.', 3000);
       void recordSuccessAndMaybePromptForRating();
     }),
 
-    vscode.commands.registerCommand('ghcpMem.showContext', async () => {
+    vscode.commands.registerCommand('baton.showContext', async () => {
       const stats = store.getStats();
       const recent = store.getRecentSessions(5);
       const doc = await vscode.workspace.openTextDocument({
@@ -190,12 +190,12 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: true });
     }),
 
-    vscode.commands.registerCommand('ghcpMem.runPrivacyWizard', async () => {
+    vscode.commands.registerCommand('baton.runPrivacyWizard', async () => {
       await runPrivacyWizard(context);
       updateStatusBar();
     }),
 
-    vscode.commands.registerCommand('ghcpMem.auditMemory', async () => {
+    vscode.commands.registerCommand('baton.auditMemory', async () => {
       const doc = await vscode.workspace.openTextDocument({
         content: buildAuditReport(store),
         language: 'markdown',
@@ -203,7 +203,7 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: true });
     }),
 
-    vscode.commands.registerCommand('ghcpMem.purgeMemory', async () => {
+    vscode.commands.registerCommand('baton.purgeMemory', async () => {
       const choice = await vscode.window.showQuickPick(
         [
           {
@@ -222,7 +222,7 @@ export async function activate(context: vscode.ExtensionContext) {
             value: 'all' as const,
           },
         ],
-        { title: 'Purge GHCP-MEM data', ignoreFocusOut: true },
+        { title: 'Purge Baton data', ignoreFocusOut: true },
       );
       if (!choice) return;
       const confirm = await vscode.window.showWarningMessage(
@@ -239,10 +239,10 @@ export async function activate(context: vscode.ExtensionContext) {
         await store.clear();
       }
       updateStatusBar();
-      vscode.window.showInformationMessage(`GHCP-MEM: ${choice.label} purged.`);
+      vscode.window.showInformationMessage(`Baton: ${choice.label} purged.`);
     }),
 
-    vscode.commands.registerCommand('ghcpMem.clearMemory', async () => {
+    vscode.commands.registerCommand('baton.clearMemory', async () => {
       const answer = await vscode.window.showWarningMessage(
         'Clear ALL stored session context? This cannot be undone.',
         { modal: true },
@@ -250,43 +250,43 @@ export async function activate(context: vscode.ExtensionContext) {
       );
       if (answer === 'Clear All') {
         await store.clear();
-        vscode.window.showInformationMessage('GHCP-MEM: Cleared.');
+        vscode.window.showInformationMessage('Baton: Cleared.');
         updateStatusBar();
       }
     }),
 
-    vscode.commands.registerCommand('ghcpMem.compressNow', async () => {
+    vscode.commands.registerCommand('baton.compressNow', async () => {
       const eventCount = capture.eventCount;
       if (eventCount === 0) {
-        vscode.window.showInformationMessage('GHCP-MEM: No events to compress.');
+        vscode.window.showInformationMessage('Baton: No events to compress.');
         return;
       }
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: `GHCP-MEM: Compressing ${eventCount} events...`,
+          title: `Baton: Compressing ${eventCount} events...`,
           cancellable: false,
         },
         async () => {
           await compressAndStore();
         },
       );
-      vscode.window.setStatusBarMessage('$(check) GHCP-MEM: Compression complete.', 3000);
+      vscode.window.setStatusBarMessage('$(check) Baton: Compression complete.', 3000);
       void recordSuccessAndMaybePromptForRating();
     }),
 
-    vscode.commands.registerCommand('ghcpMem.exportMemory', async () => {
+    vscode.commands.registerCommand('baton.exportMemory', async () => {
       const target = await vscode.window.showSaveDialog({
         filters: { JSON: ['json'] },
-        defaultUri: vscode.Uri.file('ghcp-mem-export.json'),
+        defaultUri: vscode.Uri.file('baton-mem-export.json'),
       });
       if (!target) return;
       const json = await store.exportToJson();
       await vscode.workspace.fs.writeFile(target, Buffer.from(json, 'utf-8'));
-      vscode.window.setStatusBarMessage(`$(check) GHCP-MEM: Exported to ${target.fsPath}`, 3000);
+      vscode.window.setStatusBarMessage(`$(check) Baton: Exported to ${target.fsPath}`, 3000);
     }),
 
-    vscode.commands.registerCommand('ghcpMem.importMemory', async () => {
+    vscode.commands.registerCommand('baton.importMemory', async () => {
       const picks = await vscode.window.showOpenDialog({
         canSelectMany: false,
         filters: { JSON: ['json'] },
@@ -298,18 +298,18 @@ export async function activate(context: vscode.ExtensionContext) {
         const skippedMsg =
           result.skippedInvalid > 0 ? ` (${result.skippedInvalid} skipped — invalid IDs)` : '';
         vscode.window.setStatusBarMessage(
-          `$(check) GHCP-MEM: Imported ${result.imported} session(s)${skippedMsg}.`,
+          `$(check) Baton: Imported ${result.imported} session(s)${skippedMsg}.`,
           3000,
         );
         updateStatusBar();
       } catch (err) {
         vscode.window.showErrorMessage(
-          `GHCP-MEM: Import failed — ${err instanceof Error ? err.message : String(err)}`,
+          `Baton: Import failed — ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }),
 
-    vscode.commands.registerCommand('ghcpMem.deleteSession', async (node?: TreeNode) => {
+    vscode.commands.registerCommand('baton.deleteSession', async (node?: TreeNode) => {
       const id = await pickSessionId(node);
       if (!id) return;
       const answer = await vscode.window.showWarningMessage(
@@ -322,7 +322,7 @@ export async function activate(context: vscode.ExtensionContext) {
       updateStatusBar();
     }),
 
-    vscode.commands.registerCommand('ghcpMem.tagSession', async (node?: TreeNode) => {
+    vscode.commands.registerCommand('baton.tagSession', async (node?: TreeNode) => {
       const id = await pickSessionId(node);
       if (!id) return;
       const tag = await vscode.window.showInputBox({
@@ -333,21 +333,21 @@ export async function activate(context: vscode.ExtensionContext) {
       await store.addTag(id, tag.trim());
     }),
 
-    vscode.commands.registerCommand('ghcpMem.togglePin', async (node?: TreeNode) => {
+    vscode.commands.registerCommand('baton.togglePin', async (node?: TreeNode) => {
       const id = await pickSessionId(node);
       if (!id) return;
       const s = store.getById(id);
       if (!s) return;
       if (s.userTags.includes('pinned')) {
         await store.removeTag(id, 'pinned');
-        vscode.window.setStatusBarMessage('GHCP-MEM: session unpinned', 2000);
+        vscode.window.setStatusBarMessage('Baton: session unpinned', 2000);
       } else {
         await store.addTag(id, 'pinned');
-        vscode.window.setStatusBarMessage('GHCP-MEM: session pinned', 2000);
+        vscode.window.setStatusBarMessage('Baton: session pinned', 2000);
       }
     }),
 
-    vscode.commands.registerCommand('ghcpMem.openSession', async (id?: string) => {
+    vscode.commands.registerCommand('baton.openSession', async (id?: string) => {
       if (!id) return;
       const s = store.getById(id);
       if (!s) return;
@@ -358,9 +358,9 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: true });
     }),
 
-    vscode.commands.registerCommand('ghcpMem.refreshView', () => tree.refresh()),
+    vscode.commands.registerCommand('baton.refreshView', () => tree.refresh()),
 
-    vscode.commands.registerCommand('ghcpMem.filterSessions', async () => {
+    vscode.commands.registerCommand('baton.filterSessions', async () => {
       const current = tree.getFilter();
       const scopePick = await vscode.window.showQuickPick(
         [
@@ -418,15 +418,15 @@ export async function activate(context: vscode.ExtensionContext) {
       });
     }),
 
-    vscode.commands.registerCommand('ghcpMem.clearFilter', () => {
+    vscode.commands.registerCommand('baton.clearFilter', () => {
       tree.clearFilter();
     }),
 
-    vscode.commands.registerCommand('ghcpMem.exportSessionMarkdown', async (node?: TreeNode) => {
+    vscode.commands.registerCommand('baton.exportSessionMarkdown', async (node?: TreeNode) => {
       const { exportSessionMarkdown, exportSessionsMarkdown } = await import('./markdownExport');
       const sessions = node?.session ? [node.session] : store.getWorkspaceSessions();
       if (sessions.length === 0) {
-        vscode.window.showInformationMessage('GHCP-MEM: No sessions to export.');
+        vscode.window.showInformationMessage('Baton: No sessions to export.');
         return;
       }
       const body =
@@ -437,7 +437,7 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: true });
     }),
 
-    vscode.commands.registerCommand('ghcpMem.runEval', async () => {
+    vscode.commands.registerCommand('baton.runEval', async () => {
       const { runEvalSuite, formatEvalReport } = await import('./eval');
       const report = await runEvalSuite(store);
       const md = formatEvalReport(report);
@@ -445,7 +445,7 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: true });
     }),
 
-    vscode.commands.registerCommand('ghcpMem.runIntegrityAudit', async () => {
+    vscode.commands.registerCommand('baton.runIntegrityAudit', async () => {
       const { runWorkspaceAudit, formatAuditReport, hasBlockingIssues } =
         await import('./integrityChecker');
       const { issues, rulesRun } = await runWorkspaceAudit();
@@ -454,16 +454,16 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: true });
       if (hasBlockingIssues(issues)) {
         vscode.window.setStatusBarMessage(
-          `$(alert) GHCP-MEM: ${issues.filter((i) => i.severity === 'error').length} integrity error(s) — see audit report`,
+          `$(alert) Baton: ${issues.filter((i) => i.severity === 'error').length} integrity error(s) — see audit report`,
           5000,
         );
       }
     }),
 
-    vscode.commands.registerCommand('ghcpMem.restoreBackup', async () => {
+    vscode.commands.registerCommand('baton.restoreBackup', async () => {
       const backups = await store.listBackups();
       if (backups.length === 0) {
-        vscode.window.showInformationMessage('GHCP-MEM: No backups available yet.');
+        vscode.window.showInformationMessage('Baton: No backups available yet.');
         return;
       }
       const pick = await vscode.window.showQuickPick(
@@ -479,16 +479,16 @@ export async function activate(context: vscode.ExtensionContext) {
       if (answer !== 'Restore') return;
       try {
         const n = await store.restoreFromBackup(pick.uri);
-        vscode.window.showInformationMessage(`GHCP-MEM: Restored ${n} session(s).`);
+        vscode.window.showInformationMessage(`Baton: Restored ${n} session(s).`);
         updateStatusBar();
       } catch (err) {
         vscode.window.showErrorMessage(
-          `GHCP-MEM: Restore failed — ${err instanceof Error ? err.message : String(err)}`,
+          `Baton: Restore failed — ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }),
 
-    vscode.commands.registerCommand('ghcpMem.injectContextIntoChat', async () => {
+    vscode.commands.registerCommand('baton.injectContextIntoChat', async () => {
       const query = await vscode.window.showInputBox({
         prompt: 'What are you about to work on? (Fetches matching memory and opens Copilot Chat.)',
         placeHolder: 'e.g., "rate limiter" or leave empty for recent workspace sessions',
@@ -500,12 +500,12 @@ export async function activate(context: vscode.ExtensionContext) {
         : store.getRecentSessions(5);
 
       if (results.length === 0) {
-        vscode.window.showInformationMessage('GHCP-MEM: No matching memory found.');
+        vscode.window.showInformationMessage('Baton: No matching memory found.');
         return;
       }
 
       const lines: string[] = [
-        '# Relevant GHCP-MEM context',
+        '# Relevant Baton context',
         '',
         `Query: ${query || '(recent sessions)'}`,
         '',
@@ -523,7 +523,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const blob = lines.join('\n');
       await vscode.env.clipboard.writeText(blob);
       vscode.window.showInformationMessage(
-        `GHCP-MEM: Copied ${results.length} memory entries to clipboard. Paste into Copilot Chat.`,
+        `Baton: Copied ${results.length} memory entries to clipboard. Paste into Copilot Chat.`,
       );
       try {
         await vscode.commands.executeCommand('workbench.action.chat.open');
@@ -532,11 +532,11 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand('ghcpMem.captureAzureContext', async () => {
+    vscode.commands.registerCommand('baton.captureAzureContext', async () => {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: 'GHCP-MEM: Snapshotting Azure context…',
+          title: 'Baton: Snapshotting Azure context…',
         },
         async () => {
           const rgPick = await vscode.window.showInputBox({
@@ -549,7 +549,7 @@ export async function activate(context: vscode.ExtensionContext) {
           });
           if (!ctx.subscriptionId && ctx.notes) {
             vscode.window.showWarningMessage(
-              `GHCP-MEM: ${ctx.notes}. Install az CLI and run "az login" first.`,
+              `Baton: ${ctx.notes}. Install az CLI and run "az login" first.`,
             );
             return;
           }
@@ -582,14 +582,14 @@ export async function activate(context: vscode.ExtensionContext) {
           await store.addSession(session);
           updateStatusBar();
           vscode.window.showInformationMessage(
-            `GHCP-MEM: Azure snapshot saved (${ctx.subscriptionName ?? 'sub'}${ctx.resourceGroup ? ' / ' + ctx.resourceGroup : ''}).`,
+            `Baton: Azure snapshot saved (${ctx.subscriptionName ?? 'sub'}${ctx.resourceGroup ? ' / ' + ctx.resourceGroup : ''}).`,
           );
           void recordSuccessAndMaybePromptForRating();
         },
       );
     }),
 
-    vscode.commands.registerCommand('ghcpMem.showHealth', async () => {
+    vscode.commands.registerCommand('baton.showHealth', async () => {
       const health = computeHealth(store.getAllSessions());
       const doc = await vscode.workspace.openTextDocument({
         content: formatHealthMarkdown(health),
@@ -598,10 +598,10 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: true });
     }),
 
-    vscode.commands.registerCommand('ghcpMem.exportPack', async () => {
+    vscode.commands.registerCommand('baton.exportPack', async () => {
       const cfg = getConfig();
       if (cfg.enterpriseMode || !cfg.allowTeamExport) {
-        vscode.window.showWarningMessage('GHCP-MEM: Pack export is disabled by enterprise policy.');
+        vscode.window.showWarningMessage('Baton: Pack export is disabled by enterprise policy.');
         return;
       }
       const name = await vscode.window.showInputBox({
@@ -648,7 +648,7 @@ export async function activate(context: vscode.ExtensionContext) {
             .filter(Boolean);
       }
       const target = await vscode.window.showSaveDialog({
-        filters: { 'GHCP-MEM Pack': ['json'] },
+        filters: { 'Baton Pack': ['json'] },
         defaultUri: vscode.Uri.file(`${name.trim()}.ghcpmem-pack.json`),
       });
       if (!target) return;
@@ -658,14 +658,14 @@ export async function activate(context: vscode.ExtensionContext) {
         Buffer.from(JSON.stringify(pack, null, 2), 'utf-8'),
       );
       vscode.window.showInformationMessage(
-        `GHCP-MEM: Exported ${pack.sessions.length} session(s) to ${target.fsPath}`,
+        `Baton: Exported ${pack.sessions.length} session(s) to ${target.fsPath}`,
       );
     }),
 
-    vscode.commands.registerCommand('ghcpMem.importPack', async () => {
+    vscode.commands.registerCommand('baton.importPack', async () => {
       const picks = await vscode.window.showOpenDialog({
         canSelectMany: false,
-        filters: { 'GHCP-MEM Pack': ['json'] },
+        filters: { 'Baton Pack': ['json'] },
       });
       if (!picks?.length) return;
       const bytes = await vscode.workspace.fs.readFile(picks[0]);
@@ -683,19 +683,19 @@ export async function activate(context: vscode.ExtensionContext) {
           ? ` ⚠️ ${res.conflictsRaised} potential conflict(s) raised — run \`@mem /conflicts\` to review.`
           : '';
         vscode.window.showInformationMessage(
-          `GHCP-MEM: Imported ${res.imported} session(s) from pack "${pack.name}"${res.skipped ? ` (${res.skipped} already present)` : ''}.${conflictsTail}`,
+          `Baton: Imported ${res.imported} session(s) from pack "${pack.name}"${res.skipped ? ` (${res.skipped} already present)` : ''}.${conflictsTail}`,
         );
       } catch (err) {
         vscode.window.showErrorMessage(
-          `GHCP-MEM: Pack import failed — ${err instanceof Error ? err.message : String(err)}`,
+          `Baton: Pack import failed — ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }),
 
-    vscode.commands.registerCommand('ghcpMem.uninstallPack', async () => {
+    vscode.commands.registerCommand('baton.uninstallPack', async () => {
       const installed = listInstalledPacks(store);
       if (installed.length === 0) {
-        vscode.window.showInformationMessage('GHCP-MEM: No packs installed.');
+        vscode.window.showInformationMessage('Baton: No packs installed.');
         return;
       }
       const pick = await vscode.window.showQuickPick(
@@ -712,22 +712,22 @@ export async function activate(context: vscode.ExtensionContext) {
       const n = await uninstallPack(store, pick.label);
       updateStatusBar();
       vscode.window.showInformationMessage(
-        `GHCP-MEM: Removed ${n} session(s) from pack "${pick.label}".`,
+        `Baton: Removed ${n} session(s) from pack "${pick.label}".`,
       );
     }),
 
-    vscode.commands.registerCommand('ghcpMem.showMcpInfo', async () => {
+    vscode.commands.registerCommand('baton.showMcpInfo', async () => {
       const cfg = getConfig();
-      const storePath = path.join(os.homedir(), '.ghcp-mem', 'sessions.json');
+      const storePath = path.join(os.homedir(), '.baton-mem', 'sessions.json');
       // Locate the installed mcpServer.js (relative to this extension's out/).
-      const extUri = vscode.extensions.getExtension('itcredibl.ghcp-mem')?.extensionUri;
+      const extUri = vscode.extensions.getExtension('itcredibl.baton-mem')?.extensionUri;
       const mcpJs = extUri
         ? vscode.Uri.joinPath(extUri, 'out', 'mcpServer.js').fsPath
         : '<extension-install>/out/mcpServer.js';
       const snippet = [
-        '# Connect External MCP Clients to GHCP-MEM',
+        '# Connect External MCP Clients to Baton',
         '',
-        'GHCP-MEM mirrors its memory to `~/.ghcp-mem/sessions.json` so that any',
+        'Baton mirrors its memory to `~/.baton-mem/sessions.json` so that any',
         'MCP-compatible client (Cursor, Cline, Windsurf, Claude Desktop, GitHub Copilot CLI, ...) can',
         'read the same store via the bundled stdio server.',
         '',
@@ -739,7 +739,7 @@ export async function activate(context: vscode.ExtensionContext) {
         '```json',
         '{',
         '  "mcpServers": {',
-        '    "ghcp-mem": {',
+        '    "baton-mem": {',
         '      "command": "node",',
         `      "args": ["${mcpJs.replace(/\\/g, '\\\\')}"]`,
         '    }',
@@ -754,7 +754,7 @@ export async function activate(context: vscode.ExtensionContext) {
         '```json',
         '{',
         '  "mcpServers": {',
-        '    "ghcp-mem": {',
+        '    "baton-mem": {',
         '      "type": "stdio",',
         '      "command": "node",',
         `      "args": ["${mcpJs.replace(/\\/g, '\\\\')}"]`,
@@ -768,7 +768,7 @@ export async function activate(context: vscode.ExtensionContext) {
         '```json',
         '{',
         '  "mcpServers": {',
-        '    "ghcp-mem": {',
+        '    "baton-mem": {',
         '      "command": "node",',
         `      "args": ["${mcpJs.replace(/\\/g, '\\\\')}"]`,
         '    }',
@@ -778,13 +778,13 @@ export async function activate(context: vscode.ExtensionContext) {
         '',
         '## Tools exposed',
         '',
-        '- `ghcpMem_search(query, type?, sinceDays?, tag?, limit?)` — RRF-fused keyword + recency search.',
-        '- `ghcpMem_recent(limit?)` — most recent sessions.',
-        '- `ghcpMem_timeline(days?, limit?)` — chronological within a window.',
-        '- `ghcpMem_get(id)` — full detail by ID or prefix.',
+        '- `baton_search(query, type?, sinceDays?, tag?, limit?)` — RRF-fused keyword + recency search.',
+        '- `baton_recent(limit?)` — most recent sessions.',
+        '- `baton_timeline(days?, limit?)` — chronological within a window.',
+        '- `baton_get(id)` — full detail by ID or prefix.',
         cfg.enterpriseMode || !cfg.allowMcpWriteAccess
           ? '- Write tools are disabled by policy in this environment.'
-          : '- `ghcpMem_store(...)` and `ghcpMem_delete(...)` are available in the MCP server.',
+          : '- `baton_store(...)` and `baton_delete(...)` are available in the MCP server.',
       ].join('\n');
       const doc = await vscode.workspace.openTextDocument({
         content: snippet,
@@ -793,9 +793,9 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.window.showTextDocument(doc, { preview: true });
     }),
 
-    vscode.commands.registerCommand('ghcpMem.seedAzureDemo', async () => {
+    vscode.commands.registerCommand('baton.seedAzureDemo', async () => {
       const answer = await vscode.window.showInformationMessage(
-        'Seed GHCP-MEM with 5 realistic Azure demo sessions? (Safe: tagged "demo", you can delete them anytime.)',
+        'Seed Baton with 5 realistic Azure demo sessions? (Safe: tagged "demo", you can delete them anytime.)',
         { modal: true },
         'Seed',
       );
@@ -805,7 +805,7 @@ export async function activate(context: vscode.ExtensionContext) {
       tree.refresh();
       updateStatusBar();
       vscode.window.setStatusBarMessage(
-        `$(check) GHCP-MEM: Seeded ${seeds.length} Azure demo session(s). Filter by tag:demo to find them.`,
+        `$(check) Baton: Seeded ${seeds.length} Azure demo session(s). Filter by tag:demo to find them.`,
         4000,
       );
     }),
@@ -860,21 +860,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // ── Team Memory Export ──
   context.subscriptions.push(
-    vscode.commands.registerCommand('ghcpMem.exportTeamMemory', async () => {
+    vscode.commands.registerCommand('baton.exportTeamMemory', async () => {
       const cfg = getConfig();
       if (cfg.enterpriseMode || !cfg.allowTeamExport) {
-        vscode.window.showWarningMessage('GHCP-MEM: Team export is disabled by enterprise policy.');
+        vscode.window.showWarningMessage('Baton: Team export is disabled by enterprise policy.');
         return;
       }
       const wsF = vscode.workspace.workspaceFolders?.[0];
       if (!wsF) {
-        vscode.window.showWarningMessage('GHCP-MEM: No workspace open.');
+        vscode.window.showWarningMessage('Baton: No workspace open.');
         return;
       }
 
       const all = store.getAllSessions();
       if (all.length === 0) {
-        vscode.window.showWarningMessage('GHCP-MEM: No sessions to export.');
+        vscode.window.showWarningMessage('Baton: No sessions to export.');
         return;
       }
 
@@ -887,8 +887,8 @@ export async function activate(context: vscode.ExtensionContext) {
       const recentSummaries = sorted.slice(0, 5);
 
       const lines: string[] = [
-        '# Team Context — GHCP-MEM Memory Pack',
-        `> Auto-generated by GHCP-MEM on ${new Date().toLocaleString()}. DO NOT edit manually.`,
+        '# Team Context — Baton Memory Pack',
+        `> Auto-generated by Baton on ${new Date().toLocaleString()}. DO NOT edit manually.`,
         `> ${all.length} sessions captured across this workspace.`,
         '',
         '## Architecture & Decisions',
@@ -923,7 +923,7 @@ export async function activate(context: vscode.ExtensionContext) {
         await vscode.workspace.fs.createDirectory(memDir);
         await vscode.workspace.fs.writeFile(outFile, Buffer.from(content, 'utf-8'));
         const choice = await vscode.window.showInformationMessage(
-          `GHCP-MEM: Team memory exported to .github/memory/team-context.md (${all.length} sessions, ${allDecisions.length} decisions).`,
+          `Baton: Team memory exported to .github/memory/team-context.md (${all.length} sessions, ${allDecisions.length} decisions).`,
           'Open File',
           'Dismiss',
         );
@@ -933,7 +933,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
       } catch (err) {
         vscode.window.showErrorMessage(
-          `GHCP-MEM: Failed to write team memory: ${err instanceof Error ? err.message : String(err)}`,
+          `Baton: Failed to write team memory: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     }),
@@ -943,7 +943,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Visual memory timeline
   context.subscriptions.push(
-    vscode.commands.registerCommand('ghcpMem.openTimeline', () => {
+    vscode.commands.registerCommand('baton.openTimeline', () => {
       MemoryTimelinePanel.show(store, context);
     }),
   );
@@ -951,7 +951,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // File session history quick-pick — invoked by the CodeLens
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'ghcpMem.showFileHistory',
+      'baton.showFileHistory',
       async (relPath?: string, sessions?: CompressedSession[]) => {
         // When called programmatically (CodeLens) sessions are passed directly.
         // When triggered from the command palette, derive from active editor.
@@ -961,7 +961,7 @@ export async function activate(context: vscode.ExtensionContext) {
         if (!targetPath || !targetSessions) {
           const doc = vscode.window.activeTextEditor?.document;
           if (!doc) {
-            vscode.window.showWarningMessage('GHCP-MEM: No active file.');
+            vscode.window.showWarningMessage('Baton: No active file.');
             return;
           }
           targetPath = vscode.workspace.asRelativePath(doc.uri.fsPath);
@@ -971,7 +971,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         if (!targetSessions || targetSessions.length === 0) {
-          vscode.window.showInformationMessage(`GHCP-MEM: No session history for "${targetPath}".`);
+          vscode.window.showInformationMessage(`Baton: No session history for "${targetPath}".`);
           return;
         }
 
@@ -1017,7 +1017,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration('ghcpMem')) {
+      if (e.affectsConfiguration('baton')) {
         const c = getConfig();
         if (compressionTimer) clearInterval(compressionTimer);
         if (idleCheckTimer) clearInterval(idleCheckTimer);
@@ -1072,17 +1072,17 @@ export async function activate(context: vscode.ExtensionContext) {
   // Health threshold notification — warn when score falls below 30.
   const health = computeHealth(store.getAllSessions());
   const healthThreshold = vscode.workspace
-    .getConfiguration('ghcpMem')
+    .getConfiguration('baton')
     .get<number>('healthAlertThreshold', 30);
   if (health.score < healthThreshold && stats.totalSessions > 0) {
     vscode.window
       .showWarningMessage(
-        `GHCP-MEM: Memory health is low (${health.score}/100). Run "GHCP-MEM: Show Memory Health Score" for details.`,
+        `Baton: Memory health is low (${health.score}/100). Run "Baton: Show Memory Health Score" for details.`,
         'Show Health',
       )
       .then((action) => {
         if (action === 'Show Health') {
-          vscode.commands.executeCommand('ghcpMem.showHealth');
+          vscode.commands.executeCommand('baton.showHealth');
         }
       });
   }
@@ -1277,7 +1277,7 @@ async function confirmPersistSession(session: CompressedSession): Promise<boolea
     {
       modal: true,
       detail:
-        'Pick "don\'t ask again" to silence this prompt for future captures. Re-enable any time in Settings: ghcpMem.previewBeforePersist.',
+        'Pick "don\'t ask again" to silence this prompt for future captures. Re-enable any time in Settings: baton.previewBeforePersist.',
     },
     PERSIST_ALWAYS,
     PERSIST_ONCE,
@@ -1288,25 +1288,25 @@ async function confirmPersistSession(session: CompressedSession): Promise<boolea
     try {
       // Globally — survives across workspaces. Matches user intent ("once and for all").
       await vscode.workspace
-        .getConfiguration('ghcpMem')
+        .getConfiguration('baton')
         .update('previewBeforePersist', false, vscode.ConfigurationTarget.Global);
       if (config.enterpriseMode) {
         // Enterprise mode forces previewBeforePersist back on via the OR in
         // getConfig(). Be honest about it rather than silently ignoring the
         // user's choice.
         const followUp = await vscode.window.showWarningMessage(
-          'GHCP-MEM: preview-before-persist disabled, but enterprise mode keeps it on. To fully silence the prompt, also disable ghcpMem.enterpriseMode.',
+          'Baton: preview-before-persist disabled, but enterprise mode keeps it on. To fully silence the prompt, also disable baton.enterpriseMode.',
           'Open Settings',
         );
         if (followUp === 'Open Settings') {
           void vscode.commands.executeCommand(
             'workbench.action.openSettings',
-            'ghcpMem.enterpriseMode',
+            'baton.enterpriseMode',
           );
         }
       } else {
         vscode.window.setStatusBarMessage(
-          '$(check) GHCP-MEM: persist prompt disabled. Re-enable in Settings: ghcpMem.previewBeforePersist',
+          '$(check) Baton: persist prompt disabled. Re-enable in Settings: baton.previewBeforePersist',
           5000,
         );
       }
@@ -1370,7 +1370,7 @@ function updateStatusBar(): void {
   const scope = cfg.enterpriseMode ? 'enterprise' : cfg.scope;
   statusBarItem.text = `$(history) MEM ${captureState} ${glyph} ${health.score}`;
   statusBarItem.tooltip = [
-    'GHCP-MEM',
+    'Baton',
     `${stats.workspaceSessions} session(s) in this workspace, ${stats.totalSessions} total`,
     `Memory health: ${health.score}/100`,
     `Scope: ${scope}`,
@@ -1382,10 +1382,10 @@ function updateStatusBar(): void {
 }
 
 async function maybeShowPrivacyWizard(context: vscode.ExtensionContext): Promise<void> {
-  const key = 'ghcpMem.privacyWizardCompleted';
+  const key = 'baton.privacyWizardCompleted';
   if (context.globalState.get<boolean>(key)) return;
   const choice = await vscode.window.showInformationMessage(
-    'GHCP-MEM privacy setup can lock down capture, snippets, terminal commands, and exports before you start.',
+    'Baton privacy setup can lock down capture, snippets, terminal commands, and exports before you start.',
     'Run Privacy Wizard',
     'Later',
   );
@@ -1396,7 +1396,7 @@ async function maybeShowPrivacyWizard(context: vscode.ExtensionContext): Promise
 }
 
 async function runPrivacyWizard(context: vscode.ExtensionContext): Promise<void> {
-  const cfg = vscode.workspace.getConfiguration('ghcpMem');
+  const cfg = vscode.workspace.getConfiguration('baton');
   const updates: Record<string, boolean> = {};
   const questions: Array<[string, string, boolean]> = [
     ['captureFileEdits', 'Capture file edits?', cfg.get('captureFileEdits', true)],
@@ -1452,13 +1452,13 @@ async function runPrivacyWizard(context: vscode.ExtensionContext): Promise<void>
   for (const [key, value] of Object.entries(updates)) {
     await cfg.update(key, value, vscode.ConfigurationTarget.Workspace);
   }
-  await context.globalState.update('ghcpMem.privacyWizardCompleted', true);
-  vscode.window.showInformationMessage('GHCP-MEM: Privacy settings updated.');
+  await context.globalState.update('baton.privacyWizardCompleted', true);
+  vscode.window.showInformationMessage('Baton: Privacy settings updated.');
 }
 
 function buildSessionPreview(session: CompressedSession): string {
   const lines = [
-    '# GHCP-MEM Preview',
+    '# Baton Preview',
     '',
     `- Session: \`${session.id}\``,
     `- Workspace: ${session.workspaceName}`,
@@ -1484,7 +1484,7 @@ function buildAuditReport(store: ContextStore): string {
     .slice()
     .sort((a, b) => b.endTime - a.endTime);
   const lines = [
-    '# GHCP-MEM Memory Audit',
+    '# Baton Memory Audit',
     '',
     '| Session | Workspace | Captured | Redactions | Retention reason |',
     '|---|---|---:|---:|---|',
@@ -1529,13 +1529,13 @@ async function recordSuccessAndMaybePromptForRating(): Promise<void> {
   reviewPromptInFlight = true;
   try {
     const choice = await vscode.window.showInformationMessage(
-      'Is GHCP-MEM helping your workflow? A Marketplace rating helps more developers discover it.',
-      'Rate GHCP-MEM',
+      'Is Baton helping your workflow? A Marketplace rating helps more developers discover it.',
+      'Rate Baton',
       'Later',
       "Don't Ask Again",
     );
     state.lastPromptAt = now;
-    if (choice === 'Rate GHCP-MEM') {
+    if (choice === 'Rate Baton') {
       state.rated = true;
       await vscode.env.openExternal(vscode.Uri.parse(MARKETPLACE_REVIEW_URL));
     } else if (choice === "Don't Ask Again") {
@@ -1568,7 +1568,7 @@ async function writeStartupContext(): Promise<void> {
 
   const content = `---
 applyTo: "**"
-description: "Auto-generated session context from GHCP-MEM. Summaries of recent coding sessions for continuity."
+description: "Auto-generated session context from Baton. Summaries of recent coding sessions for continuity."
 ---
 
 ${contextText}
@@ -1602,8 +1602,8 @@ async function writeCrossEditorContext(): Promise<void> {
   const ws = vscode.workspace.workspaceFolders?.[0];
   if (!ws) return;
 
-  const START = '<!-- GHCP-MEM:START -->';
-  const END = '<!-- GHCP-MEM:END -->';
+  const START = '<!-- Baton:START -->';
+  const END = '<!-- Baton:END -->';
   const block = `${START}\n${contextText}\n${END}`;
 
   const targets: [vscode.Uri, string][] = [
@@ -1675,7 +1675,7 @@ function formatReport(
   recent: CompressedSession[],
 ): string {
   const lines: string[] = [
-    '# GHCP-MEM — Context Report',
+    '# Baton — Context Report',
     '',
     '## Statistics',
     `- Total sessions: **${stats.totalSessions}**`,

@@ -230,7 +230,7 @@ export async function runEvalSuite(store: ContextStore): Promise<EvalReport> {
 /** Format an eval report as readable markdown. */
 export function formatEvalReport(r: EvalReport): string {
   const lines: string[] = [];
-  lines.push('# GHCP-MEM Retrieval Eval');
+  lines.push('# Baton Retrieval Eval');
   lines.push('');
   lines.push(`- generated: ${r.generatedAt}`);
   lines.push(`- sessions: ${r.totalSessions}`);

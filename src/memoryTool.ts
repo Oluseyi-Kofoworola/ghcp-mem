@@ -5,13 +5,13 @@ import { ObservationType, computeContentHash, CompressedSession } from './types'
 import { redact } from './redactor';
 
 /**
- * Language Model Tool — lets Copilot *agent mode* invoke GHCP-MEM search
+ * Language Model Tool — lets Copilot *agent mode* invoke Baton search
  * automatically, as a first-class tool call.
  *
  * This is VS Code's native equivalent of exposing an MCP server: by
  * registering a tool with `vscode.lm.registerTool`, Copilot picks it up
  * with zero extra configuration. No stdio MCP process, no port, no
- * external binary — the whole reason GHCP-MEM exists.
+ * external binary — the whole reason Baton exists.
  */
 interface SearchToolInput {
   query: string;
@@ -68,7 +68,7 @@ export class MemorySearchTool implements vscode.LanguageModelTool<SearchToolInpu
     _token: vscode.CancellationToken,
   ): Promise<vscode.PreparedToolInvocation> {
     return {
-      invocationMessage: `Searching GHCP-MEM for "${options.input.query}"…`,
+      invocationMessage: `Searching Baton for "${options.input.query}"…`,
     };
   }
 }
@@ -150,7 +150,7 @@ export class MemoryStoreTool implements vscode.LanguageModelTool<StoreToolInput>
     _options: vscode.LanguageModelToolInvocationPrepareOptions<StoreToolInput>,
     _token: vscode.CancellationToken,
   ): Promise<vscode.PreparedToolInvocation> {
-    return { invocationMessage: 'Saving a note to GHCP-MEM…' };
+    return { invocationMessage: 'Saving a note to Baton…' };
   }
 }
 
@@ -207,6 +207,6 @@ export class MemoryAuditTool implements vscode.LanguageModelTool<AuditToolInput>
     _options: vscode.LanguageModelToolInvocationPrepareOptions<AuditToolInput>,
     _token: vscode.CancellationToken,
   ): Promise<vscode.PreparedToolInvocation> {
-    return { invocationMessage: 'Running GHCP-MEM workspace integrity audit…' };
+    return { invocationMessage: 'Running Baton workspace integrity audit…' };
   }
 }

@@ -55,12 +55,12 @@ function makeSession(overrides: Partial<CompressedSession> = {}): CompressedSess
 
 test('mcpServer — Phase 7 tools declare object inputSchemas', () => {
   const phase7 = [
-    'ghcpMem_entity',
-    'ghcpMem_snippets',
-    'ghcpMem_conflicts',
-    'ghcpMem_lineage',
-    'ghcpMem_explain',
-    'ghcpMem_graph',
+    'baton_entity',
+    'baton_snippets',
+    'baton_conflicts',
+    'baton_lineage',
+    'baton_explain',
+    'baton_graph',
   ];
   for (const name of phase7) {
     const tool = TOOLS.find((t) => t.name === name);
@@ -73,18 +73,18 @@ test('mcpServer — Phase 7 tools declare object inputSchemas', () => {
   }
 });
 
-test('mcpServer — ghcpMem_entity requires `key`', () => {
-  const t = TOOLS.find((t) => t.name === 'ghcpMem_entity')!;
+test('mcpServer — baton_entity requires `key`', () => {
+  const t = TOOLS.find((t) => t.name === 'baton_entity')!;
   assert.deepEqual(t.inputSchema.required, ['key']);
 });
 
-test('mcpServer — ghcpMem_snippets requires `query`', () => {
-  const t = TOOLS.find((t) => t.name === 'ghcpMem_snippets')!;
+test('mcpServer — baton_snippets requires `query`', () => {
+  const t = TOOLS.find((t) => t.name === 'baton_snippets')!;
   assert.deepEqual(t.inputSchema.required, ['query']);
 });
 
-test('mcpServer — ghcpMem_explain requires `query` and `id`', () => {
-  const t = TOOLS.find((t) => t.name === 'ghcpMem_explain')!;
+test('mcpServer — baton_explain requires `query` and `id`', () => {
+  const t = TOOLS.find((t) => t.name === 'baton_explain')!;
   assert.deepEqual(t.inputSchema.required, ['query', 'id']);
 });
 

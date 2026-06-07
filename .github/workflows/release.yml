@@ -40,15 +40,15 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           tag="${GITHUB_REF_NAME#v}"
           test "$version" = "$tag"
-      - run: npx --yes @vscode/vsce package --out ghcp-mem.vsix --no-dependencies
-      - run: sha256sum ghcp-mem.vsix > ghcp-mem.vsix.sha256
+      - run: npx --yes @vscode/vsce package --out baton-mem.vsix --no-dependencies
+      - run: sha256sum baton-mem.vsix > baton-mem.vsix.sha256
       - run: npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.json
       - name: Generate release manifest
         run: |
           node <<'NODE'
           const fs = require('fs');
           const crypto = require('crypto');
-          const files = ['ghcp-mem.vsix', 'ghcp-mem.vsix.sha256', 'sbom.json'];
+          const files = ['baton-mem.vsix', 'baton-mem.vsix.sha256', 'sbom.json'];
           const manifest = {
             version: require('./package.json').version,
             ref: process.env.GITHUB_REF_NAME,
@@ -74,18 +74,18 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            ghcp-mem.vsix
-            ghcp-mem.vsix.sha256
+            baton-mem.vsix
+            baton-mem.vsix.sha256
             sbom.json
             release-manifest.json
             release-manifest.json.sha256
       - uses: actions/upload-artifact@v4
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         with:
-          name: ghcp-mem-release-assets
+          name: baton-mem-release-assets
           path: |
-            ghcp-mem.vsix
-            ghcp-mem.vsix.sha256
+            baton-mem.vsix
+            baton-mem.vsix.sha256
             sbom.json
             release-manifest.json
             release-manifest.json.sha256
