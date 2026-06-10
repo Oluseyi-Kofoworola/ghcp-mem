@@ -2,7 +2,7 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "A local, auditable session-memory layer for VS Code and GitHub Copilot, built for engineers who need persistent project context without relying on a cloud memory backend.",
-  "version": "1.6.3",
+  "version": "1.7.0",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -793,8 +793,12 @@
         },
         "ghcpMem.globalTags": {
           "type": "array",
-          "items": { "type": "string" },
-          "default": ["global"],
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "global"
+          ],
           "markdownDescription": "User tags that promote a session to global scope: it is always included in startup context and retrieval regardless of `#ghcpMem.scope#`. Reserve for cross-repo knowledge such as organization coding standards, naming conventions, or Well-Architected Framework guidance. Tag a session with `GHCP-MEM: Tag Session...`."
         },
         "ghcpMem.qualityFloor": {

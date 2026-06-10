@@ -6,7 +6,9 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased]
+## [1.7.0] — 2026-06-10
+
+Headline: stop memories leaking across projects, and stop low-signal sessions polluting the injected brief.
 
 ### Changed — default scope is now `repo`
 - **`ghcpMem.scope` default flips from `"user"` to `"repo"`.** Opening a new workspace no longer pulls in sessions from unrelated projects. Users who genuinely want cross-repo retrieval can opt back to `"user"` or `"workspace"`. Legacy sessions captured before `repoScope` was stamped fall back to a `workspaceId` match so existing data is not silently hidden.
