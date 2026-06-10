@@ -375,6 +375,10 @@
             "description": "Mark a session as low-quality noise — excludes it from injection and retrieval (use 'undo' to reverse)"
           },
           {
+            "name": "janitor",
+            "description": "Re-score every stored session against the current quality floor and flag/unflag low-quality memories"
+          },
+          {
             "name": "accept",
             "description": "Mark a retrieved session as useful — strengthens its retrieval reinforcement signal"
           },
@@ -799,6 +803,25 @@
           "minimum": 0,
           "maximum": 1,
           "markdownDescription": "Minimum heuristic quality score (0-1) required for a captured session to be injected. Sessions below the floor are flagged `lowQuality`, kept on disk for audit, and excluded from the startup context block. Signals include grounded decisions, summary length, observation type, and event volume. Set to 0 to disable the gate."
+        },
+        "ghcpMem.janitorEnabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Periodically re-score stored sessions against the current `#ghcpMem.qualityFloor#` and flag/unflag `lowQuality` accordingly."
+        },
+        "ghcpMem.janitorIntervalDays": {
+          "type": "number",
+          "default": 7,
+          "minimum": 1,
+          "maximum": 90,
+          "description": "How often (in days) the janitor re-scores stored sessions."
+        },
+        "ghcpMem.janitorPruneAfterDays": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 365,
+          "markdownDescription": "If > 0, the janitor deletes sessions that have been `lowQuality` for at least this many days AND were never `/accept`-ed. `0` disables pruning (the default — flagging only)."
         },
         "ghcpMem.validateAgainstCodebase": {
           "type": "boolean",

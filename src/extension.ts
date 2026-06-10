@@ -15,6 +15,7 @@ import { captureAzureContext } from './azureContext';
 import { AzureSubsystem } from './azureDetect';
 import { getConfig, CompressedSession, AzureContextMeta, SessionEvent } from './types';
 import { scoreSessionQuality } from './quality';
+import { runJanitor } from './janitor';
 import { computeHealth, formatHealthMarkdown, fillGlyph } from './health';
 import {
   buildPack,
@@ -34,6 +35,7 @@ let store: ContextStore;
 let provider: ContextProvider;
 let tree: SessionsTreeProvider;
 let compressionTimer: NodeJS.Timeout | undefined;
+let janitorTimer: NodeJS.Timeout | undefined;
 let idleCheckTimer: NodeJS.Timeout | undefined;
 let lastActivityMs = Date.now();
 let statusBarItem: vscode.StatusBarItem;
@@ -139,6 +141,7 @@ export async function activate(context: vscode.ExtensionContext) {
     .catch(() => {});
 
   startCompressionTimer(config.compressionIntervalMinutes, config.idleTimeoutSeconds);
+  startJanitorTimer();
 
   // Track editor activity so the idle-timeout compression knows when to fire.
   context.subscriptions.push(
@@ -1023,6 +1026,7 @@ export async function activate(context: vscode.ExtensionContext) {
         if (compressionTimer) clearInterval(compressionTimer);
         if (idleCheckTimer) clearInterval(idleCheckTimer);
         startCompressionTimer(c.compressionIntervalMinutes, c.idleTimeoutSeconds);
+        startJanitorTimer();
         void syncPolicySource();
       }
     }),
@@ -1034,6 +1038,7 @@ export async function activate(context: vscode.ExtensionContext) {
     dispose: () => {
       if (compressionTimer) clearInterval(compressionTimer);
       if (idleCheckTimer) clearInterval(idleCheckTimer);
+      if (janitorTimer) clearInterval(janitorTimer);
       // 1. Synchronously write any drained events to disk FIRST so even if the
       //    LM compress below hangs or the host is killed, the next activation
       //    can pick the events back up. This is the only safe step here.
@@ -1357,6 +1362,35 @@ function startCompressionTimer(intervalMinutes: number, idleSeconds = 30): void 
       }
     }, 5_000);
   }
+}
+
+function startJanitorTimer(): void {
+  if (janitorTimer) {
+    clearInterval(janitorTimer);
+    janitorTimer = undefined;
+  }
+  const cfg = vscode.workspace.getConfiguration('ghcpMem');
+  if (!cfg.get<boolean>('janitorEnabled', true)) return;
+  const days = Math.max(1, cfg.get<number>('janitorIntervalDays', 7));
+  const pruneAfterDays = Math.max(0, cfg.get<number>('janitorPruneAfterDays', 0));
+  const tick = async () => {
+    try {
+      const c = getConfig();
+      const r = await runJanitor(store, {
+        qualityFloor: c.qualityFloor,
+        pruneAfterDays,
+      });
+      log(
+        'INFO',
+        `janitor: rescored=${r.rescored} flagged=${r.flagged} unflagged=${r.unflagged} pruned=${r.pruned}`,
+      );
+    } catch (err) {
+      log('WARN', `janitor failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+  // Run once shortly after activation, then on the configured cadence.
+  setTimeout(tick, 60_000);
+  janitorTimer = setInterval(tick, days * 24 * 60 * 60 * 1000);
 }
 
 /** Live status bar states: compressing shows a spinner; error shows in red. */

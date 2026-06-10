@@ -319,6 +319,8 @@ export class ContextProvider implements vscode.Disposable {
         return this.retract(query, stream);
       case 'noise':
         return this.noise(query, stream);
+      case 'janitor':
+        return this.janitor(stream);
       case 'accept':
         return this.accept(query, stream);
       case 'reject':
@@ -858,6 +860,25 @@ export class ContextProvider implements vscode.Disposable {
     stream.markdown(
       `🗑️ Marked \`${target.id.substring(0, 8)}\` as noise. Excluded from injection and retrieval. ` +
         `Run \`/noise undo ${target.id.substring(0, 8)}\` to restore.\n`,
+    );
+  }
+
+  /**
+   * `/janitor` — manually run the quality re-scorer over every stored
+   * session. Useful after raising or lowering `ghcpMem.qualityFloor`.
+   */
+  private async janitor(stream: vscode.ChatResponseStream): Promise<void> {
+    const { runJanitor } = await import('./janitor');
+    const { getConfig } = await import('./types');
+    const cfg = getConfig();
+    const pruneAfterDays =
+      vscode.workspace.getConfiguration('ghcpMem').get<number>('janitorPruneAfterDays', 0) ?? 0;
+    const r = await runJanitor(this.store, {
+      qualityFloor: cfg.qualityFloor,
+      pruneAfterDays,
+    });
+    stream.markdown(
+      `🧹 Janitor: rescored **${r.rescored}**, flagged **${r.flagged}**, unflagged **${r.unflagged}**, pruned **${r.pruned}** (floor=${cfg.qualityFloor}).\n`,
     );
   }
 
