@@ -268,11 +268,24 @@ export class ContextStore implements vscode.Disposable {
     return this.db.sessions.filter((s) => s.workspaceId === wsId);
   }
 
-  /** Sessions tagged with the same repo scope as the currently open workspace. */
+  /**
+   * Sessions tagged with the same repo scope as the currently open workspace.
+   *
+   * Backward-compat: sessions captured before `repoScope` was stamped
+   * (pre-Phase-1.6) still match if their `workspaceId` equals the current
+   * workspace URI. Otherwise upgraders would silently lose access to all
+   * pre-existing memories the moment the default scope flipped to 'repo'.
+   *
+   * When no workspace is open (tests, sentinel scope), return all sessions —
+   * there is nothing to scope against.
+   */
   getRepoSessions(repoScopeId?: string): CompressedSession[] {
     const id = repoScopeId ?? getRepoScopeSync().id;
-    if (!id) return [...this.db.sessions];
-    return this.db.sessions.filter((s) => s.repoScope === id);
+    if (!id || id === 'no-workspace') return [...this.db.sessions];
+    const wsId = vscode.workspace.workspaceFolders?.[0]?.uri.toString();
+    return this.db.sessions.filter(
+      (s) => s.repoScope === id || (!s.repoScope && !!wsId && s.workspaceId === wsId),
+    );
   }
 
   getById(idOrPrefix: string): CompressedSession | undefined {
@@ -681,7 +694,15 @@ export class ContextStore implements vscode.Disposable {
     if (filters.workspaceOnly && wsId)
       candidates = candidates.filter((s) => s.workspaceId === wsId);
     if (filters.tag) candidates = candidates.filter((s) => s.userTags.includes(filters.tag!));
-    if (filters.repoScope) candidates = candidates.filter((s) => s.repoScope === filters.repoScope);
+    if (filters.repoScope) {
+      // Mirror getRepoSessions: legacy sessions without repoScope still match
+      // if their workspaceId equals the current workspace.
+      candidates = candidates.filter(
+        (s) =>
+          s.repoScope === filters.repoScope ||
+          (!s.repoScope && !!wsId && s.workspaceId === wsId),
+      );
+    }
 
     // --- Rank 1: keyword score (BM25 with field weights) ---
     const avgDocLen = computeAvgDocLen(candidates);
@@ -931,7 +952,13 @@ export class ContextStore implements vscode.Disposable {
     if (filters.untilTs) scoped = scoped.filter((s) => s.startTime <= filters.untilTs!);
     if (filters.workspaceOnly && wsId) scoped = scoped.filter((s) => s.workspaceId === wsId);
     if (filters.tag) scoped = scoped.filter((s) => s.userTags.includes(filters.tag!));
-    if (filters.repoScope) scoped = scoped.filter((s) => s.repoScope === filters.repoScope);
+    if (filters.repoScope) {
+      scoped = scoped.filter(
+        (s) =>
+          s.repoScope === filters.repoScope ||
+          (!s.repoScope && !!wsId && s.workspaceId === wsId),
+      );
+    }
 
     const snippets: Snippet[] = [];
     for (const s of scoped) snippets.push(...snippetsFromSession(s));
@@ -1002,6 +1029,20 @@ export class ContextStore implements vscode.Disposable {
     if (config.scope === 'repo') workspace = this.getRepoSessions();
     else if (config.scope === 'user') workspace = this.getAllSessions();
     else workspace = this.getWorkspaceSessions();
+    // Always union in sessions tagged as "global" (org standards, naming,
+    // WAF, etc.) regardless of scope — these are the explicit allow-list
+    // for cross-repo knowledge.
+    const globalTags = config.globalTags ?? [];
+    if (globalTags.length > 0) {
+      const seen = new Set(workspace.map((s) => s.id));
+      for (const s of this.db.sessions) {
+        if (seen.has(s.id)) continue;
+        if (s.userTags.some((t) => globalTags.includes(t.toLowerCase()))) {
+          workspace.push(s);
+          seen.add(s.id);
+        }
+      }
+    }
     if (workspace.length === 0) return [];
     // Exclude retracted sessions and sessions superseded by a more recent
     // one. Both stay on disk for audit but we never want the auto-injected

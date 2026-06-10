@@ -224,6 +224,76 @@ test('ContextStore — getStartupCandidates returns [] when no sessions', () => 
   assert.deepEqual(store.getStartupCandidates(3), []);
 });
 
+test('ContextStore — getStartupCandidates unions in sessions tagged with a global tag regardless of scope', async () => {
+  // Force scope=repo with a concrete repoScope id so the cross-repo leak path
+  // is exercised. The global-tagged session must still appear.
+  const vscodeMock = require('./__mocks__/vscode');
+  const origGet = vscodeMock.workspace.getConfiguration;
+  const origFolders = vscodeMock.workspace.workspaceFolders;
+  vscodeMock.workspace.getConfiguration = () => ({
+    get: <T,>(key: string, dflt?: T): T => {
+      if (key === 'scope') return 'repo' as unknown as T;
+      if (key === 'globalTags') return ['global'] as unknown as T;
+      return dflt as T;
+    },
+  });
+  // Pretend a workspace is open so getRepoScopeSync produces a real (non-sentinel)
+  // id and the legacy-workspaceId fallback in getRepoSessions activates.
+  const wsUri = 'file:///fake/workspace/current';
+  vscodeMock.workspace.workspaceFolders = [{ uri: { toString: () => wsUri }, name: 'current' }];
+  // Bust the repoScope cache so it re-derives from the new workspaceFolders.
+  const { _clearRepoScopeCache } = require('../repoScope');
+  _clearRepoScopeCache();
+  try {
+    const mem = new InMemoryMemento() as any;
+    const store = new ContextStore(mem);
+    const now = Date.now();
+    // In-scope session (matches the legacy fallback via workspaceId).
+    await store.addSession(
+      makeSession({
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        summary: 'in-scope work',
+        workspaceId: wsUri,
+        startTime: now,
+        endTime: now,
+        decisions: ['d'],
+      }),
+    );
+    // Out-of-scope (different repo) but tagged 'global' — must surface anyway.
+    await store.addSession(
+      makeSession({
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        summary: 'org coding standards',
+        workspaceId: 'someOtherWorkspace',
+        repoScope: 'someOtherRepoScopeId',
+        startTime: now - 1000,
+        endTime: now - 1000,
+        userTags: ['global'],
+        decisions: ['use camelCase'],
+      }),
+    );
+    // Out-of-scope and not global — must be excluded.
+    await store.addSession(
+      makeSession({
+        id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        summary: 'unrelated other-project work',
+        workspaceId: 'someOtherWorkspace',
+        repoScope: 'someOtherRepoScopeId',
+        startTime: now - 2000,
+        endTime: now - 2000,
+        decisions: ['d'],
+      }),
+    );
+    const picks = store.getStartupCandidates(10);
+    const summaries = picks.map((s) => s.summary).sort();
+    assert.deepEqual(summaries, ['in-scope work', 'org coding standards']);
+  } finally {
+    vscodeMock.workspace.getConfiguration = origGet;
+    vscodeMock.workspace.workspaceFolders = origFolders;
+    _clearRepoScopeCache();
+  }
+});
+
 test('ContextStore — enforceSizeCap evicts oldest until under cap', async () => {
   const mem = new InMemoryMemento() as any;
   // Force a tiny cap via getConfiguration mock.

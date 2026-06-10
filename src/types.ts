@@ -343,6 +343,12 @@ export interface PluginConfig {
   startupContextSessionCount: number;
   /** Retrieval scope. 'user' = cross-workspace, 'workspace' = current folder, 'repo' = current git repo. */
   scope: MemoryScope;
+  /**
+   * User-tag allow-list whose sessions are always included in startup
+   * context and retrieval, regardless of scope. The escape hatch for
+   * cross-repo org-level knowledge (coding standards, naming, WAF, etc.).
+   */
+  globalTags: string[];
   /** Filter out sessions whose key files no longer exist in the current workspace. */
   validateAgainstCodebase: boolean;
   /** Sessions with freshness below this value are dropped from retrieval (0–1). */
@@ -399,7 +405,10 @@ function clampNum(raw: unknown, lo: number, hi: number, fallback: number): numbe
 export function getConfig(): PluginConfig {
   const cfg = vscode.workspace.getConfiguration('ghcpMem');
   const githubCompatibleMode = cfg.get('githubCompatibleMode', false);
-  const scope = cfg.get<MemoryScope>('scope', 'user');
+  // Default 'repo' so memories don't leak across projects when opening a new
+  // workspace. Users who genuinely want cross-repo retrieval can opt back to
+  // 'user' or 'workspace'.
+  const scope = cfg.get<MemoryScope>('scope', 'repo');
   return {
     enabled: cfg.get('enabled', true),
     compressionIntervalMinutes: cfg.get('compressionIntervalMinutes', 15),
@@ -419,6 +428,7 @@ export function getConfig(): PluginConfig {
     autoInjectStartupContext: cfg.get('autoInjectStartupContext', true),
     startupContextSessionCount: clampNum(cfg.get('startupContextSessionCount', 5), 1, 20, 5),
     scope: githubCompatibleMode ? 'repo' : scope,
+    globalTags: normalizeGlobalTags(cfg.get<string[]>('globalTags', ['global'])),
     validateAgainstCodebase: cfg.get('validateAgainstCodebase', true),
     // Clamp to [0, 1] regardless of what the user types in settings.json.
     // package.json declares min/max for the UI, but raw JSON edits can bypass that.
@@ -443,6 +453,17 @@ export function getConfig(): PluginConfig {
 function normalizeOptionalString(raw: string | undefined): string | undefined {
   const trimmed = raw?.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function normalizeGlobalTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return ['global'];
+  const out: string[] = [];
+  for (const v of raw) {
+    if (typeof v !== 'string') continue;
+    const t = v.trim().toLowerCase();
+    if (t && !out.includes(t)) out.push(t);
+  }
+  return out;
 }
 
 /** Minimal glob matcher for excludeGlobs. */

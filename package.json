@@ -780,8 +780,14 @@
             "workspace",
             "repo"
           ],
-          "default": "user",
-          "markdownDescription": "Retrieval scope for stored sessions.\n\n- `user`: all sessions across all workspaces and repos.\n- `workspace`: sessions captured in the current VS Code workspace only.\n- `repo`: sessions captured against the same git origin URL (works across machines/clones)."
+          "default": "repo",
+          "markdownDescription": "Retrieval scope for stored sessions.\n\n- `repo` (default): sessions captured against the same git origin URL (works across machines/clones). Prevents memories leaking between projects when you open a new workspace.\n- `workspace`: sessions captured in the current VS Code workspace only.\n- `user`: all sessions across all workspaces and repos.\n\nRegardless of this setting, sessions tagged with any value in `#ghcpMem.globalTags#` are always included."
+        },
+        "ghcpMem.globalTags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["global"],
+          "markdownDescription": "User tags that promote a session to global scope: it is always included in startup context and retrieval regardless of `#ghcpMem.scope#`. Reserve for cross-repo knowledge such as organization coding standards, naming conventions, or Well-Architected Framework guidance. Tag a session with `GHCP-MEM: Tag Session...`."
         },
         "ghcpMem.validateAgainstCodebase": {
           "type": "boolean",
