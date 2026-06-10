@@ -317,6 +317,8 @@ export class ContextProvider implements vscode.Disposable {
         return this.supersede(query, stream);
       case 'retract':
         return this.retract(query, stream);
+      case 'noise':
+        return this.noise(query, stream);
       case 'accept':
         return this.accept(query, stream);
       case 'reject':
@@ -819,6 +821,43 @@ export class ContextProvider implements vscode.Disposable {
     stream.markdown(
       `🚫 Retracted \`${target.id.substring(0, 8)}\`. It will not appear in retrieval, injection, or exports. ` +
         `Run \`/retract undo ${target.id.substring(0, 8)}\` to restore.\n`,
+    );
+  }
+
+  /**
+   * `/noise <id>` — mark a session as low-quality so it stops appearing
+   * in startup injection and retrieval. `/noise undo <id>` reverses it.
+   */
+  private async noise(query: string, stream: vscode.ChatResponseStream): Promise<void> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      stream.markdown(
+        `Usage: \`/noise <session-id-prefix>\` or \`/noise undo <session-id-prefix>\`\n`,
+      );
+      return;
+    }
+    const parts = trimmed.split(/\s+/);
+    if (parts[0]?.toLowerCase() === 'undo') {
+      const target = this.store.getById(parts[1] ?? '');
+      if (!target) {
+        stream.markdown(`No session found for ID "${parts[1] ?? ''}".\n`);
+        return;
+      }
+      await this.store.undoNoise(target.id);
+      stream.markdown(
+        `✅ Restored \`${target.id.substring(0, 8)}\` — back in the retrieval pool.\n`,
+      );
+      return;
+    }
+    const target = this.store.getById(trimmed);
+    if (!target) {
+      stream.markdown(`No session found for ID "${trimmed}".\n`);
+      return;
+    }
+    await this.store.setNoise(target.id);
+    stream.markdown(
+      `🗑️ Marked \`${target.id.substring(0, 8)}\` as noise. Excluded from injection and retrieval. ` +
+        `Run \`/noise undo ${target.id.substring(0, 8)}\` to restore.\n`,
     );
   }
 

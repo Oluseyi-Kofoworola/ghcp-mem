@@ -371,6 +371,10 @@
             "description": "Retract a session by ID prefix — excludes it from retrieval and injection (use 'undo' to reverse)"
           },
           {
+            "name": "noise",
+            "description": "Mark a session as low-quality noise — excludes it from injection and retrieval (use 'undo' to reverse)"
+          },
+          {
             "name": "accept",
             "description": "Mark a retrieved session as useful — strengthens its retrieval reinforcement signal"
           },

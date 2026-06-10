@@ -443,6 +443,28 @@ export class ContextStore implements vscode.Disposable {
   }
 
   /**
+   * Mark a session as noise — same effect as the ingestion quality gate
+   * deciding the session was low value. The row stays on disk; retrieval
+   * and injection exclude it. `undoNoise` clears the flag.
+   */
+  async setNoise(id: string): Promise<boolean> {
+    const s = this.getById(id);
+    if (!s) return false;
+    s.lowQuality = true;
+    await this.persist();
+    return true;
+  }
+
+  async undoNoise(id: string): Promise<boolean> {
+    const s = this.getById(id);
+    if (!s) return false;
+    if (!s.lowQuality) return true;
+    s.lowQuality = false;
+    await this.persist();
+    return true;
+  }
+
+  /**
    * Stamp `correctionId` as a correction of `originalId`. Use after
    * persisting a new session that captures the corrected information
    * (e.g. produced by the `/correct` chat command).
