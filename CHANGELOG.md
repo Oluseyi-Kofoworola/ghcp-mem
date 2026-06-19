@@ -6,6 +6,38 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.8.2] — 2026-06-19
+
+Tiny trigger release. v1.8.1 added the auto-publish step to `.github/workflows/release.yml` (`npx vsce publish` using a `VSCE_PAT` GitHub Actions secret) but that wiring was added _after_ the v1.8.1 tag was pushed, so the v1.8.1 tag never exercised the new step — the v1.8.1 publish was attempted by hand from a laptop and blocked on an expired local PAT. v1.8.2 is a no-code-change tag that fires the now-wired Release workflow end-to-end, which produces the GitHub Release artifact with full SLSA L3 provenance **and** publishes to the VS Code Marketplace from CI for the first time.
+
+### Changed — version surfaces only
+- `package.json .version` → `1.8.2`
+- `README.md` footer → `**v1.8.2**`
+- `docs/DEMO.md` → `v1.8.2` (4 citations)
+- `CHANGELOG.md` → this entry
+
+### Why no source changes
+Everything that's actually new in the v1.8 line (lessons memory layer, `/pin`/`/evict`, packs-as-skill, ingestion quality gate, weekly janitor — see [1.8.0]) is unchanged from v1.8.1. The only delta is the version stamp, which is what's needed to legitimately push a fresh tag so the now-correct release pipeline can run.
+
+### Marketplace publish flow (going forward)
+1. Bump version (`npm run bump:version -- X.Y.Z`)
+2. Fill in this CHANGELOG entry
+3. `git tag -a vX.Y.Z -m '...'` + `git push origin main vX.Y.Z`
+4. The Release workflow now runs `format:check`, `lint --max-warnings=0`, `typecheck`, all 350 tests, `bundle:prod`, `vsce package`, **then** `vsce publish` using `secrets.VSCE_PAT` — no local PAT, no manual step, no token-in-chat risk.
+
+### Operator prereq
+The `VSCE_PAT` repository secret must be set on `ITcredibl/ghcp-mem` in `Settings → Secrets and variables → Actions → New repository secret`. Use a Marketplace **Manage**-scoped PAT from https://aka.ms/vscodepat. If the secret is missing, the publish step fails with `Personal Access Token verification failed` and the workflow's other steps (SHA-256, SBOM, manifest, GitHub Release) still run.
+
+### Verification before push
+- `npm run format:check` — clean
+- `npm run lint` — clean (`--max-warnings=0`)
+- `npm run typecheck` — clean
+- `npm test` — 350/350 pass
+- `npm run check:release` — 4/4 doc checks pass
+- `npm audit` — 0 vulnerabilities
+
+---
+
 ## [1.8.1] — 2026-06-17
 
 Maintenance patch on top of v1.8.0. v1.8.0's CI workflow failed (format gate + audit gate both red) and was never published to the Marketplace. This release fixes both gates and re-baselines the v1.8 line so the new lessons/pin/evict/SKILL.md features can actually ship.
