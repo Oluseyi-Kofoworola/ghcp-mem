@@ -165,6 +165,7 @@ export class SessionCapture implements vscode.Disposable {
             const result = redact(change.text.substring(0, 200), {
               redactSecrets: config.redactSecrets,
               honorPrivateTags: config.honorPrivateTags,
+              detectHighEntropy: config.detectHighEntropySecrets,
             });
             this.totalRedactions += result.redactionCount;
             existing.lastSnippet = config.captureCodeSnippets
@@ -355,8 +356,11 @@ export class SessionCapture implements vscode.Disposable {
             .slice(0, 3)
             .map((d) => {
               const msg = `[${d.severity === 0 ? 'E' : 'W'}] ${d.message.substring(0, 120)}`;
-              return redact(msg, { redactSecrets: config.redactSecrets, honorPrivateTags: false })
-                .text;
+              return redact(msg, {
+                redactSecrets: config.redactSecrets,
+                honorPrivateTags: false,
+                detectHighEntropy: config.detectHighEntropySecrets,
+              }).text;
             });
 
           this.pushEvent('diagnostic_change', {
@@ -468,6 +472,7 @@ export class SessionCapture implements vscode.Disposable {
           const redacted = redact(trimmed.substring(0, 400), {
             redactSecrets: config.redactSecrets,
             honorPrivateTags: false,
+            detectHighEntropy: config.detectHighEntropySecrets,
           });
           this.totalRedactions += redacted.redactionCount;
 

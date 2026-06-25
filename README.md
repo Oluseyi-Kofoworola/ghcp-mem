@@ -45,19 +45,14 @@
 
 ## The problem you're actually solving
 
-Every new Copilot chat is a fresh amnesia. The cost shows up in three places:
+Every new Copilot chat is a fresh amnesia, and it costs you in several ways:
 
-### What it costs you in tokens (external)
 - Copilot re-reads files just to figure out *"what is this project?"* — 2,000–10,000 tokens before you've asked a real question.
 - You re-explain the same architecture decisions, week after week.
 - Even when memory tools "remember" something, you can't audit *why* — so when the AI is subtly wrong, you don't know it.
-
-### What it costs you in flow (internal)
 - The first ten minutes of every chat feel like onboarding the same intern, again.
 - You start second-guessing AI suggestions because they might be from a memory layer that's hallucinating context you can't verify.
 - You stop trusting the tool — and silently revert to copy-paste prompting.
-
-### What it costs the craft (philosophical)
 - **AI should remember the work you've already done — and prove what it remembers.** A coding assistant without provenance is a coworker with confident amnesia: the worst kind to work with.
 
 ---
@@ -68,9 +63,9 @@ We built GHCP-MEM because we hit the same wall: a Copilot that forgot everything
 
 **GHCP-MEM is what we shipped instead.** It's the memory layer we wanted: **local-first, evidence-grounded, self-routing.** Built specifically for VS Code + Copilot, then extended to every MCP-compatible agent (Cursor, Cline, Windsurf, Claude Desktop, Copilot CLI) through one stdio server.
 
-**Why we have the right to guide you here:**
+**Why it's worth your trust:**
 
-- **372 tests, zero native dependencies, zero open ports** — `npm install` doesn't compile anything. Source is formatted with Prettier (CI-enforced via `format:check`) so reviewers see real code, not bundle output. Auditable in an afternoon.
+- **386 tests, zero native dependencies, zero open ports** — `npm install` doesn't compile anything. Source is formatted with Prettier (CI-enforced via `format:check`) so reviewers see real code, not bundle output. Auditable in an afternoon.
 - **Nine documented engineering phases**, each with grounded design rationale in the [CHANGELOG](https://github.com/ITcredibl/ghcp-mem/blob/main/CHANGELOG.md). No marketing claims that don't have code behind them.
 - **An evidence-citation gate in the compressor** — the LM cannot emit a decision without pointing at the captured event that produced it. Hallucinated rationale never reaches storage.
 - **An nDCG@K regression gate** runs in CI — if a ranker change regresses retrieval, the build fails.
@@ -112,7 +107,7 @@ Without a memory layer that proves itself, the cost compounds session by session
 
 ## What changes after you install
 
-With GHCP-MEM, the failure modes above are designed-out:
+With GHCP-MEM in place:
 
 - 🟢 **Your Copilot resumes where you left off.** The auto-injected memory file makes every new session start with context already loaded.
 - 🟢 **Every decision is cited.** `@mem /entity src/auth.ts` shows you the supersession chain, the evidence, the contributors — in 500 tokens.
@@ -759,4 +754,4 @@ MIT — see [LICENSE](https://github.com/ITcredibl/ghcp-mem/blob/main/LICENSE).
 
 [Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/DEMO.md) · [Compare memory tools](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/COMPARISON.md) · [Uninstall guide](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/UNINSTALL.md) · [Configuration reference](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/CONFIGURATION.md) · [Contributing](https://github.com/ITcredibl/ghcp-mem/blob/main/CONTRIBUTING.md) · [Security policy](https://github.com/ITcredibl/ghcp-mem/blob/main/SECURITY.md)
 
-<sub>**v1.9.0** · local-first memory for Copilot</sub>
+<sub>**v1.10.0** · local-first memory for Copilot</sub>

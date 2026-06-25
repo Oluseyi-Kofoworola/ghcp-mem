@@ -4,7 +4,7 @@
 
 ### You're picking a memory tool. Don't pick the wrong one.
 
-[![v1.6.0](https://img.shields.io/badge/version-1.6.0-7c3aed?style=for-the-badge)](../package.json)
+[![v1.10.0](https://img.shields.io/badge/version-1.10.0-7c3aed?style=for-the-badge)](../package.json)
 [![Scope](https://img.shields.io/badge/scope-VS_Code_+_Copilot-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](../README.md)
 
 </div>
@@ -17,13 +17,13 @@ You read about persistent memory for AI coding assistants. Now there are ten pro
 
 This page exists because picking wrong costs you real time:
 
-- **External cost** — you install something, wire up the MCP, configure your editor, ask your security team to review native deps, then realise it doesn't fit your environment. A week is gone.
-- **Internal cost** — you start doubting your tool-evaluation process. "Did I miss something? Should I revisit?" Decision fatigue compounds.
-- **Philosophical cost** — picking infrastructure tools should be a 30-minute job with honest comparisons. Not a research project on Twitter.
+- You install something, wire up the MCP, configure your editor, ask your security team to review native deps, then realise it doesn't fit your environment. A week is gone.
+- You start doubting your tool-evaluation process. "Did I miss something? Should I revisit?" Decision fatigue compounds.
+- Picking infrastructure tools should be a 30-minute job with honest comparisons. Not a research project on Twitter.
 
 ---
 
-## Meet your guide for this decision
+## Where we stand
 
 We're the maintainers of GHCP-MEM. We're going to tell you when **not** to pick our project — because there are several situations where another tool is the right call, and we'd rather you ship than evaluate.
 
@@ -34,7 +34,7 @@ We're the maintainers of GHCP-MEM. We're going to tell you when **not** to pick 
 
 ---
 
-## The plan — a 30-second decision tree
+## A 30-second decision tree
 
 Different tools optimise for different things. Pick the row that matches your situation:
 
@@ -83,9 +83,9 @@ GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, se
 
 ## 🆚 GHCP-MEM ↔ GitHub Copilot Memory (the closest cousin)
 
-GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) as a public preview in 2026 — it's the only other "memory layer for Copilot" with first-party backing. Both projects aim at the same goal but make opposite bets on **where memory lives**. GHCP-MEM v1.6.0 ships a `githubCompatibleMode` setting that mirrors Copilot Memory's contract (28-day retention + repo-scoped retrieval) for users who want the same semantics offline.
+GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) as a public preview in 2026 — it's the only other "memory layer for Copilot" with first-party backing. Both projects aim at the same goal but make opposite bets on **where memory lives**. GHCP-MEM v1.8.1 ships a `githubCompatibleMode` setting that mirrors Copilot Memory's contract (28-day retention + repo-scoped retrieval) for users who want the same semantics offline.
 
-| Dimension | **GHCP-MEM v1.6.0** | **GitHub Copilot Memory** (public preview) |
+| Dimension | **GHCP-MEM v1.10.0** | **GitHub Copilot Memory** (public preview) |
 |---|---|---|
 | **Storage location** | 100% local: VS Code `globalState` + atomic mirror to `~/.ghcp-mem/sessions.json` (mode `0600`) | GitHub cloud, repo-scoped |
 | **Where it works** | VS Code (`@mem` chat, agent tools, status bar, sidebar, MCP for Cursor / Cline / Windsurf / Claude Desktop) | Copilot cloud agent · Copilot code review (web) · Copilot CLI |
@@ -117,7 +117,7 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 <details open>
 <summary><b>🔬 Full feature comparison</b></summary>
 
-| Dimension | **GHCP-MEM v1.6.0** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
+| Dimension | **GHCP-MEM v1.10.0** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
 |---|---|---|---|---|---|---|
 | No external service / port | ✅ | ❌ (service by default) | ❌ (needs pipx + Python server) | ✅ | ✅ | ❌ (`:37777` worker) |
 | No native deps | ✅ | 🟡 (better-sqlite3 in legacy) | ❌ | ✅ | ❌ (sql-wasm, Nomic) | ❌ (SQLite, Chroma, Bun) |
@@ -206,6 +206,6 @@ Remaining research-level items:
 
 [← Back to README](../README.md) · [Live demo](DEMO.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
 
-<sub>**Comparison for GHCP-MEM v1.6.0** · last refreshed June 2026</sub>
+<sub>**Comparison for GHCP-MEM v1.10.0** · last refreshed June 2026</sub>
 
 </div>

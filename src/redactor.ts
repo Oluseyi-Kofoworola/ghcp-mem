@@ -40,6 +40,55 @@ function hashedTag(label: string, value: string): string {
   return `[REDACTED:${label}]#${secretHash(label, value)}`;
 }
 
+/** Shannon entropy (bits/char) of a string. */
+function shannonEntropy(s: string): number {
+  if (!s) return 0;
+  const freq = new Map<string, number>();
+  for (const ch of s) freq.set(ch, (freq.get(ch) ?? 0) + 1);
+  let e = 0;
+  for (const c of freq.values()) {
+    const p = c / s.length;
+    e -= p * Math.log2(p);
+  }
+  return e;
+}
+
+/** Count distinct character classes (lower / upper / digit / special) present. */
+function charClassCount(s: string): number {
+  let n = 0;
+  if (/[a-z]/.test(s)) n++;
+  if (/[A-Z]/.test(s)) n++;
+  if (/[0-9]/.test(s)) n++;
+  if (/[_+/=-]/.test(s)) n++;
+  return n;
+}
+
+// Bounded-length token scan (24–128 chars, linear-time — no nested quantifier)
+// over the base64/hex/url-safe alphabet. The per-token entropy + character-class
+// gate decides what is actually a secret, so this regex stays intentionally broad.
+const HIGH_ENTROPY_TOKEN_RE = /[A-Za-z0-9_+/=-]{24,128}/g;
+
+/** Minimum Shannon entropy (bits/char) for a token to be treated as a secret. */
+const ENTROPY_THRESHOLD = 4.0;
+
+/**
+ * Heuristic catch-all for high-entropy secrets that no named rule matched —
+ * random API keys, base64 credentials, opaque session tokens. A token is
+ * redacted only when it is long enough, mixes ≥3 character classes (so
+ * lowercase-only git SHAs and hex digests are spared), and clears the Shannon
+ * entropy threshold (so dictionary words / identifiers are spared).
+ */
+function redactHighEntropy(text: string): { text: string; hits: number } {
+  let hits = 0;
+  const out = text.replace(HIGH_ENTROPY_TOKEN_RE, (m) => {
+    if (charClassCount(m) < 3) return m;
+    if (shannonEntropy(m) < ENTROPY_THRESHOLD) return m;
+    hits++;
+    return hashedTag('high-entropy', m);
+  });
+  return { text: out, hits };
+}
+
 const RULES: RedactionRule[] = [
   {
     name: 'aws-access-key',
@@ -216,6 +265,13 @@ const PRIVATE_TAG_RE = /<private>[\s\S]*?<\/private>/g;
 export interface RedactOptions {
   redactSecrets: boolean;
   honorPrivateTags: boolean;
+  /**
+   * Enable the heuristic high-entropy token pass (off by default so unit
+   * callers stay deterministic). Capture paths turn this on via the
+   * `ghcpMem.detectHighEntropySecrets` setting to catch random secrets that
+   * no named rule recognises.
+   */
+  detectHighEntropy?: boolean;
   /** User-defined regex rules appended after the built-in 26-rule set. */
   customRules?: CustomRedactionRule[];
   /**
@@ -269,6 +325,17 @@ export function redact(input: string, opts: RedactOptions): RedactionResult {
       if (text !== before) {
         count++;
         categories.add(rule.name);
+      }
+    }
+
+    // Heuristic high-entropy catch-all — runs after the named rules so specific
+    // patterns win first, and only when explicitly enabled by the caller.
+    if (opts.detectHighEntropy) {
+      const { text: scrubbed, hits } = redactHighEntropy(text);
+      if (hits > 0) {
+        text = scrubbed;
+        count += hits;
+        categories.add('high-entropy');
       }
     }
 

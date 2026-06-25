@@ -5,7 +5,9 @@ import { redact } from './redactor';
 import {
   extractTerms as sharedExtractTerms,
   keywordScore as sharedKeywordScore,
-  computeAvgDocLen,
+  computeTermStats,
+  keywordScoreFromStats,
+  SessionTermStats,
 } from './searchCore';
 import { validateSessions } from './validator';
 import { getRepoScopeSync } from './repoScope';
@@ -71,6 +73,13 @@ export interface SearchFilters {
 export class ContextStore implements vscode.Disposable {
   private db: ContextDatabase;
   private index = new Map<string, Set<string>>(); // term → session IDs
+  /**
+   * Per-session BM25 term statistics, memoised at index time. Eliminates the
+   * per-query O(candidates × fields) re-tokenisation that was the dominant cost
+   * in `search()` as the store grows. Kept in lockstep with `index` — every
+   * `indexSession` writes it, every `removeFromIndex` clears it.
+   */
+  private termStats = new Map<string, SessionTermStats>();
   private readonly onChangeEmitter = new vscode.EventEmitter<void>();
   readonly onChange = this.onChangeEmitter.event;
   /** Phase 4 pending conflict warnings, kept in memory (not persisted). */
@@ -788,10 +797,20 @@ export class ContextStore implements vscode.Disposable {
     }
 
     // --- Rank 1: keyword score (BM25 with field weights) ---
-    const avgDocLen = computeAvgDocLen(candidates);
+    // Uses the memoised per-session term stats so we don't re-tokenise every
+    // candidate's fields on every query. Numerically identical to the
+    // un-memoised path (computeAvgDocLen + keywordScore).
+    const avgDocLen = candidates.length
+      ? candidates.reduce((sum, s) => sum + this.statsFor(s).docLenWeighted, 0) / candidates.length
+      : 50;
     const keywordScores = candidates.map((s) => ({
       s,
-      score: this.keywordScore(s, terms, wsId, avgDocLen),
+      score: keywordScoreFromStats(
+        this.statsFor(s),
+        terms,
+        !!wsId && s.workspaceId === wsId,
+        avgDocLen,
+      ),
     }));
     const keywordRanked = [...keywordScores].sort((a, b) => b.score - a.score);
     const keywordRankById = new Map<string, number>();
@@ -1311,6 +1330,9 @@ export class ContextStore implements vscode.Disposable {
       }
       set.add(s.id);
     }
+    // Memoise BM25 term stats alongside the inverted index. Recomputed here on
+    // every field-affecting mutation (add, dup-merge, tag/untag, sanitize).
+    this.termStats.set(s.id, computeTermStats(s));
   }
 
   private removeFromIndex(s: CompressedSession): void {
@@ -1333,10 +1355,22 @@ export class ContextStore implements vscode.Disposable {
       set.delete(s.id);
       if (set.size === 0) this.index.delete(term);
     }
+    this.termStats.delete(s.id);
+  }
+
+  /** Lazily fetch (and cache) the memoised term stats for a session. */
+  private statsFor(s: CompressedSession): SessionTermStats {
+    let st = this.termStats.get(s.id);
+    if (!st) {
+      st = computeTermStats(s);
+      this.termStats.set(s.id, st);
+    }
+    return st;
   }
 
   private rebuildIndex(): void {
     this.index.clear();
+    this.termStats.clear();
     for (const s of this.db.sessions) this.indexSession(s);
   }
 
@@ -1346,6 +1380,7 @@ export class ContextStore implements vscode.Disposable {
    */
   private rebuildIndexAsync(): Promise<void> {
     this.index.clear();
+    this.termStats.clear();
     const sessions = [...this.db.sessions];
     const CHUNK = 50;
     let i = 0;

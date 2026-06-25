@@ -2,7 +2,7 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "A local, auditable session-memory layer for VS Code and GitHub Copilot, built for engineers who need persistent project context without relying on a cloud memory backend.",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -735,6 +735,16 @@
           "default": true,
           "description": "Exclude content wrapped in <private>...</private> markers"
         },
+        "ghcpMem.detectHighEntropySecrets": {
+          "type": "boolean",
+          "default": true,
+          "description": "Heuristically redact high-entropy tokens (random API keys, base64 credentials, opaque session tokens) that no named redaction rule matched. Lowercase hex digests and git SHAs are spared."
+        },
+        "ghcpMem.localEmbeddings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable dependency-free local (lexical) embeddings for hybrid dense retrieval when the neural vscode.lm embeddings API is unavailable. Runs fully offline with no native dependencies. Disable to use keyword + recency ranking only."
+        },
         "ghcpMem.excludeGlobs": {
           "type": "array",
           "items": {
@@ -1010,6 +1020,8 @@
     "render:diagrams": "node scripts/render-diagrams.mjs",
     "check:release": "node scripts/check-release-consistency.mjs",
     "check:release:strict": "node scripts/check-release-consistency.mjs --strict",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run check:release && npm run eval:check && npm run bench && npm run bundle:prod",
+    "hooks:install": "node scripts/install-hooks.mjs",
     "bump:version": "node scripts/bump-version.mjs",
     "package": "npm run vscode:prepublish && vsce package --out ghcp-mem.vsix",
     "publish": "vsce publish"
@@ -1024,5 +1036,8 @@
     "eslint": "^8.56.0",
     "prettier": "^3.8.3",
     "typescript": "^5.3.0"
+  },
+  "overrides": {
+    "undici": "^7.28.0"
   }
 }

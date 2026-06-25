@@ -16,7 +16,7 @@ import {
   MemoryAuditTool,
   MemoryLessonsTool,
 } from './memoryTool';
-import { getEmbedder } from './embeddings';
+import { getEmbedder, makeLocalEmbedder } from './embeddings';
 import { captureAzureContext } from './azureContext';
 import { AzureSubsystem } from './azureDetect';
 import { getConfig, CompressedSession, AzureContextMeta, SessionEvent } from './types';
@@ -141,15 +141,26 @@ export async function activate(context: vscode.ExtensionContext) {
     log('INFO', 'MCP server provider registered.');
   }
 
-  // Feature-detect the embeddings API (proposed). Safe no-op when unavailable.
+  // Hybrid retrieval embedder. Prefer the proposed neural `vscode.lm`
+  // embeddings API when present; otherwise fall back to the dependency-free
+  // local lexical embedding so dense hybrid search works by default. The
+  // fallback is opt-out via `ghcpMem.localEmbeddings`.
   getEmbedder()
     .then((fn) => {
       if (fn) {
         store.setEmbedder(fn);
-        log('INFO', 'Embedding-based hybrid search enabled.');
+        log('INFO', 'Embedding-based hybrid search enabled (neural vscode.lm).');
+      } else if (config.localEmbeddings) {
+        store.setEmbedder(makeLocalEmbedder());
+        log('INFO', 'Embedding-based hybrid search enabled (local lexical fallback).');
       }
     })
-    .catch(() => {});
+    .catch(() => {
+      if (config.localEmbeddings) {
+        store.setEmbedder(makeLocalEmbedder());
+        log('INFO', 'Embedding-based hybrid search enabled (local lexical fallback).');
+      }
+    });
 
   startCompressionTimer(config.compressionIntervalMinutes, config.idleTimeoutSeconds);
   startJanitorTimer();

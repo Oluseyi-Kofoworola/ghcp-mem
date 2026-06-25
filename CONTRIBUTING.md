@@ -97,6 +97,23 @@ vsce package                   # .vsix must build without warnings
 
 PRs that break any gate will not be merged.
 
+### Run every gate locally before pushing
+
+```
+npm run verify        # format:check + lint + typecheck + test + check:release + eval:check + bench + bundle:prod
+```
+
+`npm run verify` runs the full gate set in one shot, so you reproduce CI before
+you push. To catch the cheapest slips (formatting, lint) automatically, install
+the opt-in git hook once:
+
+```
+npm run hooks:install   # adds a pre-commit hook running format:check + lint
+```
+
+The hook is dependency-free and never installs on `npm install` (the project
+forbids postinstall scripts). Bypass a single commit with `git commit --no-verify`.
+
 ---
 
 ## 5. Coding conventions

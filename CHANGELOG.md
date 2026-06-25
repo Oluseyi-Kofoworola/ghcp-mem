@@ -6,6 +6,23 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.10.0] — 2026-06-25
+
+Feature release on top of the v1.9.0 project-rules line: hybrid retrieval and secret redaction now work out of the box, with a faster search path and a smaller chat-formatting surface.
+
+### Added
+- **Local dense embeddings (default-on).** A dependency-free, deterministic 128-dim lexical embedder (`embeddings.ts` `localEmbed`/`makeLocalEmbedder`, FNV-1a feature hashing) powers hybrid cosine-RRF retrieval offline with zero native deps or network. The proposed neural `vscode.lm` embeddings API still supersedes it when present. Opt-out via `ghcpMem.localEmbeddings`.
+- **High-entropy secret redaction.** A heuristic catch-all (`redactor.ts`) redacts long, mixed-character-class, high-Shannon-entropy tokens that no named rule matches — random API keys, base64 credential blobs, opaque session tokens — while sparing lowercase git SHAs, hex digests, and ordinary prose. Piped through every capture path; gated by `ghcpMem.detectHighEntropySecrets` (default on).
+
+### Changed
+- **Faster search.** Per-session BM25 term statistics are memoised at index time (`searchCore.ts` `computeTermStats`/`keywordScoreFromStats`, `ContextStore.termStats`), eliminating the per-query re-tokenisation that dominated `search()` on large stores. Scores are numerically identical to the previous path.
+- **Slimmer chat participant.** Response-formatting helpers extracted from `contextProvider.ts` into `contextProviderFormat.ts`, with no behavior change.
+- Pin the `undici` override to `^7.28.0` to clear a high-severity transitive advisory.
+- Release-consistency gate now also checks the `docs/COMPARISON.md` version badge.
+- Test suite grows to **386** tests (adds embeddings, high-entropy redaction, and search-stats coverage).
+
+---
+
 ## [1.9.0] — 2026-06-22
 
 ### Added — Durable project memory rules (`@mem /rules`)

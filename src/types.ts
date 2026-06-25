@@ -352,6 +352,8 @@ export interface PluginConfig {
   contextRetrievalCount: number;
   redactSecrets: boolean;
   honorPrivateTags: boolean;
+  detectHighEntropySecrets: boolean;
+  localEmbeddings: boolean;
   excludeGlobs: string[];
   autoInjectStartupContext: boolean;
   startupContextSessionCount: number;
@@ -442,6 +444,8 @@ export function getConfig(): PluginConfig {
     contextRetrievalCount: cfg.get('contextRetrievalCount', 5),
     redactSecrets: cfg.get('redactSecrets', true),
     honorPrivateTags: cfg.get('honorPrivateTags', true),
+    detectHighEntropySecrets: cfg.get('detectHighEntropySecrets', true),
+    localEmbeddings: cfg.get('localEmbeddings', true),
     excludeGlobs: cfg.get('excludeGlobs', []),
     autoInjectStartupContext: cfg.get('autoInjectStartupContext', true),
     startupContextSessionCount: clampNum(cfg.get('startupContextSessionCount', 5), 1, 20, 5),

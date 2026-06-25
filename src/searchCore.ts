@@ -127,3 +127,59 @@ export function keywordScore(
 
   return score;
 }
+
+/**
+ * Memoisable per-session term statistics: the weighted term-frequency map and
+ * the BM25 weighted document length. Computing these once at index time (and
+ * reusing them across every query) removes the per-query O(candidates × fields)
+ * re-tokenisation that dominated `search()` on large stores.
+ */
+export interface SessionTermStats {
+  /** term → summed field weight (identical to the map `keywordScore` builds). */
+  wtf: Map<string, number>;
+  /** Weighted document length, identical to `sessionDocLen(s)`. */
+  docLenWeighted: number;
+}
+
+/**
+ * Precompute the term statistics for a session. The field order, weights, and
+ * tokenisation are byte-for-byte identical to `sessionDocLen` + `keywordScore`,
+ * so scores derived from the cache match the un-memoised path exactly.
+ */
+export function computeTermStats(s: ScorableSession): SessionTermStats {
+  const wtf = new Map<string, number>();
+  let docLenWeighted = 0;
+  const addField = (text: string, weight: number) => {
+    const terms = extractTerms(text);
+    docLenWeighted += terms.size * weight;
+    for (const tok of terms) wtf.set(tok, (wtf.get(tok) ?? 0) + weight);
+  };
+  addField(s.summary, WEIGHT_SUMMARY);
+  for (const t of s.keyTopics) addField(t, WEIGHT_KEY_TOPIC);
+  for (const f of s.keyFiles) addField(f, WEIGHT_KEY_FILE);
+  for (const d of s.decisions) addField(d, WEIGHT_DECISION);
+  for (const p of s.problemsSolved) addField(p, WEIGHT_PROBLEM);
+  for (const t of s.userTags) addField(t, WEIGHT_USER_TAG);
+  return { wtf, docLenWeighted: docLenWeighted || 1 };
+}
+
+/**
+ * BM25 keyword score computed from precomputed `SessionTermStats`. Numerically
+ * identical to `keywordScore()` — same TF-saturation, same document-length
+ * normalisation, same workspace boost — but skips re-tokenising the session.
+ */
+export function keywordScoreFromStats(
+  stats: SessionTermStats,
+  terms: Set<string>,
+  workspaceMatch: boolean,
+  avgDocLen = 50,
+): number {
+  let score = workspaceMatch ? WORKSPACE_BOOST : 0;
+  const docLen = stats.wtf.size || 1;
+  for (const term of terms) {
+    const tf = stats.wtf.get(term) ?? 0;
+    if (tf === 0) continue;
+    score += (tf * (BM25_K1 + 1)) / (tf + BM25_K1 * (1 - BM25_B + BM25_B * (docLen / avgDocLen)));
+  }
+  return score;
+}

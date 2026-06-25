@@ -174,6 +174,29 @@ if (changelog) {
   }
 }
 
+// ── 4b. COMPARISON.md version badge ─────────────────────────────────
+const comparison = readFile('docs/COMPARISON.md');
+if (comparison) {
+  const badge = comparison.match(/version-(\d+\.\d+\.\d+)-/);
+  if (!badge) {
+    fail(
+      'COMPARISON.md version badge',
+      VERSION,
+      'no `version-X.Y.Z` shield found',
+      'add a `version-$VERSION` shields.io badge to docs/COMPARISON.md',
+    );
+  } else if (badge[1] !== VERSION) {
+    fail(
+      'COMPARISON.md version badge',
+      VERSION,
+      badge[1],
+      `update the version badge in docs/COMPARISON.md to ${VERSION}`,
+    );
+  } else {
+    pass('COMPARISON.md badge', `v${badge[1]}`);
+  }
+}
+
 // ── 5. STRICT-only: git state ───────────────────────────────────────
 if (STRICT) {
   // 5a. clean tree

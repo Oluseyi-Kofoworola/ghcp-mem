@@ -3,7 +3,7 @@ import * as crypto from 'crypto';
 import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import { ContextStore } from './contextStore';
-import { CompressedSession, ObservationType, computeContentHash, getConfig } from './types';
+import { CompressedSession, computeContentHash, getConfig } from './types';
 import { computeHealth } from './health';
 import { exportSessionMarkdown } from './markdownExport';
 import { estimateSessionTokenSavings, estimateTokenSavingsUsd } from './savings';
@@ -11,7 +11,6 @@ import { validateSession } from './validator';
 import { redact } from './redactor';
 import { getRepoScope } from './repoScope';
 import { buildEntityRecord, renderEntityMarkdown } from './entity';
-import { effectiveConfidence } from './decay';
 import { renderConflictWarning } from './conflicts';
 import { getCausalNeighbors, renderCausalNeighbors } from './causalGraph';
 import { explainScore, renderExplanation } from './explain';
@@ -30,34 +29,28 @@ import {
   isKnownCategory,
   RULE_CATEGORIES,
 } from './projectRules';
+import {
+  isSafeGitRef,
+  isSafePrNumber,
+  formatInjectTimestamp,
+  renderTrustBadge,
+  renderClaimList,
+  splitIdAndText,
+  parseInlineFilters,
+  synthesize,
+} from './contextProviderFormat';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
-/**
- * Whitelist-validate a git ref / branch name supplied by the user via chat.
- *
- * Used by `/pr <branch>` to ensure the value cannot break out of the
- * argument vector and execute an arbitrary shell command. The pattern
- * permits the characters git itself accepts (letters, digits, slashes,
- * `_-.`, plus `~` and `^` for `HEAD~1` / `HEAD^2`) and nothing else —
- * so meta characters like `;`, `|`, `` ` ``, `$()`, newlines, spaces,
- * and backslashes are all rejected before they ever reach the shell or
- * the spawn syscall.
- *
- * Length-capped at 200 to avoid degenerate inputs.
- */
-function isSafeGitRef(input: string): boolean {
-  return /^[A-Za-z0-9._/\-~^@]{1,200}$/.test(input);
-}
-
-/**
- * Whitelist-validate a numeric PR identifier. PRs are always positive
- * integers — anything else means the user typed something we should refuse.
- */
-function isSafePrNumber(input: string): boolean {
-  return /^[0-9]{1,8}$/.test(input);
-}
+// Re-exported from ./contextProviderFormat to preserve the historical public
+// surface (several of these are imported directly in tests).
+export {
+  formatInjectTimestamp,
+  renderTrustBadge,
+  renderClaimList,
+  splitIdAndText,
+} from './contextProviderFormat';
 
 /**
  * Chat participant implementing progressive disclosure (claude-mem style
@@ -3006,160 +2999,4 @@ export class ContextProvider implements vscode.Disposable {
     for (const d of this.disposables) d.dispose();
     this.disposables = [];
   }
-}
-
-/**
- * Format a startup-inject timestamp as `M/D/YYYY HH:MM` (24h, local).
- * Exported for tests.
- */
-export function formatInjectTimestamp(ts: number): string {
-  const d = new Date(ts);
-  const date = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${date} ${hh}:${mm}`;
-}
-
-/**
- * Render the trust badge appended to each injected session header.
- *  🟢 confidence ≥ 0.75
- *  🟡 0.50 ≤ confidence < 0.75
- *  🔴 confidence < 0.50
- * Legacy sessions (no confidence stored) are rendered without a badge so
- * existing snapshots keep their compact header format.
- *
- * Uses the time-decayed `effectiveConfidence` so untouched memories also
- * fade — keeps the displayed trust in sync with the ranking signal.
- */
-export function renderTrustBadge(s: CompressedSession): string {
-  const c = effectiveConfidence(s);
-  if (typeof c !== 'number') return '';
-  const emoji = c >= 0.75 ? '🟢' : c >= 0.5 ? '🟡' : '🔴';
-  return ` · ${emoji} conf:${c.toFixed(2)}`;
-}
-
-/**
- * Render a parallel list of claim texts and their evidence arrays.
- *
- * Each claim is rendered as `text [📎file1, file2]` so the LLM consumer
- * (and a human reading the injected file) sees the provenance inline
- * without ballooning the token cost. Legacy sessions whose evidence
- * arrays are missing fall back to the plain `text` form.
- */
-export function renderClaimList(
-  texts: string[],
-  evidence?: import('./types').Evidence[][],
-): string {
-  return texts
-    .map((text, i) => {
-      const ev = evidence?.[i];
-      if (!ev || ev.length === 0) return text;
-      const files = Array.from(
-        new Set(ev.map((e) => e.filePath).filter((f): f is string => !!f)),
-      ).slice(0, 3);
-      if (files.length === 0) return text;
-      return `${text} [📎 ${files.join(', ')}]`;
-    })
-    .join('; ');
-}
-
-/**
- * Split a `<idPrefix> <rest of text>` chat-command argument into its two
- * parts. Used by `/correct` and `/retract` to peel the session ID off the
- * front of the user's input without forcing an awkward quoting syntax.
- *
- * Whitespace around the boundary is collapsed. When the input contains
- * only one token, `text` is the empty string.
- */
-export function splitIdAndText(input: string): { idPrefix: string; text: string } {
-  const m = (input ?? '').trim().match(/^(\S+)(\s+([\s\S]*))?$/);
-  if (!m) return { idPrefix: '', text: '' };
-  return { idPrefix: m[1], text: (m[3] ?? '').trim() };
-}
-
-/**
- * Parses inline filter tokens from a search query.
- * Supported: `type:feature`, `since:7d`, `tag:wip`, `workspace:true`
- */
-function parseInlineFilters(q: string): {
-  cleaned: string;
-  filters: import('./contextStore').SearchFilters;
-} {
-  const filters: import('./contextStore').SearchFilters = {};
-  const tokens = q.split(/\s+/);
-  const remaining: string[] = [];
-  for (const tok of tokens) {
-    const [k, v] = tok.split(':');
-    if (!v) {
-      remaining.push(tok);
-      continue;
-    }
-    switch (k.toLowerCase()) {
-      case 'type':
-        filters.type = v as ObservationType;
-        break;
-      case 'since': {
-        // Parse "since:7d", "since:24h", "since:yesterday", "since:last-week"
-        const normalizedV = v.toLowerCase().replace(/_/g, '-');
-        let ms = 0;
-
-        if (normalizedV === 'yesterday') ms = 24 * 3600000;
-        else if (normalizedV === 'today')
-          ms = 0; // not filtered by time
-        else if (normalizedV === 'last-week') ms = 7 * 86400000;
-        else if (normalizedV === 'last-month') ms = 30 * 86400000;
-        else {
-          const m = normalizedV.match(/^(\d+)([hdw])$/);
-          if (m) {
-            const n = parseInt(m[1], 10);
-            ms = m[2] === 'h' ? n * 3600000 : m[2] === 'd' ? n * 86400000 : n * 604800000;
-          }
-        }
-
-        if (ms > 0) filters.sinceTs = Date.now() - ms;
-        break;
-      }
-      case 'tag':
-        filters.tag = v;
-        break;
-      case 'workspace':
-        filters.workspaceOnly = v === 'true';
-        break;
-      default:
-        remaining.push(tok);
-    }
-  }
-  return { cleaned: remaining.join(' '), filters };
-}
-
-function synthesize(sessions: CompressedSession[], query: string): string {
-  const topics = new Set<string>();
-  const files = new Set<string>();
-  const decisions: string[] = [];
-  const problems: string[] = [];
-  for (const s of sessions) {
-    s.keyTopics.forEach((t) => topics.add(t));
-    s.keyFiles.forEach((f) => files.add(f));
-    decisions.push(...s.decisions);
-    problems.push(...s.problemsSolved);
-  }
-  const out: string[] = [`Based on ${sessions.length} session(s) matching "${query}":\n`];
-  if (topics.size) out.push(`**Known topics:** ${Array.from(topics).join(', ')}\n`);
-  if (files.size)
-    out.push(
-      `**Active files:** ${Array.from(files)
-        .slice(0, 8)
-        .map((f) => `\`${f}\``)
-        .join(', ')}\n`,
-    );
-  if (decisions.length) {
-    out.push('**Decisions:**');
-    for (const d of decisions.slice(0, 5)) out.push(`- ${d}`);
-    out.push('');
-  }
-  if (problems.length) {
-    out.push('**Previously solved:**');
-    for (const p of problems.slice(0, 5)) out.push(`- ${p}`);
-  }
-  return out.join('\n');
 }
