@@ -1,24 +1,13 @@
 import * as vscode from 'vscode';
-import * as crypto from 'crypto';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
+
 import { ContextStore } from './contextStore';
-import { CompressedSession, computeContentHash, getConfig } from './types';
-import { computeHealth } from './health';
-import { exportSessionMarkdown } from './markdownExport';
-import { estimateSessionTokenSavings, estimateTokenSavingsUsd } from './savings';
-import { matchFilePath } from './pathMatch';
-import { validateSession } from './validator';
+import { getConfig } from './types';
+
+import { GROUP_ORDER, GROUP_HEADINGS, getFollowups, commandsInGroup } from './commandRegistry';
+
 import { redact } from './redactor';
-import { getRepoScope } from './repoScope';
-import { buildEntityRecord, renderEntityMarkdown } from './entity';
-import { renderConflictWarning } from './conflicts';
-import { getCausalNeighbors, renderCausalNeighbors } from './causalGraph';
-import { explainScore, renderExplanation } from './explain';
-import { buildMermaidGraph } from './graphExport';
-import { buildComplianceReport, renderComplianceReport } from './compliance';
-import { recommend, renderRecommendation, extractMentionedPaths } from './router';
-import { renderLessonsForInjection, rankLessons, makePinnedLesson } from './lessons';
+
+import { renderLessonsForInjection, rankLessons } from './lessons';
 import {
   ProjectRule,
   RuleCategory,
@@ -30,18 +19,48 @@ import {
   isKnownCategory,
   RULE_CATEGORIES,
 } from './projectRules';
-import {
-  isSafeGitRef,
-  isSafePrNumber,
-  formatInjectTimestamp,
-  renderTrustBadge,
-  renderClaimList,
-  splitIdAndText,
-  parseInlineFilters,
-  synthesize,
-} from './contextProviderFormat';
+import { formatInjectTimestamp, renderTrustBadge, renderClaimList } from './contextProviderFormat';
 
-const execFileAsync = promisify(execFile);
+import {
+  standup,
+  commit,
+  ask,
+  recap,
+  whereami,
+  debt,
+  adr,
+  pr,
+  precommit,
+  decisions,
+} from './commands/generation';
+import { CommandContext } from './commands/context';
+import {
+  status,
+  health,
+  recent,
+  search,
+  timeline,
+  detail,
+  azure,
+  snippet,
+  entity,
+  lineage,
+  related,
+  savings,
+} from './commands/retrieval';
+import {
+  verify,
+  correct,
+  supersede,
+  retract,
+  noise,
+  accept,
+  reject,
+  conflicts,
+  why,
+  janitor,
+} from './commands/trust';
+import { audit, compliance, route, graph, exportSession, lessons } from './commands/admin';
 
 // Re-exported from ./contextProviderFormat to preserve the historical public
 // surface (several of these are imported directly in tests).
@@ -62,7 +81,7 @@ export {
  *  /ask      — RAG Q&A over full session history
  *  /recap    — AI narrative weekly recap
  */
-export class ContextProvider implements vscode.Disposable {
+export class ContextProvider implements vscode.Disposable, CommandContext {
   private disposables: vscode.Disposable[] = [];
 
   /**
@@ -90,7 +109,7 @@ export class ContextProvider implements vscode.Disposable {
    */
   private rulesChangedHook?: () => Promise<void> | void;
 
-  constructor(private readonly store: ContextStore) {}
+  constructor(public readonly store: ContextStore) {}
 
   /** Install the callback invoked after a `/rules` command edits the file. */
   setRulesChangedHook(fn: () => Promise<void> | void): void {
@@ -102,191 +121,19 @@ export class ContextProvider implements vscode.Disposable {
     p.iconPath = new vscode.ThemeIcon('history');
     p.followupProvider = {
       provideFollowups(
-        result: vscode.ChatResult,
+        _result: vscode.ChatResult,
         context: vscode.ChatContext,
       ): vscode.ChatFollowup[] {
         const last = context.history[context.history.length - 1];
         const cmd = last instanceof vscode.ChatRequestTurn ? last.command : undefined;
-        switch (cmd) {
-          case 'whereami':
-            return [
-              {
-                prompt: '',
-                command: 'debt',
-                label: '$(warning) Show tech debt',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'standup',
-                label: '$(calendar) Daily standup',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'debt':
-            return [
-              {
-                prompt: '',
-                command: 'precommit',
-                label: '$(git-commit) Pre-commit check',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'decisions',
-                label: '$(list-ordered) Architecture decisions',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'adr':
-            return [
-              {
-                prompt: '',
-                command: 'decisions',
-                label: '$(list-ordered) All decisions',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'precommit',
-                label: '$(git-commit) Pre-commit check',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'precommit':
-            return [
-              {
-                prompt: '',
-                command: 'commit',
-                label: '$(git-commit) Generate commit message',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'debt',
-                label: '$(warning) Show tech debt',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'pr':
-            return [
-              {
-                prompt: '',
-                command: 'decisions',
-                label: '$(list-ordered) Architecture decisions',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'search',
-                label: '$(search) Search sessions',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'standup':
-            return [
-              {
-                prompt: '',
-                command: 'recap',
-                label: '$(book) Weekly recap',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'commit',
-                label: '$(git-commit) Generate commit',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'commit':
-            return [
-              {
-                prompt: '',
-                command: 'standup',
-                label: '$(calendar) Daily standup',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'ask':
-          case 'recap':
-            return [
-              {
-                prompt: '',
-                command: 'standup',
-                label: '$(calendar) Daily standup',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'search',
-                label: '$(search) Search sessions',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'search':
-            return [
-              {
-                prompt: '',
-                command: 'recent',
-                label: '$(history) Show recent sessions',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'health',
-                label: '$(pulse) Check memory health',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'recent':
-            return [
-              {
-                prompt: '',
-                command: 'search',
-                label: '$(search) Search sessions…',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'timeline',
-                label: '$(calendar) View timeline',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'timeline':
-            return [
-              {
-                prompt: '',
-                command: 'search',
-                label: '$(search) Search sessions…',
-                participant: 'ghcp-mem',
-              },
-            ];
-          case 'health':
-            return [
-              {
-                prompt: '',
-                command: 'status',
-                label: '$(info) Show status',
-                participant: 'ghcp-mem',
-              },
-            ];
-          default:
-            return [
-              {
-                prompt: '',
-                command: 'recent',
-                label: '$(history) Recent sessions',
-                participant: 'ghcp-mem',
-              },
-              {
-                prompt: '',
-                command: 'health',
-                label: '$(pulse) Memory health',
-                participant: 'ghcp-mem',
-              },
-            ];
-        }
+        // Follow-up chips are declared once in commandRegistry.ts so they can
+        // never drift from the dispatch/help surfaces.
+        return getFollowups(cmd).map((chip) => ({
+          prompt: '',
+          command: chip.command,
+          label: chip.label,
+          participant: 'ghcp-mem',
+        }));
       },
     };
     this.disposables.push(p);
@@ -303,81 +150,81 @@ export class ContextProvider implements vscode.Disposable {
 
     switch (cmd) {
       case 'status':
-        return this.status(stream);
+        return status(this, stream);
       case 'recent':
-        return this.recent(stream);
+        return recent(this, stream);
       case 'search':
-        return this.search(query, stream);
+        return search(this, query, stream);
       case 'timeline':
-        return this.timeline(query, stream);
+        return timeline(this, query, stream);
       case 'detail':
-        return this.detail(query, stream);
+        return detail(this, query, stream);
       case 'azure':
-        return this.azure(query, stream);
+        return azure(this, query, stream);
       case 'health':
-        return this.health(stream);
+        return health(this, stream);
       case 'export':
-        return this.export(query, stream);
+        return exportSession(this, query, stream);
       case 'standup':
-        return this.standup(query, stream, request, token);
+        return standup(this, query, stream, request, token);
       case 'commit':
-        return this.commit(stream, request, token);
+        return commit(this, stream, request, token);
       case 'ask':
-        return this.ask(query, stream, request, token);
+        return ask(this, query, stream, request, token);
       case 'recap':
-        return this.recap(query, stream, request, token);
+        return recap(this, query, stream, request, token);
       case 'savings':
-        return this.savings(stream);
+        return savings(this, stream);
       case 'related':
-        return this.related(stream);
+        return related(this, stream);
       case 'decisions':
-        return this.decisions(query, stream, request, token);
+        return decisions(this, query, stream, request, token);
       case 'whereami':
-        return this.whereami(stream, request, token);
+        return whereami(this, stream, request, token);
       case 'debt':
-        return this.debt(stream, request, token);
+        return debt(this, stream, request, token);
       case 'adr':
-        return this.adr(query, stream, request, token);
+        return adr(this, query, stream, request, token);
       case 'pr':
-        return this.pr(query, stream, request, token);
+        return pr(this, query, stream, request, token);
       case 'precommit':
-        return this.precommit(stream, request, token);
+        return precommit(this, stream, request, token);
       case 'audit':
-        return this.audit(stream);
+        return audit(this, stream);
       case 'verify':
-        return this.verify(query, stream);
+        return verify(this, query, stream);
       case 'correct':
-        return this.correct(query, stream);
+        return correct(this, query, stream);
       case 'supersede':
-        return this.supersede(query, stream);
+        return supersede(this, query, stream);
       case 'retract':
-        return this.retract(query, stream);
+        return retract(this, query, stream);
       case 'noise':
-        return this.noise(query, stream);
+        return noise(this, query, stream);
       case 'janitor':
-        return this.janitor(stream);
+        return janitor(this, stream);
       case 'accept':
-        return this.accept(query, stream);
+        return accept(this, query, stream);
       case 'reject':
-        return this.reject(query, stream);
+        return reject(this, query, stream);
       case 'entity':
-        return this.entity(query, stream);
+        return entity(this, query, stream);
       case 'snippet':
-        return this.snippet(query, stream);
+        return snippet(this, query, stream);
       case 'conflicts':
-        return this.conflicts(query, stream);
+        return conflicts(this, query, stream);
       case 'lineage':
-        return this.lineage(query, stream);
+        return lineage(this, query, stream);
       case 'why':
-        return this.why(query, stream);
+        return why(this, query, stream);
       case 'graph':
-        return this.graph(query, stream);
+        return graph(this, query, stream);
       case 'compliance':
-        return this.compliance(stream);
+        return compliance(this, stream);
       case 'route':
-        return this.route(query, stream);
+        return route(this, query, stream);
       case 'lessons':
-        return this.lessons(query, stream);
+        return lessons(this, query, stream);
       case 'rules':
         return this.rules(query, stream);
       case 'pin':
@@ -388,9 +235,9 @@ export class ContextProvider implements vscode.Disposable {
       case '?':
         return this.help(stream);
       default:
-        if (!query || query.toLowerCase() === 'status') return this.status(stream);
-        if (query.toLowerCase() === 'recent') return this.recent(stream);
-        return this.search(query, stream);
+        if (!query || query.toLowerCase() === 'status') return status(this, stream);
+        if (query.toLowerCase() === 'recent') return recent(this, stream);
+        return search(this, query, stream);
     }
   }
 
@@ -405,81 +252,21 @@ export class ContextProvider implements vscode.Disposable {
     stream.markdown('### `@mem` commands\n\n');
     stream.markdown(
       'Type any of these in Copilot Chat. Most take a query; a few take an `<id>` ' +
-        '(use `/recent` or `/search` to find one). Square brackets denote optional args.\n\n',
+        '(use `/recent` or `/search` to find one). Square brackets denote optional args. ' +
+        '⚗️ marks experimental commands.\n\n',
     );
 
-    const groups: Array<{ heading: string; rows: Array<[string, string]> }> = [
-      {
-        heading: '🔍 Retrieval',
-        rows: [
-          ['/search <query> [type:X since:Yd tag:Z]', 'fused keyword+recency+embedding search'],
-          ['/recent', 'last N captured sessions, newest first'],
-          ['/timeline [days]', 'chronological view of recent activity'],
-          ['/detail <id|prefix>', 'full structured row for one session'],
-          ['/snippet <query>', 'chunk-level retrieval inside sessions'],
-          ['/entity <path[#symbol]>', 'every session that touched a file/symbol'],
-          ['/lineage <id>', 'predecessor → successor chain for one session'],
-          ['/related', 'sessions that touched the file currently open in the editor'],
-        ],
-      },
-      {
-        heading: '✅ Trust + correction',
-        rows: [
-          ['/verify <id>', 'per-file verified/drifted/missing classification'],
-          ['/correct <id> <text>', 'create a linked correction; supersedes the original'],
-          ['/supersede <newer> <older>', 'mark one session as superseding another'],
-          ['/retract <id> [reason] · /retract undo <id>', 'exclude from retrieval (reversible)'],
-          ['/noise <id> · /noise undo <id>', 'flag as low-quality + feed adaptive ranker'],
-          ['/accept <id> · /reject <id>', 'thumbs-up/down — reinforces ranking weights'],
-          ['/conflicts', 'list contradiction-marker warnings; `dismiss <id>` to clear'],
-          ['/why <query> :: <id>', 'per-signal score breakdown for one ranking decision'],
-        ],
-      },
-      {
-        heading: '✍️ Authoring',
-        rows: [
-          ['/lessons [add|remove|pin|unpin]', 'consolidated semantic + procedural memory'],
-          ['/rules [add|remove|list]', 'team-shared project rules (`.github/memory/rules.md`)'],
-          ['/pin <id> · /unpin <id>', 'force-include in startup brief'],
-          ['/evict <id>', 'remove from working set without deleting the row'],
-        ],
-      },
-      {
-        heading: '✏️ Generation',
-        rows: [
-          ['/whereami', 'one-screen "what was I doing here?" briefing'],
-          ['/standup', 'yesterday/today/blockers shaped from recent sessions'],
-          ['/commit [--check]', 'commit message draft (or `--check` to pre-flight)'],
-          ['/precommit', 'consistency pre-flight against staged diff (alias for /commit --check)'],
-          ['/adr <topic>', 'draft an ADR from related session decisions'],
-          ['/pr [base]', 'pull-request title + body grounded in branch history'],
-          ['/recap [days]', 'narrative recap of recent work'],
-          ['/ask <q> · /decisions', "answer a question / list decisions / `/debt` for what's owed"],
-        ],
-      },
-      {
-        heading: '🛡 Admin + insight',
-        rows: [
-          ['/status', 'session count, last capture, health'],
-          ['/health', 'one-shot health score breakdown'],
-          ['/audit', 'workspace integrity audit (cross-file consistency)'],
-          ['/compliance', 'grounding/trust/conflict/redaction report'],
-          ['/savings', 'estimated token cost saved vs cold prompting'],
-          ['/route <question>', 'show which retrieval path the router would pick'],
-          ['/janitor', 'manual re-score pass over every stored session'],
-          ['/graph', 'mermaid causal graph of related sessions'],
-          ['/export <id>', 'session row as diff-friendly markdown'],
-          ['/azure', 'Azure-context-aware retrieval shortcut'],
-        ],
-      },
-    ];
-
-    for (const g of groups) {
-      stream.markdown(`#### ${g.heading}\n\n`);
+    // Rendered from the single command registry (commandRegistry.ts) so the
+    // catalogue can never drift from the dispatch + follow-up surfaces.
+    for (const group of GROUP_ORDER) {
+      const specs = commandsInGroup(group);
+      if (specs.length === 0) continue;
+      stream.markdown(`#### ${GROUP_HEADINGS[group]}\n\n`);
       stream.markdown('| Command | What it does |\n|---|---|\n');
-      for (const [cmd, desc] of g.rows) {
+      for (const spec of specs) {
         // Escape pipes so command syntax doesn't break the markdown table.
-        const cmdEsc = cmd.replace(/\|/g, '\\|');
+        const cmdEsc = spec.signature.replace(/\|/g, '\\|');
+        const desc = spec.tier === 'experimental' ? `⚗️ ${spec.description}` : spec.description;
         stream.markdown(`| \`${cmdEsc}\` | ${desc} |\n`);
       }
       stream.markdown('\n');
@@ -490,265 +277,19 @@ export class ContextProvider implements vscode.Disposable {
     );
   }
 
-  private async audit(stream: vscode.ChatResponseStream): Promise<void> {
-    const { runWorkspaceAudit, hasBlockingIssues } = await import('./integrityChecker');
-    const { issues, rulesRun } = await runWorkspaceAudit();
-    if (rulesRun.length === 0) {
-      stream.markdown('No workspace folder open — nothing to audit.\n');
-      return;
-    }
-    stream.markdown(`## 🩺 Workspace Integrity Audit\n\n`);
-    stream.markdown(
-      `Ran **${rulesRun.length}** rule${rulesRun.length === 1 ? '' : 's'} (\`${rulesRun.join('`, `')}\`).\n\n`,
-    );
-
-    if (issues.length === 0) {
-      stream.markdown('✅ **No issues found.** Every checked surface is consistent.\n');
-      return;
-    }
-
-    const errors = issues.filter((i) => i.severity === 'error');
-    const warnings = issues.filter((i) => i.severity === 'warning');
-    if (errors.length) {
-      stream.markdown(`### ❌ ${errors.length} error${errors.length === 1 ? '' : 's'}\n\n`);
-      for (const i of errors) {
-        const loc = i.line ? `\`${i.file}:${i.line}\`` : `\`${i.file}\``;
-        stream.markdown(
-          `- **${i.rule}** · ${loc} — ${i.message}` + (i.fix ? `\n  > 💡 ${i.fix}` : '') + '\n',
-        );
-      }
-      stream.markdown('\n');
-    }
-    if (warnings.length) {
-      stream.markdown(`### ⚠️ ${warnings.length} warning${warnings.length === 1 ? '' : 's'}\n\n`);
-      for (const i of warnings) {
-        const loc = i.line ? `\`${i.file}:${i.line}\`` : `\`${i.file}\``;
-        stream.markdown(
-          `- **${i.rule}** · ${loc} — ${i.message}` + (i.fix ? `\n  > 💡 ${i.fix}` : '') + '\n',
-        );
-      }
-      stream.markdown('\n');
-    }
-    if (hasBlockingIssues(issues)) {
-      stream.markdown(
-        '> These are blocking issues for the release-consistency gate. Either fix them before `vsce publish`, or run `npm run bump:version -- <version>` to realign every surface.\n',
-      );
-    }
-    stream.button({
-      command: 'ghcpMem.runIntegrityAudit',
-      title: 'Open full audit report',
-    });
-  }
-
-  private async status(stream: vscode.ChatResponseStream): Promise<void> {
-    const stats = this.store.getStats();
-    stream.markdown(`## Memory Status\n\n`);
-    stream.markdown(`- **Total sessions:** ${stats.totalSessions}\n`);
-    stream.markdown(`- **This workspace:** ${stats.workspaceSessions}\n`);
-    stream.markdown(`- **Today sessions:** ${stats.todaySessions}\n`);
-    stream.markdown(
-      `- **Estimated tokens saved today:** ${stats.todayEstimatedTokensSaved.toLocaleString()}\n`,
-    );
-    stream.markdown(
-      `- **Lifetime tokens saved:** ${stats.lifetimeEstimatedTokensSaved.toLocaleString()}\n`,
-    );
-    stream.markdown(`- **Avg compression ratio:** ${stats.avgCompressionRatio}×\n`);
-    stream.markdown(`- **Redactions applied:** ${stats.totalRedactions}\n`);
-    if (stats.oldestSession)
-      stream.markdown(`- **Oldest:** ${new Date(stats.oldestSession).toLocaleDateString()}\n`);
-    if (stats.newestSession)
-      stream.markdown(`- **Newest:** ${new Date(stats.newestSession).toLocaleDateString()}\n`);
-    stream.markdown(
-      `\n> 💡 Run \`@mem /savings\` for a full token-savings breakdown with cost estimates.\n`,
-    );
-    stream.markdown(
-      `\n**Commands:** \`/search\`, \`/timeline\`, \`/detail <id>\`, \`/recent\`, \`/azure\`, \`/health\`, \`/export <id>\`, \`/savings\`\n`,
-    );
-  }
-
-  private async health(stream: vscode.ChatResponseStream): Promise<void> {
-    const h = computeHealth(this.store.getAllSessions());
-    stream.markdown(`## Memory Health: ${h.score}/100  ${h.densityGlyph}\n\n`);
-    stream.markdown(`- Total sessions: **${h.totalSessions}**\n`);
-    stream.markdown(`- Redaction coverage: **${h.redactionCoveragePct}%**\n`);
-    stream.markdown(`- Typed (non-unknown): **${h.typedPct}%**\n`);
-    stream.markdown(`- Tagged: **${h.taggedPct}%**\n`);
-    stream.markdown(`- Dedup merge rate: **${Math.round(h.dedupRatio * 100)}%**\n`);
-    stream.markdown(`- Retention headroom: **${h.retentionHeadroomPct}%**\n`);
-    stream.markdown(`- Azure-enriched sessions: **${h.azureSessionCount}**\n`);
-    if (h.notes.length) {
-      stream.markdown(`\n### Notes\n\n`);
-      for (const n of h.notes) stream.markdown(`- ${n}\n`);
-    }
-  }
-
-  private async recent(stream: vscode.ChatResponseStream): Promise<void> {
-    const recent = this.store.getRecentSessions(5);
-    if (recent.length === 0) {
-      stream.markdown(
-        '_No sessions recorded yet. Keep coding and memory will populate automatically._\n',
-      );
-      return;
-    }
-    stream.markdown(`## Recent Sessions\n\n`);
-    for (const s of [...recent].reverse()) this.renderCompact(s, stream);
-  }
-
   /**
    * Layer-1 search: returns a compact index (like claude-mem's `search`).
    * Use \`/detail <id>\` to fetch full content for a specific session.
    */
-  private async search(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    if (!query) {
-      stream.markdown('Please provide a search query.\n');
-      return;
-    }
-
-    // Parse inline filters: "type:feature since:7d tag:wip foo bar"
-    const { cleaned, filters } = parseInlineFilters(query);
-    const results = this.store.search(cleaned, filters, 10);
-
-    if (results.length === 0) {
-      stream.markdown(`No sessions found for: "${query}"\n`);
-      return;
-    }
-
-    stream.markdown(`## Search Results (${results.length})\n\n`);
-    stream.markdown(`_Token-efficient index. Use \`@mem /detail <id>\` for full content._\n\n`);
-    // Phase 3 multi-hop: render each row with its supersession lineage and
-    // related entities so a single search hop carries the full narrative.
-    const enriched = this.store.enrichWithMultiHop(results);
-    for (const e of enriched) {
-      this.renderIndexRow(e.session, stream);
-      // Lineage (≥2 entries means there's a real chain worth showing).
-      if (e.lineage.length >= 2) {
-        const chain = e.lineage.map((s) => `\`${s.id.substring(0, 8)}\``).join(' → ');
-        stream.markdown(`  > 🧭 Lineage: ${chain} *(oldest → current)*\n\n`);
-      }
-      // "See also" pointers to related entities (max 2 each to keep tokens down).
-      const seeAlso: string[] = [];
-      for (const sym of e.relatedSymbols.slice(0, 2)) seeAlso.push(`\`@mem /entity ${sym}\``);
-      for (const f of e.relatedFiles.slice(0, 2)) {
-        if (!e.relatedSymbols.some((sym) => sym.startsWith(f + '#')))
-          seeAlso.push(`\`@mem /entity ${f}\``);
-      }
-      if (seeAlso.length) {
-        stream.markdown(`  > 🔗 See also: ${seeAlso.slice(0, 3).join(' · ')}\n\n`);
-      }
-    }
-
-    stream.markdown(`\n---\n### Synthesized Context\n\n${synthesize(results, query)}`);
-  }
 
   /** Layer-1b timeline view — chronological window. */
-  private async timeline(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    let center = Date.now();
-    let windowHours = 24;
-
-    // If query is an ID, center around that session
-    const maybe = query && this.store.getById(query);
-    if (maybe) center = maybe.startTime;
-
-    // Parse window spec like "72h" or "7d"
-    const winMatch = query.match(/(\d+)([hdw])/);
-    if (winMatch) {
-      const n = parseInt(winMatch[1], 10);
-      const unit = winMatch[2];
-      windowHours = unit === 'h' ? n : unit === 'd' ? n * 24 : n * 24 * 7;
-    }
-
-    const results = this.store.timeline(center, windowHours, 20);
-    if (results.length === 0) {
-      stream.markdown(`No sessions in ±${windowHours}h window.\n`);
-      return;
-    }
-    stream.markdown(`## Timeline (±${windowHours}h)\n\n`);
-    for (const s of results) this.renderIndexRow(s, stream);
-  }
 
   /** Layer-2 detail — fetch full content only after filtering. */
-  private async detail(idPrefix: string, stream: vscode.ChatResponseStream): Promise<void> {
-    if (!idPrefix) {
-      stream.markdown(
-        'Provide a session ID (or prefix). Use `@mem /recent` or `/search` to find one.\n',
-      );
-      return;
-    }
-    const s = this.store.getById(idPrefix);
-    if (!s) {
-      stream.markdown(`No session found for ID prefix "${idPrefix}".\n`);
-      return;
-    }
-    this.renderFull(s, stream);
-  }
 
   /**
    * Layer-1 Azure view — sessions that touched Azure resources, grouped by subsystem.
    * Accepts an optional filter (substring matched against summary/topics/files/resourceId).
    */
-  private async azure(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const all = this.store
-      .getAllSessions()
-      .filter((s) => !!s.azureContext || s.userTags.includes('azure'));
-    if (all.length === 0) {
-      stream.markdown(
-        '_No Azure-tagged sessions yet. Try `GHCP-MEM: Seed Azure Demo Sessions` to see examples, or edit a `.bicep`/`azure.yaml` file._\n',
-      );
-      return;
-    }
-
-    const needle = query.trim().toLowerCase();
-    const filtered = !needle
-      ? all
-      : all.filter((s) => {
-          const hay = [
-            s.summary,
-            s.keyTopics.join(' '),
-            s.keyFiles.join(' '),
-            s.azureContext?.resourceGroup ?? '',
-            s.azureContext?.subscriptionName ?? '',
-            (s.azureContext?.resourceIds ?? []).join(' '),
-          ]
-            .join(' ')
-            .toLowerCase();
-          return hay.includes(needle);
-        });
-
-    if (filtered.length === 0) {
-      stream.markdown(`No Azure sessions matched "${query}".\n`);
-      return;
-    }
-
-    // Group by first subsystem (fallback 'azure')
-    const groups = new Map<string, typeof filtered>();
-    for (const s of filtered) {
-      const key = s.azureContext?.subsystems?.[0] ?? 'azure';
-      const arr = groups.get(key) ?? [];
-      arr.push(s);
-      groups.set(key, arr);
-    }
-
-    stream.markdown(
-      `## Azure sessions (${filtered.length})${needle ? ` matching "${query}"` : ''}\n\n`,
-    );
-    for (const [subsystem, sessions] of groups) {
-      stream.markdown(`### ${subsystem} (${sessions.length})\n\n`);
-      for (const s of sessions.slice(0, 6)) {
-        const date = new Date(s.startTime).toLocaleDateString();
-        const ac = s.azureContext;
-        const ctxLine = ac
-          ? `  \n  _${[ac.subscriptionName && `sub=${ac.subscriptionName}`, ac.resourceGroup && `rg=${ac.resourceGroup}`].filter(Boolean).join(' · ') || 'azure'}_`
-          : '';
-        stream.markdown(
-          `- **[${s.observationType}]** \`${s.id.substring(0, 8)}\` · ${date}  \n  ${s.summary.substring(0, 180)}${ctxLine}\n`,
-        );
-      }
-    }
-
-    stream.markdown(
-      `\n_Use \`@mem /detail <id>\` to expand one. Tip: \`#ghcpMemSearch\` in agent mode filters by Azure too._\n`,
-    );
-  }
 
   // ── Phase 2 Slice A: trust + correction commands ────────────────────────
 
@@ -757,314 +298,43 @@ export class ContextProvider implements vscode.Disposable {
    * per-file breakdown. Lets developers spot-check whether a memory is still
    * supported by the current code or has drifted/broken.
    */
-  private async verify(idPrefix: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const session = idPrefix
-      ? this.store.getById(idPrefix.trim())
-      : this.store.getRecentSessions(1)[0];
-    if (!session) {
-      stream.markdown(`No session found${idPrefix ? ` for ID "${idPrefix}"` : ''}.\n`);
-      return;
-    }
-    const result = await validateSession(session);
-    stream.markdown(`## 🔍 Verification — \`${session.id.substring(0, 8)}\`\n\n`);
-    stream.markdown(`**Summary:** ${session.summary}\n\n`);
-    if (typeof session.confidence === 'number') {
-      const emoji = session.confidence >= 0.75 ? '🟢' : session.confidence >= 0.5 ? '🟡' : '🔴';
-      stream.markdown(
-        `**Confidence (at capture):** ${emoji} ${session.confidence.toFixed(2)} (${session.compressorMode ?? '?'} mode)\n\n`,
-      );
-    }
-    if (result.emptyKeyFiles) {
-      stream.markdown(`_No key files to verify._\n`);
-      return;
-    }
-    stream.markdown(`**Grounded freshness:** ${(result.groundedFreshness * 100).toFixed(0)}%\n\n`);
-    const groups = {
-      verified: result.verifiedFiles,
-      drifted: result.driftedFiles,
-      missing: result.missing,
-    };
-    const neutral = Object.entries(result.verification)
-      .filter(([, v]) => v === 'neutral')
-      .map(([k]) => k);
-
-    if (groups.verified.length) {
-      stream.markdown(`### ✅ Verified (${groups.verified.length})\n`);
-      for (const f of groups.verified)
-        stream.markdown(`- \`${f}\` — content matches capture-time hash\n`);
-      stream.markdown('\n');
-    }
-    if (groups.drifted.length) {
-      stream.markdown(`### 🟡 Drifted (${groups.drifted.length})\n`);
-      for (const f of groups.drifted)
-        stream.markdown(`- \`${f}\` — file exists but content has changed since capture\n`);
-      stream.markdown('\n');
-    }
-    if (groups.missing.length) {
-      stream.markdown(`### 🔴 Missing (${groups.missing.length})\n`);
-      for (const f of groups.missing)
-        stream.markdown(`- \`${f}\` — file no longer present in workspace\n`);
-      stream.markdown('\n');
-    }
-    if (neutral.length) {
-      stream.markdown(`### ◌ Unverifiable (${neutral.length})\n`);
-      for (const f of neutral)
-        stream.markdown(`- \`${f}\` — no stored hash to compare against (legacy session)\n`);
-      stream.markdown('\n');
-    }
-    if (session.supersededBy) {
-      stream.markdown(
-        `> ⚠️ This session has been superseded by \`${session.supersededBy.substring(0, 8)}\` — \`@mem /detail ${session.supersededBy.substring(0, 8)}\` to view it.\n`,
-      );
-    }
-    if (session.retracted) {
-      stream.markdown(
-        `> 🚫 This session is retracted${session.retractedReason ? `: _${session.retractedReason}_` : ''}.\n`,
-      );
-    }
-  }
 
   /**
    * `/correct <id> <text>` — capture a correction note as a new session,
    * link it to the original, and supersede the original. Both rows are
    * kept on disk so the audit trail survives.
    */
-  private async correct(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const { idPrefix, text } = splitIdAndText(query);
-    if (!idPrefix || !text) {
-      stream.markdown(`Usage: \`/correct <session-id-prefix> <corrected text>\`\n`);
-      return;
-    }
-    const original = this.store.getById(idPrefix);
-    if (!original) {
-      stream.markdown(`No session found for ID "${idPrefix}".\n`);
-      return;
-    }
-    const cfg = getConfig();
-    const customRules = cfg.customRedactionRules;
-    const customSensitiveEntities = cfg.customSensitiveEntities;
-    const cleanedText = redact(text, {
-      redactSecrets: true,
-      honorPrivateTags: true,
-      customRules,
-      customSensitiveEntities,
-    }).text;
-    const now = Date.now();
-    const newId = crypto.randomUUID();
-    const summary = `Correction of ${original.id.substring(0, 8)}: ${cleanedText}`;
-    const correction: CompressedSession = {
-      id: newId,
-      workspaceId: original.workspaceId,
-      workspaceName: original.workspaceName,
-      startTime: now,
-      endTime: now,
-      summary,
-      observationType: original.observationType,
-      keyFiles: [...original.keyFiles],
-      keyTopics: [...original.keyTopics, 'correction'],
-      decisions: [cleanedText],
-      problemsSolved: [],
-      rawEventCount: 0,
-      userTags: ['correction'],
-      redactionCount: 0,
-      contentHash: computeContentHash({
-        summary,
-        keyFiles: original.keyFiles,
-        keyTopics: [...original.keyTopics, 'correction'],
-        decisions: [cleanedText],
-        problemsSolved: [],
-      }),
-      // Correction is a user-pinned source of truth — top confidence.
-      confidence: 1.0,
-      compressorMode: 'lm',
-      correctionOf: original.id,
-      repoScope: original.repoScope,
-      repoScopeLabel: original.repoScopeLabel,
-      branchName: original.branchName,
-    };
-    // Stamp the current repo scope if we still have it (handles workspace
-    // moves between capture and correction).
-    try {
-      const scope = await getRepoScope();
-      if (scope?.id) {
-        correction.repoScope = scope.id;
-        correction.repoScopeLabel = scope.label;
-      }
-    } catch {
-      /* keep inherited values */
-    }
-
-    await this.store.addSession(correction);
-    await this.store.addCorrection(original.id, newId);
-    stream.markdown(
-      `✅ Recorded correction \`${newId.substring(0, 8)}\` superseding \`${original.id.substring(0, 8)}\`.\n\n` +
-        `> ${cleanedText}\n`,
-    );
-  }
 
   /**
    * `/supersede <newerId> <olderId>` — mark one existing session as
    * superseding another. Both rows are retained.
    */
-  private async supersede(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const parts = query.trim().split(/\s+/);
-    if (parts.length < 2) {
-      stream.markdown(`Usage: \`/supersede <newerId> <olderId>\`\n`);
-      return;
-    }
-    const [newerPrefix, olderPrefix] = parts;
-    const newer = this.store.getById(newerPrefix);
-    const older = this.store.getById(olderPrefix);
-    if (!newer || !older) {
-      stream.markdown(
-        `Could not resolve one of the IDs (newer=${newer ? '✓' : '✗'}, older=${older ? '✓' : '✗'}).\n`,
-      );
-      return;
-    }
-    if (newer.id === older.id) {
-      stream.markdown(`Cannot supersede a session with itself.\n`);
-      return;
-    }
-    await this.store.setSupersedes(newer.id, older.id);
-    stream.markdown(
-      `✅ \`${newer.id.substring(0, 8)}\` now supersedes \`${older.id.substring(0, 8)}\`. ` +
-        `The older session stays on disk for audit but is excluded from injection and down-ranked in retrieval.\n`,
-    );
-  }
 
   /**
    * `/retract <id> [reason]` — exclude a session from retrieval and
    * injection. `/retract undo <id>` reverses the action.
    */
-  private async retract(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const trimmed = query.trim();
-    if (!trimmed) {
-      stream.markdown(
-        `Usage: \`/retract <session-id-prefix> [reason]\` or \`/retract undo <session-id-prefix>\`\n`,
-      );
-      return;
-    }
-    const parts = trimmed.split(/\s+/);
-    if (parts[0]?.toLowerCase() === 'undo') {
-      const target = this.store.getById(parts[1] ?? '');
-      if (!target) {
-        stream.markdown(`No session found for ID "${parts[1] ?? ''}".\n`);
-        return;
-      }
-      await this.store.undoRetract(target.id);
-      stream.markdown(`✅ Restored \`${target.id.substring(0, 8)}\` — back in retrieval pool.\n`);
-      return;
-    }
-    const { idPrefix, text } = splitIdAndText(trimmed);
-    const target = this.store.getById(idPrefix);
-    if (!target) {
-      stream.markdown(`No session found for ID "${idPrefix}".\n`);
-      return;
-    }
-    await this.store.setRetracted(target.id, text || undefined);
-    stream.markdown(
-      `🚫 Retracted \`${target.id.substring(0, 8)}\`. It will not appear in retrieval, injection, or exports. ` +
-        `Run \`/retract undo ${target.id.substring(0, 8)}\` to restore.\n`,
-    );
-  }
 
   /**
    * `/noise <id>` — mark a session as low-quality so it stops appearing
    * in startup injection and retrieval. `/noise undo <id>` reverses it.
    */
-  private async noise(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const trimmed = query.trim();
-    if (!trimmed) {
-      stream.markdown(
-        `Usage: \`/noise <session-id-prefix>\` or \`/noise undo <session-id-prefix>\`\n`,
-      );
-      return;
-    }
-    const parts = trimmed.split(/\s+/);
-    if (parts[0]?.toLowerCase() === 'undo') {
-      const target = this.store.getById(parts[1] ?? '');
-      if (!target) {
-        stream.markdown(`No session found for ID "${parts[1] ?? ''}".\n`);
-        return;
-      }
-      await this.store.undoNoise(target.id);
-      stream.markdown(
-        `✅ Restored \`${target.id.substring(0, 8)}\` — back in the retrieval pool.\n`,
-      );
-      return;
-    }
-    const target = this.store.getById(trimmed);
-    if (!target) {
-      stream.markdown(`No session found for ID "${trimmed}".\n`);
-      return;
-    }
-    await this.store.setNoise(target.id, true);
-    stream.markdown(
-      `🗑️ Marked \`${target.id.substring(0, 8)}\` as noise. Excluded from injection and retrieval, ` +
-        `and the ranker learned from it. Run \`/noise undo ${target.id.substring(0, 8)}\` to restore.\n`,
-    );
-  }
 
   /**
    * `/janitor` — manually run the quality re-scorer over every stored
    * session. Useful after raising or lowering `ghcpMem.qualityFloor`.
    */
-  private async janitor(stream: vscode.ChatResponseStream): Promise<void> {
-    const { runJanitor } = await import('./janitor');
-    const { getConfig } = await import('./types');
-    const cfg = getConfig();
-    const pruneAfterDays =
-      vscode.workspace.getConfiguration('ghcpMem').get<number>('janitorPruneAfterDays', 0) ?? 0;
-    const r = await runJanitor(this.store, {
-      qualityFloor: cfg.qualityFloor,
-      pruneAfterDays,
-    });
-    stream.markdown(
-      `🧹 Janitor: rescored **${r.rescored}**, flagged **${r.flagged}**, unflagged **${r.unflagged}**, pruned **${r.pruned}** (floor=${cfg.qualityFloor}).\n`,
-    );
-    if (r.lessonsCreated > 0 || r.lessonsReinforced > 0) {
-      stream.markdown(
-        `🎓 Lessons: **${r.lessonsCreated}** new, **${r.lessonsReinforced}** reinforced.\n`,
-      );
-    }
-  }
 
   /**
    * `/accept <id>` — strengthen a session's reinforcement signal so
    * subsequent searches rank it higher. Surfaced to developers as the
    * "I actually used this memory" handshake.
    */
-  private async accept(idPrefix: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const target = this.store.getById(idPrefix.trim());
-    if (!target) {
-      stream.markdown(`Usage: \`/accept <session-id-prefix>\`\n`);
-      return;
-    }
-    await this.store.recordAcceptance(target.id);
-    const a = target.usage?.accepted ?? 1;
-    const r = target.usage?.rejected ?? 0;
-    stream.markdown(
-      `👍 Marked \`${target.id.substring(0, 8)}\` as useful. Score: ${a} accept / ${r} reject.\n`,
-    );
-  }
 
   /**
    * `/reject <id>` — weaken a session's reinforcement signal. Use when a
    * retrieved memory was wrong or stale.
    */
-  private async reject(idPrefix: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const target = this.store.getById(idPrefix.trim());
-    if (!target) {
-      stream.markdown(`Usage: \`/reject <session-id-prefix>\`\n`);
-      return;
-    }
-    await this.store.recordRejection(target.id);
-    const a = target.usage?.accepted ?? 0;
-    const r = target.usage?.rejected ?? 1;
-    stream.markdown(
-      `👎 Marked \`${target.id.substring(0, 8)}\` as unhelpful. Score: ${a} accept / ${r} reject.\n`,
-    );
-  }
 
   /**
    * `/entity <key>` — aggregate every session that touched a file path or
@@ -1074,27 +344,6 @@ export class ContextProvider implements vscode.Disposable {
    * When no key is supplied, falls back to the file currently open in the
    * active editor so `@mem /entity` "just works" mid-coding.
    */
-  private async entity(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    let key = query.trim();
-    if (!key) {
-      const active = vscode.window.activeTextEditor?.document.uri;
-      if (active) key = vscode.workspace.asRelativePath(active);
-    }
-    if (!key) {
-      stream.markdown(
-        `Usage: \`/entity <file-path>\` or \`/entity <file-path>#<symbolName>\`. ` +
-          `Open a file in the editor to use \`/entity\` without an argument.\n`,
-      );
-      return;
-    }
-    const all = this.store.getAllSessions();
-    const rec = buildEntityRecord(key, all);
-    if (!rec) {
-      stream.markdown(`_No memory of \`${key}\` yet — try a different path or symbol._\n`);
-      return;
-    }
-    stream.markdown(renderEntityMarkdown(rec));
-  }
 
   /**
    * `/snippet <query>` — chunk-level retrieval. Returns the top decisions,
@@ -1104,110 +353,10 @@ export class ContextProvider implements vscode.Disposable {
    * Useful when you want the exact decision text ("we use bcrypt cost 12")
    * rather than a session-card blob that buries the answer.
    */
-  private async snippet(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    if (!query.trim()) {
-      stream.markdown(
-        `Usage: \`/snippet <keywords>\` — returns the top matching decisions, problems, summaries, and topics across all sessions.\n`,
-      );
-      return;
-    }
-    const cfg = getConfig();
-    const filters: import('./contextStore').SearchFilters = {};
-    if (cfg.scope === 'workspace') filters.workspaceOnly = true;
-    const hits = this.store.searchSnippets(query, filters, 10);
-    if (hits.length === 0) {
-      stream.markdown(`No snippets found for: "${query}"\n`);
-      return;
-    }
-    stream.markdown(`## 🧩 Snippet Results (${hits.length})\n\n`);
-    stream.markdown(
-      `_Chunk-level recall over all sessions. Click an ID for the full session._\n\n`,
-    );
-    const kindIcon: Record<string, string> = {
-      decision: '🧠',
-      problem: '🛠',
-      summary: '📝',
-      topic: '🏷',
-    };
-    for (const sn of hits) {
-      const icon = kindIcon[sn.kind] ?? '·';
-      const conf = typeof sn.confidence === 'number' ? ` · conf:${sn.confidence.toFixed(2)}` : '';
-      const ts = new Date(sn.emittedAt).toLocaleDateString();
-      const sessionLink = `\`${sn.sessionId.substring(0, 8)}\``;
-      const files = (sn.evidence ?? [])
-        .map((e) => e.filePath)
-        .filter((f): f is string => !!f)
-        .slice(0, 2);
-      const fileTail = files.length ? ` [📎 ${files.join(', ')}]` : '';
-      stream.markdown(
-        `- ${icon} **${sn.kind}** · ${sessionLink} · ${ts}${conf}\n  ${sn.text}${fileTail}\n\n`,
-      );
-    }
-  }
 
   /** `/conflicts [dismiss <id> [reason]]` — list or dismiss pending conflict warnings. */
-  private async conflicts(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const trimmed = (query ?? '').trim();
-    // Subcommand: dismiss <id> [reason]
-    if (trimmed.toLowerCase().startsWith('dismiss')) {
-      const rest = trimmed.slice('dismiss'.length).trim();
-      const [idPrefix, ...reasonParts] = rest.split(/\s+/);
-      if (!idPrefix) {
-        stream.markdown(`Usage: \`/conflicts dismiss <session-id-prefix> [reason]\`\n`);
-        return;
-      }
-      const target = this.store.getById(idPrefix);
-      if (!target) {
-        stream.markdown(`No session found for ID "${idPrefix}".\n`);
-        return;
-      }
-      const reason = reasonParts.length ? reasonParts.join(' ') : 'Manually dismissed';
-      const ok = this.store.acknowledgeConflict(target.id, reason);
-      if (!ok) {
-        stream.markdown(`No pending conflict for \`${target.id.substring(0, 8)}\`.\n`);
-        return;
-      }
-      stream.markdown(
-        `✅ Dismissed conflict for \`${target.id.substring(0, 8)}\` — reason: _${reason}_\n`,
-      );
-      return;
-    }
-
-    const warnings = this.store.getPendingConflicts();
-    if (warnings.length === 0) {
-      stream.markdown(`✅ No pending conflicts.\n`);
-      return;
-    }
-    stream.markdown(`## ⚠️ Pending Conflicts (${warnings.length})\n\n`);
-    stream.markdown(
-      `_Decisions that contained contradiction markers and overlap with older sessions. Review and \`/supersede\` (auto-acknowledges) or \`/conflicts dismiss <id> [reason]\` to ignore._\n\n`,
-    );
-    for (const w of warnings) {
-      stream.markdown(renderConflictWarning(w));
-    }
-  }
 
   /** `/lineage <id>` — render the cross-session causal chain for a session. */
-  private async lineage(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const idPrefix = query.trim();
-    if (!idPrefix) {
-      stream.markdown(
-        `Usage: \`/lineage <session-id-prefix>\` — shows predecessors and successors (sessions sharing files within ±30 days).\n`,
-      );
-      return;
-    }
-    const target = this.store.getById(idPrefix);
-    if (!target) {
-      stream.markdown(`No session found for ID "${idPrefix}".\n`);
-      return;
-    }
-    const neighbors = getCausalNeighbors(target.id, this.store.getAllSessions());
-    if (!neighbors) {
-      stream.markdown(`Could not compute lineage for "${idPrefix}".\n`);
-      return;
-    }
-    stream.markdown(renderCausalNeighbors(neighbors));
-  }
 
   /**
    * `/why <query> :: <session-id-prefix>` — score-decomposition explainer.
@@ -1217,39 +366,6 @@ export class ContextProvider implements vscode.Disposable {
    * string as an ID and use the most-recent retrieved session's query if
    * available.
    */
-  private async why(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const trimmed = (query ?? '').trim();
-    if (!trimmed) {
-      stream.markdown(
-        `Usage: \`/why <query terms> :: <session-id-prefix>\` — breaks down why a session ranked where it did.\n`,
-      );
-      return;
-    }
-    let q: string;
-    let idPart: string;
-    const sepIdx = trimmed.indexOf('::');
-    if (sepIdx === -1) {
-      // ID-only form: use the session's most prominent topic as the query.
-      idPart = trimmed;
-      const found = this.store.getById(idPart);
-      q = (found?.keyTopics[0] ?? found?.summary ?? '').slice(0, 80);
-    } else {
-      q = trimmed.slice(0, sepIdx).trim();
-      idPart = trimmed.slice(sepIdx + 2).trim();
-    }
-    const target = this.store.getById(idPart);
-    if (!target) {
-      stream.markdown(`No session found for ID "${idPart}".\n`);
-      return;
-    }
-    const wsId = vscode.workspace.workspaceFolders?.[0]?.uri.toString();
-    const explanation = explainScore(target, q, {
-      allSessions: this.store.getAllSessions(),
-      learnedWeights: this.store.getAdaptiveWeights(),
-      activeWorkspaceId: wsId,
-    });
-    stream.markdown(renderExplanation(explanation));
-  }
 
   /**
    * `/graph` — emit the full decision graph as a Mermaid flowchart.
@@ -1258,40 +374,12 @@ export class ContextProvider implements vscode.Disposable {
    * touch the file. Output is a fenced ```mermaid block ready to paste
    * into a PR, ADR, or docs page.
    */
-  private async graph(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const trimmed = (query ?? '').trim();
-    const fileFilter = trimmed.startsWith('file:') ? trimmed.slice(5).trim() : undefined;
-    let sessions = this.store.getAllSessions();
-    if (fileFilter) {
-      const want = fileFilter.toLowerCase();
-      sessions = sessions.filter((s) => s.keyFiles.some((f) => f.toLowerCase().includes(want)));
-    }
-    if (sessions.length === 0) {
-      stream.markdown(
-        `_No sessions to graph${fileFilter ? ` for filter "${fileFilter}"` : ''}._\n`,
-      );
-      return;
-    }
-    const mermaid = buildMermaidGraph(sessions);
-    stream.markdown(`## 🕸 Decision Graph${fileFilter ? ` — \`${fileFilter}\`` : ''}\n\n`);
-    stream.markdown(`\`\`\`mermaid\n${mermaid}\n\`\`\`\n`);
-    stream.markdown(
-      `\n_${sessions.length} session(s). Solid arrows = supersession, dashed = correction, dotted = causal (bugfix follows feature)._\n`,
-    );
-  }
 
   /**
    * `/compliance` — print an audit-friendly posture report: grounding
    * coverage, trust distribution, conflict counts, redaction stats,
    * custom-entity inventory. Ideal for enterprise security reviews.
    */
-  private async compliance(stream: vscode.ChatResponseStream): Promise<void> {
-    const cfg = getConfig();
-    const report = buildComplianceReport(this.store.getAllSessions(), {
-      customSensitiveEntities: cfg.customSensitiveEntities,
-    });
-    stream.markdown(renderComplianceReport(report));
-  }
 
   /**
    * `/route <query>` — context-acquisition recommender. Tells you (or the
@@ -1301,100 +389,12 @@ export class ContextProvider implements vscode.Disposable {
    * Auto-resolves the byte size of any file path mentioned in the query so
    * the per-action estimate reflects the actual workspace, not a guess.
    */
-  private async route(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const q = (query ?? '').trim();
-    if (!q) {
-      stream.markdown(
-        `Usage: \`/route <your question>\` — returns the cheapest way to satisfy it (MCP vs file open).\n`,
-      );
-      return;
-    }
-    // Look up file sizes for any path the query mentions so the cost
-    // estimate reflects the actual workspace instead of the default.
-    const mentioned = extractMentionedPaths(q);
-    const ws = vscode.workspace.workspaceFolders?.[0]?.uri;
-    const fileSizes: Record<string, number> = {};
-    if (ws) {
-      for (const rawPath of mentioned) {
-        const path = rawPath.replace(/#.*$/, '');
-        try {
-          const uri = vscode.Uri.joinPath(ws, path);
-          const stat = await vscode.workspace.fs.stat(uri);
-          fileSizes[path] = stat.size;
-        } catch {
-          /* file may not exist; default kicks in */
-        }
-      }
-    }
-    const rec = recommend(q, { fileSizes, mcpAvailable: true });
-    stream.markdown(renderRecommendation(rec));
-  }
 
   /**
    * `/lessons` — list the consolidated semantic + procedural lessons.
    * `/lessons add <text>` pins a hand-authored lesson (the hot-path
    * "remember this" write). `/lessons forget <id>` deletes one.
    */
-  private async lessons(query: string, stream: vscode.ChatResponseStream): Promise<void> {
-    const trimmed = query.trim();
-    const [verb, ...rest] = trimmed.split(/\s+/);
-    const arg = rest.join(' ').trim();
-
-    if (verb?.toLowerCase() === 'add') {
-      if (!arg) {
-        stream.markdown('Usage: `/lessons add <a fact or how-to worth remembering>`\n');
-        return;
-      }
-      const cfg = getConfig();
-      const cleanText = redact(arg, {
-        redactSecrets: true,
-        honorPrivateTags: true,
-        customRules: cfg.customRedactionRules,
-        customSensitiveEntities: cfg.customSensitiveEntities,
-      }).text;
-      const lesson = makePinnedLesson(cleanText);
-      await this.store.addLesson(lesson);
-      const kindLabel = lesson.kind === 'procedural' ? 'how-to' : 'fact';
-      stream.markdown(`📌 Pinned ${kindLabel} \`${lesson.id.substring(0, 8)}\`: ${lesson.text}\n`);
-      return;
-    }
-
-    if (verb?.toLowerCase() === 'forget') {
-      if (!arg) {
-        stream.markdown('Usage: `/lessons forget <lesson-id-prefix>`\n');
-        return;
-      }
-      const removed = await this.store.deleteLesson(arg);
-      stream.markdown(
-        removed ? `🗑️ Forgot lesson \`${arg}\`.\n` : `No lesson found for ID "${arg}".\n`,
-      );
-      return;
-    }
-
-    const all = rankLessons(this.store.getLessons());
-    if (all.length === 0) {
-      stream.markdown(
-        'No consolidated lessons yet. They form automatically once a decision or fix recurs ' +
-          'across sessions (run `/janitor` to consolidate now), or pin one with `/lessons add <text>`.\n',
-      );
-      return;
-    }
-    const facts = all.filter((l) => l.kind === 'semantic');
-    const howtos = all.filter((l) => l.kind === 'procedural');
-    stream.markdown(`## 🎓 Durable lessons (${all.length})\n\n`);
-    const renderRow = (l: (typeof all)[number]): string => {
-      const pin = l.pinned ? ' 📌' : '';
-      const seen = l.pinned ? '' : ` _(seen ×${l.supportCount})_`;
-      const scope = l.scopeLabel ? ` · \`${l.scopeLabel}\`` : '';
-      return `- \`${l.id.substring(0, 8)}\`${pin} ${l.text}${seen}${scope}`;
-    };
-    if (facts.length) {
-      stream.markdown(`### Facts\n\n${facts.map(renderRow).join('\n')}\n\n`);
-    }
-    if (howtos.length) {
-      stream.markdown(`### How-to\n\n${howtos.map(renderRow).join('\n')}\n`);
-    }
-  }
 
   // ── Durable project memory rules (team-shared, git-committed) ──
 
@@ -1697,21 +697,6 @@ export class ContextProvider implements vscode.Disposable {
    * inline in the chat. Handy for pasting into a PR description, a design
    * doc, or commit message. Falls back to "most recent" when no id is given.
    */
-  private async export(idPrefix: string, stream: vscode.ChatResponseStream): Promise<void> {
-    let s: CompressedSession | undefined;
-    if (idPrefix) {
-      s = this.store.getById(idPrefix);
-    } else {
-      const recent = this.store.getRecentSessions(1);
-      s = recent[0];
-    }
-    if (!s) {
-      stream.markdown(`No session found${idPrefix ? ` for ID "${idPrefix}"` : ''}.\n`);
-      return;
-    }
-    const md = exportSessionMarkdown(s);
-    stream.markdown('```markdown\n' + md + '\n```\n');
-  }
 
   // ── LM-powered smart commands ──
 
@@ -1720,323 +705,22 @@ export class ContextProvider implements vscode.Disposable {
    * from the last 24 h of coding sessions. Pass "yesterday" to scope to
    * the previous calendar day.
    */
-  private async standup(
-    query: string,
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    const isYesterday = /yesterday|yday|ytd/i.test(query);
-    const now = Date.now();
-    const dayStart = new Date().setHours(0, 0, 0, 0);
-    const windowStart = isYesterday ? dayStart - 86_400_000 : now - 86_400_000;
-    const windowEnd = isYesterday ? dayStart : now;
-
-    const sessions = this.store
-      .getAllSessions()
-      .filter(
-        (s) =>
-          s.endTime >= windowStart && s.endTime <= windowEnd && !s.userTags.includes('private'),
-      );
-
-    if (sessions.length === 0) {
-      stream.markdown(
-        '_No sessions found for this time window. Keep coding and try again later!_\n',
-      );
-      return;
-    }
-
-    const sessionBlocks = sessions
-      .map(
-        (s) =>
-          `[${s.observationType.toUpperCase()}] ${new Date(s.startTime).toLocaleTimeString()}\n` +
-          `Summary: ${s.summary}\n` +
-          (s.keyFiles.length ? `Files: ${s.keyFiles.slice(0, 5).join(', ')}\n` : '') +
-          (s.decisions.length ? `Decisions: ${s.decisions.join('; ')}\n` : '') +
-          (s.problemsSolved.length ? `Solved: ${s.problemsSolved.join('; ')}\n` : '') +
-          (s.keyTopics.length ? `Topics: ${s.keyTopics.join(', ')}\n` : ''),
-      )
-      .join('\n---\n');
-
-    const dateLabel = isYesterday
-      ? new Date(dayStart - 1).toLocaleDateString()
-      : new Date().toLocaleDateString();
-
-    const prompt = [
-      'You are a senior software engineer writing a standup note for your team.',
-      'Generate a concise, professional standup from the coding sessions below.',
-      'Format strictly as:\n## Yesterday\n- ...\n## Today\n- ...\n## Blockers\n- ...',
-      'Use past tense for Yesterday. Infer "Today" from open threads and decisions.',
-      'If no blockers, write "None".',
-      'Keep each bullet under 15 words. Do NOT include the raw session IDs.',
-      '',
-      `Sessions for ${dateLabel}:`,
-      sessionBlocks,
-    ].join('\n');
-
-    stream.markdown(`## 📋 Standup · ${dateLabel}\n\n`);
-    stream.markdown(
-      `_Based on ${sessions.length} session(s) · Copy and paste into your team channel._\n\n---\n\n`,
-    );
-
-    await this.streamLm(prompt, stream, request, token);
-
-    stream.markdown(
-      `\n\n---\n_Powered by GHCP-MEM · [@mem /recap](command:) for a weekly narrative · [@mem /commit](command:) for a commit message_\n`,
-    );
-  }
 
   /**
    * `/commit` — Generate a conventional commit message from the current
    * git staged diff and any sessions that overlap the staged files.
    */
-  private async commit(
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    const wsRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!wsRoot) {
-      stream.markdown('_Open a workspace with a git repository first._\n');
-      return;
-    }
-
-    let stagedFiles: string[] = [];
-    let diffStat = '';
-    let diffSnippet = '';
-
-    try {
-      // v1.11.0 hardening: switched from execAsync (shell) to execFileAsync
-      // (no shell, args passed individually) to match the existing pattern in
-      // /pr (this file:2574, 2590). No user input flows into these argv arrays
-      // today, but using a shell here was a needless deviation from the
-      // codebase's own security posture and the next maintainer to add a
-      // user-supplied flag would have inherited a shell-injection footgun.
-      const { stdout: names } = await execFileAsync('git', ['diff', '--cached', '--name-only'], {
-        cwd: wsRoot,
-      });
-      stagedFiles = names.trim().split('\n').filter(Boolean);
-      const { stdout: stat } = await execFileAsync('git', ['diff', '--cached', '--stat'], {
-        cwd: wsRoot,
-      });
-      diffStat = stat.trim();
-      // Grab a short diff snippet (first 3000 chars of actual diff)
-      const { stdout: diff } = await execFileAsync('git', ['diff', '--cached', '--unified=2'], {
-        cwd: wsRoot,
-      });
-      diffSnippet = diff.substring(0, 3000);
-    } catch {
-      stream.markdown('_No staged changes found. Stage your changes with `git add` first._\n');
-      return;
-    }
-
-    if (stagedFiles.length === 0) {
-      stream.markdown('_No staged files found. Run `git add <files>` before using `/commit`._\n');
-      return;
-    }
-
-    // Find sessions whose key files overlap with staged files
-    const relatedSessions = this.store
-      .getAllSessions()
-      .filter((s) =>
-        s.keyFiles.some((f) => stagedFiles.some((sf) => sf.includes(f) || f.includes(sf))),
-      )
-      .slice(0, 5);
-
-    const sessionContext = relatedSessions.length
-      ? '\n\nRelated coding sessions:\n' +
-        relatedSessions
-          .map(
-            (s) =>
-              `- [${s.observationType}] ${s.summary.substring(0, 150)}\n` +
-              (s.decisions.length ? `  Decisions: ${s.decisions.slice(0, 2).join('; ')}\n` : '') +
-              (s.problemsSolved.length
-                ? `  Solved: ${s.problemsSolved.slice(0, 2).join('; ')}\n`
-                : ''),
-          )
-          .join('')
-      : '';
-
-    const prompt = [
-      'Generate a conventional commit message (https://conventionalcommits.org) for these staged changes.',
-      'Format: <type>(<optional-scope>): <short description>',
-      '',
-      'Types: feat, fix, refactor, docs, test, chore, ci, perf, build',
-      'Rules: imperative mood, max 72 chars for first line, optional body with "why" not "what".',
-      'After the commit message, add a blank line then a short "Why:" paragraph (1-2 sentences).',
-      '',
-      `Staged files (${stagedFiles.length}):`,
-      stagedFiles.slice(0, 20).join('\n'),
-      '',
-      'Git diff stat:',
-      diffStat,
-      '',
-      'Diff snippet:',
-      diffSnippet,
-      sessionContext,
-    ].join('\n');
-
-    stream.markdown(`## $(git-commit) Commit Message\n\n`);
-    stream.markdown(
-      `_Staged: \`${stagedFiles.slice(0, 3).join('`, `')}${stagedFiles.length > 3 ? `\` +${stagedFiles.length - 3} more` : '`'}_\n\n`,
-    );
-    stream.markdown('```\n');
-
-    await this.streamLm(prompt, stream, request, token);
-
-    stream.markdown('\n```\n\n');
-    stream.markdown('_Copy the block above, then run `git commit -m "<message>"`_\n');
-  }
 
   /**
    * `/ask <question>` — RAG question-answering over the full session history.
    * Finds the most relevant sessions via BM25 and uses the LM to synthesise
    * a grounded, cited answer.
    */
-  private async ask(
-    question: string,
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    if (!question) {
-      stream.markdown(
-        'Ask me anything about your coding history. Example: `@mem /ask why did we change the scoring algorithm?`\n',
-      );
-      return;
-    }
-
-    const { cleaned, filters } = parseInlineFilters(question);
-    const hits = this.store.search(cleaned || question, filters, 8);
-
-    if (hits.length === 0) {
-      stream.markdown(
-        `_No sessions found matching your question. Try \`@mem /search ${question}\` for a broader look._\n`,
-      );
-      return;
-    }
-
-    const contextBlocks = hits
-      .map(
-        (s, i) =>
-          `[${i + 1}] Session ${s.id.substring(0, 8)} · ${new Date(s.startTime).toLocaleDateString()} · [${s.observationType}]\n` +
-          `${s.summary}\n` +
-          (s.keyFiles.length ? `Files: ${s.keyFiles.slice(0, 5).join(', ')}\n` : '') +
-          (s.decisions.length ? `Decisions: ${s.decisions.join('; ')}\n` : '') +
-          (s.problemsSolved.length ? `Solved: ${s.problemsSolved.join('; ')}\n` : ''),
-      )
-      .join('\n\n');
-
-    const prompt = [
-      "You are answering a developer's question about their own coding history.",
-      'Answer concisely and factually based ONLY on the session context below.',
-      'When citing a session, use its short ID like: (session abc12345)',
-      'If the answer is not in the sessions, say so honestly.',
-      '',
-      `Developer's question: ${question}`,
-      '',
-      '--- Session context ---',
-      contextBlocks,
-      '--- End context ---',
-    ].join('\n');
-
-    stream.markdown(`## 🧠 Memory Answer\n\n`);
-    stream.markdown(`_Searching ${hits.length} relevant session(s)…_\n\n`);
-
-    await this.streamLm(prompt, stream, request, token);
-
-    stream.markdown(
-      `\n\n---\n_Cited from ${hits.length} session(s). Use \`@mem /detail <id>\` to expand any session._\n`,
-    );
-  }
 
   /**
    * `/recap [7d|30d|this week|this month]` — AI narrative recap for
    * retrospectives, weekly reviews, or knowledge transfer docs.
    */
-  private async recap(
-    query: string,
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    let days = 7;
-    const match = query.match(/(\d+)\s*d/i);
-    if (match) days = Math.min(parseInt(match[1], 10), 365);
-    else if (/month|30d/i.test(query)) days = 30;
-    else if (/quarter|90d/i.test(query)) days = 90;
-
-    const since = Date.now() - days * 86_400_000;
-    const sessions = this.store
-      .getAllSessions()
-      .filter((s) => s.endTime >= since && !s.userTags.includes('private'))
-      .sort((a, b) => a.startTime - b.startTime);
-
-    if (sessions.length === 0) {
-      stream.markdown(`_No sessions in the last ${days} days._\n`);
-      return;
-    }
-
-    // Group by type
-    const byType = new Map<string, CompressedSession[]>();
-    for (const s of sessions) {
-      const arr = byType.get(s.observationType) ?? [];
-      arr.push(s);
-      byType.set(s.observationType, arr);
-    }
-
-    const allDecisions = Array.from(new Set(sessions.flatMap((s) => s.decisions))).slice(0, 15);
-    const allProblems = Array.from(new Set(sessions.flatMap((s) => s.problemsSolved))).slice(0, 10);
-    const allTopics = Array.from(new Set(sessions.flatMap((s) => s.keyTopics))).slice(0, 20);
-    const allFiles = Array.from(new Set(sessions.flatMap((s) => s.keyFiles))).slice(0, 15);
-
-    const typeBreakdown = Array.from(byType.entries())
-      .map(([t, ss]) => `${t}: ${ss.length} session(s)`)
-      .join(', ');
-
-    const summaries = sessions
-      .slice(0, 20)
-      .map(
-        (s) =>
-          `[${s.observationType}] ${new Date(s.startTime).toLocaleDateString()}: ${s.summary.substring(0, 200)}`,
-      )
-      .join('\n');
-
-    const prompt = [
-      `Write an engaging engineering recap for the last ${days} days of coding work.`,
-      'Structure as markdown with these sections:',
-      '## What We Built / What Happened',
-      '## Key Decisions Made',
-      '## Problems Conquered',
-      '## Areas of Focus (files & technologies)',
-      '## Looking Ahead (infer from open threads)',
-      '',
-      'Write narratively — not just bullet lists. Highlight patterns and progress.',
-      `Tone: professional but human. Total length: ~300 words.`,
-      '',
-      `Sessions (${sessions.length} total across ${days} days):`,
-      `Type breakdown: ${typeBreakdown}`,
-      `Topics: ${allTopics.join(', ')}`,
-      `Active files: ${allFiles.join(', ')}`,
-      '',
-      'Session summaries:',
-      summaries,
-      '',
-      `Key decisions: ${allDecisions.join('; ')}`,
-      `Problems solved: ${allProblems.join('; ')}`,
-    ].join('\n');
-
-    stream.markdown(`## 📰 ${days}-Day Engineering Recap\n\n`);
-    stream.markdown(
-      `_${sessions.length} sessions · ${new Date(since).toLocaleDateString()} → today_\n\n---\n\n`,
-    );
-
-    await this.streamLm(prompt, stream, request, token);
-
-    stream.markdown(
-      `\n\n---\n_${sessions.length} sessions analysed · Use \`@mem /standup\` for a daily note or \`@mem /export <id>\` to share a session._\n`,
-    );
-  }
 
   // ── Token Savings ──
 
@@ -2047,94 +731,6 @@ export class ContextProvider implements vscode.Disposable {
    * "You were in the middle of X. Last file touched: Y. These things were left TODO."
    * Designed for returning after hours/days away and getting back into flow instantly.
    */
-  private async whereami(
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    const all = this.store.getAllSessions();
-    if (all.length === 0) {
-      stream.markdown(
-        '_No sessions found. Start coding and GHCP-MEM will track your work automatically._\n',
-      );
-      return;
-    }
-
-    // Last 3 sessions for context
-    const recent = [...all].sort((a, b) => b.endTime - a.endTime).slice(0, 5);
-    const last = recent[0];
-    const lastDate = new Date(last.endTime).toLocaleString();
-    const ago = this.formatAgo(last.endTime);
-    const branch = last.branchName ? ` on \`${last.branchName}\`` : '';
-
-    stream.markdown(`## 🧭 Where You Were\n\n`);
-    stream.markdown(`**Last active:** ${lastDate} (${ago})${branch}\n\n`);
-
-    // Extract open TODOs / incomplete signals from recent sessions
-    const todoSignals: string[] = [];
-    for (const s of recent) {
-      for (const p of s.problemsSolved) {
-        if (/TODO|FIXME|WIP|incomplete|partial|left off|next step|still need/i.test(p)) {
-          todoSignals.push(`- ${p} _(${new Date(s.startTime).toLocaleDateString()})_`);
-        }
-      }
-      for (const d of s.decisions) {
-        if (/TODO|FIXME|WIP|incomplete|still need|plan to|will|next/i.test(d)) {
-          todoSignals.push(`- ${d} _(${new Date(s.startTime).toLocaleDateString()})_`);
-        }
-      }
-    }
-
-    // Summary of last 3 sessions
-    stream.markdown(`### 📋 Recent Activity\n\n`);
-    for (const s of recent.slice(0, 3)) {
-      const when = this.formatAgo(s.endTime);
-      const br = s.branchName ? ` · \`${s.branchName}\`` : '';
-      stream.markdown(
-        `**${when}** [${s.observationType}]${br}\n${s.summary.substring(0, 200)}\n\n`,
-      );
-      if (s.keyFiles.length) {
-        stream.markdown(
-          `_Files: ${s.keyFiles
-            .slice(0, 4)
-            .map((f) => `\`${f}\``)
-            .join(', ')}_\n\n`,
-        );
-      }
-    }
-
-    if (todoSignals.length > 0) {
-      stream.markdown(`### ⚠️ Likely Open Threads\n\n`);
-      stream.markdown(todoSignals.slice(0, 8).join('\n') + '\n\n');
-    }
-
-    // AI re-entry brief
-    stream.markdown(`### 🤖 Re-entry Brief\n\n`);
-    const recentContext = recent
-      .slice(0, 3)
-      .map(
-        (s) =>
-          `[${new Date(s.startTime).toLocaleDateString()} · ${s.observationType}] ${s.summary}\nFiles: ${s.keyFiles.slice(0, 5).join(', ')}\nDecisions: ${s.decisions.slice(0, 3).join('; ')}`,
-      )
-      .join('\n\n');
-
-    const prompt = [
-      'A developer is returning to work after a break. Based on their recent coding sessions below, write a concise re-entry brief (4-6 sentences):',
-      '1. What they were working on',
-      '2. Where they likely left off',
-      '3. The single most important next step to get back into flow',
-      'Be direct and practical. No preamble.',
-      '',
-      'Recent sessions:',
-      recentContext,
-    ].join('\n');
-
-    await this.streamLm(prompt, stream, request, token);
-
-    stream.markdown(
-      `\n\n---\n_Use \`@mem /standup\` for a daily summary or \`@mem /debt\` to see open technical debt._\n`,
-    );
-  }
 
   // ── Technical Debt Ledger ──
 
@@ -2143,142 +739,6 @@ export class ContextProvider implements vscode.Disposable {
    * Parses sessions for TODO/FIXME/HACK/workaround/shortcut signals,
    * groups by file and age, and generates an AI prioritisation.
    */
-  private async debt(
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    const all = this.store.getAllSessions();
-    if (all.length === 0) {
-      stream.markdown(
-        '_No sessions found yet — GHCP-MEM will detect debt signals automatically as you code._\n',
-      );
-      return;
-    }
-
-    const DEBT_PATTERNS = [
-      /TODO/i,
-      /FIXME/i,
-      /HACK/i,
-      /XXX/i,
-      /WORKAROUND/i,
-      /quick.?fix/i,
-      /shortcut/i,
-      /tech.?debt/i,
-      /temporary/i,
-      /revisit/i,
-      /clean.?up/i,
-      /refactor/i,
-      /not.?ideal/i,
-      /should.?be/i,
-      /needs?.to/i,
-      /broken/i,
-      /fragile/i,
-    ];
-
-    interface DebtItem {
-      text: string;
-      file?: string;
-      date: string;
-      age: number; // days
-      type: string;
-      sessionId: string;
-    }
-
-    const debtItems: DebtItem[] = [];
-    const seen = new Set<string>();
-
-    for (const s of [...all].sort((a, b) => a.startTime - b.startTime)) {
-      const allTexts = [
-        ...s.problemsSolved.map((t) => ({ text: t, file: s.keyFiles[0] })),
-        ...s.decisions.map((t) => ({ text: t, file: s.keyFiles[0] })),
-        ...(s.summary ? [{ text: s.summary, file: s.keyFiles[0] }] : []),
-      ];
-
-      for (const { text, file } of allTexts) {
-        if (DEBT_PATTERNS.some((p) => p.test(text))) {
-          // Extract the specific sentence with the debt signal
-          const sentences = text.split(/[.!?\n]/).filter((t) => t.trim());
-          for (const sentence of sentences) {
-            if (DEBT_PATTERNS.some((p) => p.test(sentence))) {
-              const key = sentence.trim().toLowerCase().substring(0, 80);
-              if (!seen.has(key) && sentence.trim().length > 10) {
-                seen.add(key);
-                debtItems.push({
-                  text: sentence.trim(),
-                  file,
-                  date: new Date(s.startTime).toLocaleDateString(),
-                  age: Math.round((Date.now() - s.startTime) / 86_400_000),
-                  type: s.observationType,
-                  sessionId: s.id.substring(0, 8),
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (debtItems.length === 0) {
-      stream.markdown('## 🏆 Technical Debt Ledger\n\n');
-      stream.markdown('_No debt signals detected in session history. Keep it clean!_\n\n');
-      stream.markdown(
-        '_GHCP-MEM looks for: TODO, FIXME, HACK, workaround, quick fix, refactor, fragile, and similar signals._\n',
-      );
-      return;
-    }
-
-    // Sort by age (oldest first — highest priority)
-    debtItems.sort((a, b) => b.age - a.age);
-
-    // Group by age buckets
-    const old = debtItems.filter((d) => d.age > 30);
-    const medium = debtItems.filter((d) => d.age > 7 && d.age <= 30);
-    const fresh = debtItems.filter((d) => d.age <= 7);
-
-    stream.markdown(`## ⚠️ Technical Debt Ledger\n\n`);
-    stream.markdown(`_${debtItems.length} debt signal(s) found across ${all.length} sessions_\n\n`);
-
-    const renderGroup = (label: string, icon: string, items: DebtItem[]) => {
-      if (items.length === 0) return;
-      stream.markdown(`### ${icon} ${label} (${items.length})\n\n`);
-      for (const d of items.slice(0, 10)) {
-        const file = d.file ? ` · \`${d.file}\`` : '';
-        stream.markdown(
-          `- **${d.text.substring(0, 120)}**  \n  _${d.date} · ${d.age}d ago${file} · session \`${d.sessionId}\`_\n`,
-        );
-      }
-      if (items.length > 10) stream.markdown(`_...and ${items.length - 10} more_\n`);
-      stream.markdown('\n');
-    };
-
-    renderGroup('Critical — older than 30 days', '🔴', old);
-    renderGroup('Aging — 8–30 days', '🟡', medium);
-    renderGroup('Recent — last 7 days', '🟢', fresh);
-
-    // AI prioritisation
-    stream.markdown('---\n\n### 🤖 AI Prioritisation\n\n');
-    const topDebt = debtItems
-      .slice(0, 15)
-      .map((d) => `- [${d.age}d old] ${d.text}`)
-      .join('\n');
-    const prompt = [
-      "Below is a list of technical debt items extracted from a developer's coding session history.",
-      'Write a prioritised action plan (max 5 items) focusing on:',
-      '1. Items that are oldest and most likely to cause problems',
-      '2. Items that are blocking other work',
-      '3. Quick wins that can be resolved in < 1 hour',
-      'Format as a numbered list. Be concise and actionable.',
-      '',
-      'Debt items:',
-      topDebt,
-    ].join('\n');
-
-    await this.streamLm(prompt, stream, request, token);
-    stream.markdown(
-      `\n\n---\n_Use \`@mem /precommit\` before your next commit to check for architectural regressions._\n`,
-    );
-  }
 
   // ── Auto-generated ADRs ──
 
@@ -2287,102 +747,6 @@ export class ContextProvider implements vscode.Disposable {
    * session history. Goes beyond `/decisions` by producing a structured
    * ADR document: Title / Status / Context / Decision / Consequences.
    */
-  private async adr(
-    query: string,
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    let sessions = this.store
-      .getAllSessions()
-      .filter((s) => s.decisions.length > 0 || s.keyTopics.length > 0);
-
-    if (query) {
-      const q = query.toLowerCase();
-      sessions = sessions.filter(
-        (s) =>
-          s.decisions.some((d) => d.toLowerCase().includes(q)) ||
-          s.keyTopics.some((t) => t.toLowerCase().includes(q)) ||
-          s.summary.toLowerCase().includes(q),
-      );
-    }
-
-    if (sessions.length === 0) {
-      stream.markdown(
-        query
-          ? `_No sessions found matching "${query}". Try a broader term or run \`@mem /decisions\` to see all recorded decisions._\n`
-          : '_No sessions with decisions found yet. GHCP-MEM extracts decisions automatically as you code._\n',
-      );
-      return;
-    }
-
-    // Collect all decisions and topics
-    const allDecisions = sessions.flatMap((s) => s.decisions);
-    const allTopics = sessions.flatMap((s) => s.keyTopics);
-    const allSummaries = sessions.map((s) => s.summary);
-    const allFiles = [...new Set(sessions.flatMap((s) => s.keyFiles))].slice(0, 20);
-    const dateRange =
-      sessions.length > 0
-        ? `${new Date(Math.min(...sessions.map((s) => s.startTime))).toLocaleDateString()} – ${new Date(Math.max(...sessions.map((s) => s.endTime))).toLocaleDateString()}`
-        : 'unknown';
-
-    stream.markdown(`## 📄 Architecture Decision Record\n\n`);
-    if (query)
-      stream.markdown(`_Topic: "${query}" · ${sessions.length} session(s) · ${dateRange}_\n\n`);
-    else stream.markdown(`_${sessions.length} session(s) with decisions · ${dateRange}_\n\n`);
-    stream.markdown(
-      `_Affected files: ${allFiles
-        .slice(0, 8)
-        .map((f) => `\`${f}\``)
-        .join(', ')}_\n\n`,
-    );
-    stream.markdown('---\n\n');
-
-    const prompt = [
-      'Generate a formal Architecture Decision Record (ADR) based on the developer session history below.',
-      'Use this exact structure:',
-      '',
-      '# ADR: [descriptive title]',
-      '',
-      '## Status',
-      'Accepted | Proposed | Deprecated (choose the most appropriate)',
-      '',
-      '## Context',
-      'What problem or need drove this decision? What was the situation?',
-      '',
-      '## Decision',
-      'What was decided? Be specific and authoritative.',
-      '',
-      '## Options Considered',
-      'List 2-3 alternatives that were likely considered (infer from context if needed).',
-      '',
-      '## Consequences',
-      '### Positive',
-      '- list benefits',
-      '### Negative / Trade-offs',
-      '- list downsides or constraints',
-      '',
-      '## Related Files',
-      'List the key files involved.',
-      '',
-      'Base the ADR on these session insights:',
-      '',
-      `Decisions recorded:\n${allDecisions
-        .slice(0, 20)
-        .map((d) => `- ${d}`)
-        .join('\n')}`,
-      '',
-      `Topics:\n${allTopics.slice(0, 15).join(', ')}`,
-      '',
-      `Session summaries:\n${allSummaries.slice(0, 5).join('\n---\n')}`,
-    ].join('\n');
-
-    await this.streamLm(prompt, stream, request, token);
-
-    stream.markdown(
-      `\n\n---\n_Run \`@mem /decisions\` to see all decisions · \`@mem /adr <topic>\` to generate a focused ADR_\n`,
-    );
-  }
 
   // ── PR Review Context Injection ──
 
@@ -2391,175 +755,6 @@ export class ContextProvider implements vscode.Disposable {
    * as a pull request or branch diff, giving reviewers full history context.
    * If no branch given, uses the current git branch diff against main/master.
    */
-  private async pr(
-    query: string,
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    stream.markdown(`## 🔍 PR Review Context\n\n`);
-
-    // Get changed files from git diff
-    let changedFiles: string[] = [];
-    let branchLabel = query || 'current branch';
-
-    try {
-      const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      if (!cwd) throw new Error('No workspace open');
-
-      if (query && /^\d+$/.test(query.trim())) {
-        // PR number — try to get via gh CLI.
-        // Defensive validation: even though the regex above narrows to digits,
-        // we re-check via the dedicated whitelist before any spawn — so
-        // future edits to the branching logic don't accidentally re-open the
-        // shell-injection surface (see security audit findings).
-        const prNum = query.trim();
-        if (!isSafePrNumber(prNum)) {
-          stream.markdown(`PR identifier must be a positive integer.\n`);
-          return;
-        }
-        try {
-          // execFile (no shell) with args as an array — `prNum` cannot
-          // break out of the arg vector to inject extra commands.
-          const { stdout } = await execFileAsync(
-            'gh',
-            ['pr', 'view', prNum, '--json', 'files', '--jq', '.files[].path'],
-            { cwd },
-          );
-          changedFiles = stdout
-            .split('\n')
-            .map((f) => f.trim())
-            .filter(Boolean);
-        } catch {
-          // gh CLI missing / not authenticated / network error — fall through to active-file fallback below.
-        }
-        branchLabel = `PR #${prNum}`;
-      } else {
-        // Branch name or default: diff against the user-supplied ref or HEAD~1.
-        const base = query.trim() || 'HEAD~1';
-        if (!isSafeGitRef(base)) {
-          stream.markdown(
-            `Branch / ref contains disallowed characters. Use letters, digits, \`._/-~^@\` only.\n`,
-          );
-          return;
-        }
-        try {
-          // execFile (no shell) with args as an array — `base` cannot
-          // break out of the arg vector to inject extra commands. We try
-          // the user-supplied ref first; if that fails (e.g. unknown ref)
-          // we fall back to HEAD~1 in a separate spawn rather than via
-          // shell `||` chaining.
-          const { stdout } = await execFileAsync('git', ['diff', '--name-only', base], { cwd });
-          changedFiles = stdout
-            .split('\n')
-            .map((f) => f.trim())
-            .filter(Boolean);
-        } catch {
-          try {
-            const { stdout } = await execFileAsync('git', ['diff', '--name-only', 'HEAD~1'], {
-              cwd,
-            });
-            changedFiles = stdout
-              .split('\n')
-              .map((f) => f.trim())
-              .filter(Boolean);
-          } catch {
-            /* nothing to show */
-          }
-        }
-        if (query) branchLabel = query;
-      }
-    } catch {
-      // fallback: use active editor file
-      const active = vscode.window.activeTextEditor?.document.uri.fsPath;
-      if (active) {
-        changedFiles = [vscode.workspace.asRelativePath(active)];
-        branchLabel = 'active file';
-      }
-    }
-
-    if (changedFiles.length === 0) {
-      stream.markdown(
-        '_No changed files detected. Specify a branch: `@mem /pr main` or open a file and run `@mem /related`._\n',
-      );
-      return;
-    }
-
-    stream.markdown(`_Analysing ${changedFiles.length} changed file(s) in **${branchLabel}**_\n\n`);
-    stream.markdown(
-      `Changed: ${changedFiles
-        .slice(0, 10)
-        .map((f) => `\`${f}\``)
-        .join(', ')}${changedFiles.length > 10 ? ` _+${changedFiles.length - 10} more_` : ''}\n\n`,
-    );
-
-    // Find sessions that touched any of these files
-    const all = this.store.getAllSessions();
-    const matchMap = new Map<string, { session: (typeof all)[0]; matchedFiles: string[] }>();
-
-    for (const s of all) {
-      const matched = s.keyFiles.filter((sf) => changedFiles.some((cf) => matchFilePath(sf, cf)));
-      if (matched.length > 0) {
-        matchMap.set(s.id, { session: s, matchedFiles: matched });
-      }
-    }
-
-    const matches = [...matchMap.values()].sort((a, b) => b.session.endTime - a.session.endTime);
-
-    if (matches.length === 0) {
-      stream.markdown(
-        `_No session history found for these files. They may be new files or not yet captured._\n`,
-      );
-      return;
-    }
-
-    stream.markdown(`### 📚 ${matches.length} Session(s) with history for these files\n\n`);
-
-    for (const { session: s, matchedFiles } of matches.slice(0, 8)) {
-      const ago = this.formatAgo(s.endTime);
-      const branch = s.branchName ? ` · \`${s.branchName}\`` : '';
-      stream.markdown(`#### [${s.observationType}] ${ago}${branch}\n\n`);
-      stream.markdown(`_Matching files: ${matchedFiles.map((f) => `\`${f}\``).join(', ')}_\n\n`);
-      stream.markdown(`${s.summary.substring(0, 250)}\n\n`);
-      if (s.decisions.length)
-        stream.markdown(`**Decisions:** ${s.decisions.slice(0, 3).join(' · ')}\n\n`);
-      if (s.problemsSolved.length)
-        stream.markdown(`**Solved:** ${s.problemsSolved.slice(0, 2).join(' · ')}\n\n`);
-      stream.markdown(
-        `\`${s.id.substring(0, 8)}\` · _\`@mem /detail ${s.id.substring(0, 8)}\` for full context_\n\n---\n\n`,
-      );
-    }
-
-    // AI reviewer briefing
-    if (matches.length > 0) {
-      stream.markdown('### 🤖 Reviewer Briefing\n\n');
-      const historyContext = matches
-        .slice(0, 5)
-        .map(
-          ({ session: s, matchedFiles }) =>
-            `Files: ${matchedFiles.join(', ')}\n[${s.observationType}] ${s.summary}\nDecisions: ${s.decisions.slice(0, 3).join('; ')}`,
-        )
-        .join('\n\n');
-
-      const prompt = [
-        `A developer is reviewing a PR that changes: ${changedFiles.slice(0, 10).join(', ')}.`,
-        'Based on the session history for these files below, write a reviewer briefing (3-5 sentences) covering:',
-        '1. What purpose these files serve based on history',
-        '2. Known past issues or fragility the reviewer should watch for',
-        '3. Key decisions that were made about these files',
-        'Be concise and focused on what helps the reviewer.',
-        '',
-        'Session history:',
-        historyContext,
-      ].join('\n');
-
-      await this.streamLm(prompt, stream, request, token);
-    }
-
-    stream.markdown(
-      `\n\n---\n_Use \`@mem /pr <branch>\` for a different branch or \`@mem /decisions\` for architectural context._\n`,
-    );
-  }
 
   // ── Pre-commit Architectural Consistency Check ──
 
@@ -2567,121 +762,6 @@ export class ContextProvider implements vscode.Disposable {
    * `/precommit` — check staged diff against past architectural decisions.
    * Flags potential regressions before they land in the codebase.
    */
-  private async precommit(
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    stream.markdown(`## 🔎 Pre-commit Architectural Check\n\n`);
-
-    // Get staged diff
-    let stagedDiff = '';
-    let stagedFiles: string[] = [];
-
-    try {
-      const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      if (!cwd) throw new Error('No workspace open');
-
-      // v1.11.0 hardening: same execFile switch as /commit. The shell-piped
-      // `2>/dev/null || echo ""` fallback is preserved in spirit by simply
-      // returning an empty array on caught error — execFile rejects with a
-      // non-zero exit code instead, which the surrounding try/catch handles.
-      try {
-        const { stdout: filesOut } = await execFileAsync(
-          'git',
-          ['diff', '--cached', '--name-only'],
-          { cwd },
-        );
-        stagedFiles = filesOut
-          .split('\n')
-          .map((f) => f.trim())
-          .filter(Boolean);
-      } catch {
-        stagedFiles = [];
-      }
-
-      if (stagedFiles.length === 0) {
-        stream.markdown(
-          '_No staged changes found. Run `git add <files>` first, then `@mem /precommit`._\n',
-        );
-        return;
-      }
-
-      try {
-        const { stdout: diffOut } = await execFileAsync('git', ['diff', '--cached', '--stat'], {
-          cwd,
-        });
-        stagedDiff = diffOut.substring(0, 2000); // Keep it manageable
-      } catch {
-        stagedDiff = '';
-      }
-    } catch {
-      stream.markdown(
-        '_Could not read staged diff. Ensure you are in a git repository with staged changes._\n',
-      );
-      return;
-    }
-
-    stream.markdown(
-      `_Checking ${stagedFiles.length} staged file(s): ${stagedFiles
-        .slice(0, 5)
-        .map((f) => `\`${f}\``)
-        .join(', ')}${stagedFiles.length > 5 ? ` +${stagedFiles.length - 5} more` : ''}_\n\n`,
-    );
-
-    // Find sessions related to staged files
-    const all = this.store.getAllSessions();
-    const relatedSessions = all
-      .filter((s) => s.keyFiles.some((sf) => stagedFiles.some((pf) => matchFilePath(sf, pf))))
-      .sort((a, b) => b.endTime - a.endTime);
-
-    // Collect all decisions from related sessions
-    const relevantDecisions = relatedSessions.flatMap((s) => s.decisions).slice(0, 20);
-    const allDecisions = all
-      .filter((s) => s.decisions.length > 0)
-      .flatMap((s) => s.decisions)
-      .slice(0, 30);
-
-    if (relevantDecisions.length === 0 && allDecisions.length === 0) {
-      stream.markdown(
-        '_No architectural decisions found in session history to check against. Keep capturing sessions to build up the decision history._\n',
-      );
-      return;
-    }
-
-    const decisionsContext =
-      relevantDecisions.length > 0
-        ? `Decisions about these specific files:\n${relevantDecisions.map((d) => `- ${d}`).join('\n')}`
-        : `General architectural decisions:\n${allDecisions
-            .slice(0, 15)
-            .map((d) => `- ${d}`)
-            .join('\n')}`;
-
-    stream.markdown('### 🤖 Consistency Analysis\n\n');
-
-    const prompt = [
-      'A developer is about to commit the following changes. Check if they are consistent with past architectural decisions.',
-      '',
-      `Staged files: ${stagedFiles.slice(0, 10).join(', ')}`,
-      '',
-      `Diff summary:\n${stagedDiff}`,
-      '',
-      decisionsContext,
-      '',
-      'Provide a structured review with:',
-      '1. **✅ Consistent with:** decisions this commit aligns with',
-      '2. **⚠️ Potential conflicts:** any decisions this might contradict (be specific)',
-      '3. **💡 Recommendation:** one-line verdict — Safe to commit / Review these concerns / Reconsider approach',
-      '',
-      'If no conflicts found, say so clearly and confidently. Be direct and concise.',
-    ].join('\n');
-
-    await this.streamLm(prompt, stream, request, token);
-
-    stream.markdown(
-      `\n\n---\n_Run \`@mem /commit\` to generate a conventional commit message for these changes._\n`,
-    );
-  }
 
   // ── Related files ──
 
@@ -2689,60 +769,8 @@ export class ContextProvider implements vscode.Disposable {
    * `/related` — show sessions that touched the currently active editor file.
    * Zero typing needed: just open a file and run `@mem /related`.
    */
-  private async related(stream: vscode.ChatResponseStream): Promise<void> {
-    const activeFile = vscode.window.activeTextEditor?.document.uri.fsPath;
-    if (!activeFile) {
-      stream.markdown(
-        '_Open a file in the editor first, then run `@mem /related` to find sessions that touched it._\n',
-      );
-      return;
-    }
-
-    const rel = vscode.workspace.asRelativePath(activeFile);
-
-    // Match by suffix or basename — sessions store relative paths
-    const all = this.store.getAllSessions();
-    const matches = all
-      .filter((s) => s.keyFiles.some((f) => matchFilePath(f, rel)))
-      .sort((a, b) => b.endTime - a.endTime);
-
-    if (matches.length === 0) {
-      stream.markdown(`_No sessions found that touched \`${rel}\`._\n\n`);
-      stream.markdown('_Note: only files captured during active coding sessions appear here._\n');
-      return;
-    }
-
-    stream.markdown(`## 🔗 Sessions touching \`${rel}\`\n\n`);
-    stream.markdown(`_${matches.length} session(s) found_\n\n`);
-
-    for (const s of matches.slice(0, 15)) {
-      const ago = this.formatAgo(s.endTime);
-      const branch = s.branchName ? ` · \`${s.branchName}\`` : '';
-      stream.markdown(
-        `### [${s.observationType}] ${new Date(s.startTime).toLocaleDateString()} (${ago}${branch})\n\n`,
-      );
-      stream.markdown(`${s.summary}\n\n`);
-      if (s.decisions.length) {
-        stream.markdown(`**Decisions:** ${s.decisions.slice(0, 3).join(' · ')}\n\n`);
-      }
-      stream.markdown(
-        `\`${s.id.substring(0, 8)}\` · _\`@mem /detail ${s.id.substring(0, 8)}\` for full detail_\n\n---\n\n`,
-      );
-    }
-    if (matches.length > 15) {
-      stream.markdown(
-        `_... and ${matches.length - 15} more. Use \`@mem /search ${rel.split('/').pop() ?? rel}\` to see all._\n`,
-      );
-    }
-  }
 
   /** Format a timestamp as a human-readable "X ago" string. */
-  private formatAgo(ts: number): string {
-    const diff = Date.now() - ts;
-    if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
-    if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
-    return `${Math.round(diff / 86_400_000)}d ago`;
-  }
 
   // ── Architecture Decisions ──
 
@@ -2751,221 +779,14 @@ export class ContextProvider implements vscode.Disposable {
    * structured ADR-style document. Optionally filter by keyword.
    * Great for documentation, retros, and onboarding new teammates.
    */
-  private async decisions(
-    query: string,
-    stream: vscode.ChatResponseStream,
-    request: vscode.ChatRequest,
-    token: vscode.CancellationToken,
-  ): Promise<void> {
-    let sessions = this.store.getAllSessions().filter((s) => s.decisions.length > 0);
-
-    if (query) {
-      const q = query.toLowerCase();
-      sessions = sessions.filter(
-        (s) =>
-          s.decisions.some((d) => d.toLowerCase().includes(q)) ||
-          s.keyTopics.some((t) => t.toLowerCase().includes(q)) ||
-          s.summary.toLowerCase().includes(q),
-      );
-    }
-
-    if (sessions.length === 0) {
-      stream.markdown(
-        query
-          ? `_No decisions found matching "${query}"._\n`
-          : '_No decisions recorded yet. GHCP-MEM will extract decisions automatically as you code._\n',
-      );
-      return;
-    }
-
-    // Deduplicate decisions, keeping track of when each was made
-    type DecisionEntry = {
-      decision: string;
-      date: string;
-      type: string;
-      sessionId: string;
-      branch?: string;
-    };
-    const seen = new Set<string>();
-    const allDecisions: DecisionEntry[] = [];
-
-    for (const s of sessions.sort((a, b) => a.startTime - b.startTime)) {
-      for (const d of s.decisions) {
-        const key = d.toLowerCase().trim();
-        if (!seen.has(key)) {
-          seen.add(key);
-          allDecisions.push({
-            decision: d,
-            date: new Date(s.startTime).toLocaleDateString(),
-            type: s.observationType,
-            sessionId: s.id.substring(0, 8),
-            branch: s.branchName,
-          });
-        }
-      }
-    }
-
-    if (allDecisions.length === 0) {
-      stream.markdown('_No unique decisions found._\n');
-      return;
-    }
-
-    const title = query ? `Decisions matching "${query}"` : 'All Architecture Decisions';
-    stream.markdown(`## 📋 ${title}\n\n`);
-    stream.markdown(
-      `_${allDecisions.length} unique decision(s) across ${sessions.length} session(s)_\n\n`,
-    );
-
-    // Group by type for scannability
-    const byType = new Map<string, DecisionEntry[]>();
-    for (const d of allDecisions) {
-      const arr = byType.get(d.type) ?? [];
-      arr.push(d);
-      byType.set(d.type, arr);
-    }
-
-    for (const [type, entries] of Array.from(byType.entries()).sort()) {
-      stream.markdown(`### ${type.charAt(0).toUpperCase() + type.slice(1)}\n\n`);
-      for (const e of entries) {
-        const branch = e.branch ? ` · \`${e.branch}\`` : '';
-        stream.markdown(
-          `- **${e.decision}**  \n  _${e.date}${branch} · session \`${e.sessionId}\`_\n`,
-        );
-      }
-      stream.markdown('\n');
-    }
-
-    // Use LM to synthesise a brief narrative if there are enough decisions
-    if (allDecisions.length >= 5) {
-      stream.markdown('---\n\n### 🤖 AI Summary\n\n');
-      const decisionList = allDecisions
-        .slice(0, 30)
-        .map((d) => `- ${d.decision}`)
-        .join('\n');
-      const prompt = [
-        "Below is a list of architecture and implementation decisions extracted from a developer's coding sessions.",
-        'Write a brief (3-5 sentence) narrative that identifies the key themes, patterns, and architectural direction these decisions reflect.',
-        "Focus on what they reveal about the codebase's design philosophy. Be concise and insightful.",
-        '',
-        'Decisions:',
-        decisionList,
-      ].join('\n');
-      await this.streamLm(prompt, stream, request, token);
-    }
-
-    stream.markdown(
-      `\n\n---\n_Use \`@mem /decisions <keyword>\` to filter · \`@mem /detail <id>\` for session context_\n`,
-    );
-  }
 
   /**
    * `/savings` — full token-savings breakdown with per-session table,
    * lifetime totals, compression ratio, and dollar-equivalent estimates.
    */
-  private async savings(stream: vscode.ChatResponseStream): Promise<void> {
-    const stats = this.store.getStats();
-
-    if (stats.totalSessions === 0) {
-      stream.markdown(
-        '_No sessions stored yet. Keep coding — GHCP-MEM will start tracking context savings automatically._\n',
-      );
-      return;
-    }
-
-    const usd = (tokens: number) => `$${estimateTokenSavingsUsd(tokens).toFixed(4)}`;
-    const fmt = (n: number) => n.toLocaleString();
-    const sessionRow = (s: {
-      summary?: string;
-      keyFiles?: string[];
-      keyTopics?: string[];
-      decisions?: string[];
-      problemsSolved?: string[];
-    }) => estimateSessionTokenSavings(s);
-
-    // Today's sessions
-    const todaySessions = this.store.getAllSessions().filter((s) => {
-      const d = new Date(s.endTime);
-      const now = new Date();
-      return (
-        d.getFullYear() === now.getFullYear() &&
-        d.getMonth() === now.getMonth() &&
-        d.getDate() === now.getDate()
-      );
-    });
-
-    stream.markdown(`## 💰 GHCP-MEM Token Savings Report\n\n`);
-
-    // ── Today ──
-    stream.markdown(
-      `### Today (${stats.todaySessions} session${stats.todaySessions !== 1 ? 's' : ''})\n\n`,
-    );
-    if (todaySessions.length === 0) {
-      stream.markdown('_No sessions captured today yet._\n\n');
-    } else {
-      stream.markdown('| Session | Raw | Compact | Saved | Ratio |\n');
-      stream.markdown('|---------|----:|--------:|------:|------:|\n');
-      for (const s of todaySessions.slice(-10)) {
-        const r = sessionRow(s);
-        const label = (s.summary ?? 'Session').substring(0, 35).replace(/\|/g, '/');
-        stream.markdown(
-          `| ${label}… | ${fmt(r.rawTokens)} | ${fmt(r.compactTokens)} | **${fmt(r.tokensSaved)}** | ${r.compressionRatio}× |\n`,
-        );
-      }
-      stream.markdown(
-        `\n**Today total saved:** ${fmt(stats.todayEstimatedTokensSaved)} tokens ≈ ${usd(stats.todayEstimatedTokensSaved)} (GPT-4o pricing)\n`,
-      );
-      stream.markdown(
-        `**Today raw vs compact:** ${fmt(stats.todayEstimatedRawTokens)} raw tokens → ${fmt(stats.todayEstimatedCompactTokens)} compact tokens\n\n`,
-      );
-    }
-
-    // ── Lifetime ──
-    stream.markdown(`### Lifetime (${fmt(stats.totalSessions)} sessions)\n\n`);
-    stream.markdown(`| Metric | Value |\n`);
-    stream.markdown(`|--------|-------|\n`);
-    stream.markdown(`| Total tokens saved | **${fmt(stats.lifetimeEstimatedTokensSaved)}** |\n`);
-    stream.markdown(`| Raw tokens represented | **${fmt(stats.lifetimeEstimatedRawTokens)}** |\n`);
-    stream.markdown(
-      `| Compact tokens retained | **${fmt(stats.lifetimeEstimatedCompactTokens)}** |\n`,
-    );
-    stream.markdown(
-      `| Dollar equivalent | **${usd(stats.lifetimeEstimatedTokensSaved)}** (GPT-4o) |\n`,
-    );
-    stream.markdown(`| Avg compression ratio | **${stats.avgCompressionRatio}×** |\n`);
-    stream.markdown(
-      `| Compact knowledge in memory | **${fmt(stats.totalCompactTokens)} tokens** |\n`,
-    );
-    stream.markdown(`| Redactions applied | **${fmt(stats.totalRedactions)}** |\n`);
-
-    // ── Interpretation ──
-    const perConvSaved =
-      stats.totalSessions > 0
-        ? Math.round(stats.lifetimeEstimatedTokensSaved / stats.totalSessions)
-        : 0;
-    stream.markdown(`\n### 💡 What This Means\n\n`);
-    stream.markdown(
-      `- Each new Copilot chat saves you ~**${fmt(perConvSaved)} tokens** on average — context GHCP-MEM already knows.\n`,
-    );
-    stream.markdown(
-      `- You have **${fmt(stats.totalCompactTokens)} tokens** of knowledge compressed and ready to auto-inject — without re-explaining anything.\n`,
-    );
-    stream.markdown(
-      `- The **${stats.avgCompressionRatio}× avg compression ratio** means every 1 token injected replaces ${stats.avgCompressionRatio} tokens you would otherwise have typed.\n`,
-    );
-
-    if (stats.lifetimeEstimatedTokensSaved > 10_000) {
-      stream.markdown(
-        `\n> 🏆 You've crossed **${fmt(Math.round(stats.lifetimeEstimatedTokensSaved / 1000))}K tokens saved** — that's roughly ${Math.round(stats.lifetimeEstimatedTokensSaved / 750)} pages of context you never had to re-explain!\n`,
-      );
-    }
-
-    stream.markdown(
-      `\n---\n_Estimates: 4 chars/token heuristic · GPT-4o May 2025 input pricing ($5/1M tokens) · Run \`@mem /status\` for a quick summary._\n`,
-    );
-  }
 
   /** Stream a language model response into the chat stream. */
-  private async streamLm(
+  async streamLm(
     prompt: string,
     stream: vscode.ChatResponseStream,
     request: vscode.ChatRequest,
@@ -2987,99 +808,6 @@ export class ContextProvider implements vscode.Disposable {
         `\n\n_Error calling language model: ${err instanceof Error ? err.message : String(err)}_\n`,
       );
     }
-  }
-
-  // ── Rendering ──
-
-  private renderIndexRow(s: CompressedSession, stream: vscode.ChatResponseStream): void {
-    const date = new Date(s.startTime).toLocaleString();
-    const tags = s.userTags.length ? ` · 🏷️ ${s.userTags.join(',')}` : '';
-    const branch = s.branchName ? ` · \`${s.branchName}\`` : '';
-    const confidence = this.memoryConfidence(s);
-    stream.markdown(
-      `- **[${s.observationType}]** \`${s.id.substring(0, 8)}\` · ${date}${branch}${tags} · ${confidence.label}  \n  ${s.summary.substring(0, 180)}\n`,
-    );
-  }
-
-  private renderCompact(s: CompressedSession, stream: vscode.ChatResponseStream): void {
-    const start = new Date(s.startTime).toLocaleString();
-    const dur = Math.round((s.endTime - s.startTime) / 60000);
-    const confidence = this.memoryConfidence(s);
-    stream.markdown(
-      `### [${s.observationType}] ${start} (${dur} min) · \`${s.id.substring(0, 8)}\` · ${confidence.label}\n\n${s.summary}\n\n`,
-    );
-    if (s.keyFiles.length)
-      stream.markdown(
-        `**Files:** ${s.keyFiles
-          .slice(0, 5)
-          .map((f) => `\`${f}\``)
-          .join(', ')}\n\n`,
-      );
-    if (s.keyTopics.length) stream.markdown(`**Topics:** ${s.keyTopics.join(', ')}\n\n`);
-  }
-
-  private memoryConfidence(s: CompressedSession): { label: string; reason: string } {
-    const score =
-      (s.userTags.length ? 2 : 0) +
-      (s.decisions.length ? 2 : 0) +
-      (s.problemsSolved.length ? 1 : 0) +
-      (s.keyTopics.length ? 1 : 0) +
-      (s.keyFiles.length ? 1 : 0) +
-      (s.observationType !== 'unknown' ? 1 : 0);
-    if (score >= 6)
-      return { label: 'high confidence', reason: 'tagged, typed, and decision-bearing' };
-    if (score >= 4) return { label: 'medium confidence', reason: 'multi-signal match' };
-    return { label: 'low confidence', reason: 'lightly supported context' };
-  }
-
-  private renderFull(s: CompressedSession, stream: vscode.ChatResponseStream): void {
-    const start = new Date(s.startTime).toLocaleString();
-    const end = new Date(s.endTime).toLocaleString();
-    const dur = Math.round((s.endTime - s.startTime) / 60000);
-    stream.markdown(`## Session \`${s.id}\`\n\n`);
-    stream.markdown(`- **Type:** ${s.observationType}\n`);
-    stream.markdown(`- **Workspace:** ${s.workspaceName}\n`);
-    if (s.branchName) stream.markdown(`- **Branch:** \`${s.branchName}\`\n`);
-    stream.markdown(`- **Started:** ${start}\n- **Ended:** ${end} (${dur} min)\n`);
-    stream.markdown(
-      `- **Events captured:** ${s.rawEventCount} · **Redactions:** ${s.redactionCount}\n`,
-    );
-    const savings = estimateSessionTokenSavings(s);
-    stream.markdown(
-      `- **Estimated token savings:** ${savings.tokensSaved} tokens (${savings.rawTokens} raw → ${savings.compactTokens} compact, ${savings.compressionRatio}×)\n`,
-    );
-    if (s.userTags.length) stream.markdown(`- **User tags:** ${s.userTags.join(', ')}\n`);
-    if (s.azureContext) {
-      const ac = s.azureContext;
-      const bits = [
-        ac.subscriptionName && `sub=${ac.subscriptionName}`,
-        ac.resourceGroup && `rg=${ac.resourceGroup}`,
-        ac.defaultLocation && `loc=${ac.defaultLocation}`,
-        ac.subsystems?.length && `subsystems=${ac.subsystems.join(',')}`,
-      ]
-        .filter(Boolean)
-        .join(' · ');
-      if (bits) stream.markdown(`- **Azure:** ${bits}\n`);
-      if (ac.resourceIds?.length) {
-        stream.markdown(
-          `- **Resource IDs (${ac.resourceIds.length}):**\n${ac.resourceIds
-            .slice(0, 10)
-            .map((r) => `  - \`${r}\``)
-            .join('\n')}\n`,
-        );
-      }
-    }
-    stream.markdown(`\n### Summary\n\n${s.summary}\n\n`);
-    if (s.keyFiles.length)
-      stream.markdown(`### Files\n${s.keyFiles.map((f) => `- \`${f}\``).join('\n')}\n\n`);
-    if (s.keyTopics.length)
-      stream.markdown(`### Topics\n${s.keyTopics.map((t) => `- ${t}`).join('\n')}\n\n`);
-    if (s.decisions.length)
-      stream.markdown(`### Decisions\n${s.decisions.map((d) => `- ${d}`).join('\n')}\n\n`);
-    if (s.problemsSolved.length)
-      stream.markdown(
-        `### Problems Solved\n${s.problemsSolved.map((p) => `- ${p}`).join('\n')}\n\n`,
-      );
   }
 
   dispose(): void {
