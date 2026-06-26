@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Required by the strict release-consistency gate below, which
           # resolves `origin/main` to verify HEAD is pushed. The default
