@@ -46,11 +46,52 @@ import { explainScore } from './explain';
 import { buildMermaidGraph } from './graphExport';
 import { recommend } from './router';
 import { rankLessons } from './lessons';
+import { redact } from './redactor';
 
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_NAME = 'ghcp-mem';
+// MCP write tools (store/delete/correct/retract/supersede) are OFF by default
+// (v1.10.2). External clients (Cursor, Cline, Claude Desktop) that spawn the
+// stdio server usually don't set env vars, so a fail-closed default keeps the
+// store read-only until an operator explicitly opts in. To enable:
+//   GHCP_MEM_ALLOW_MCP_WRITE=true
+// GHCP_MEM_READONLY=true continues to force read-only even if the opt-in is set.
 const MCP_WRITE_ENABLED =
-  process.env.GHCP_MEM_ALLOW_MCP_WRITE !== 'false' && process.env.GHCP_MEM_READONLY !== 'true';
+  process.env.GHCP_MEM_ALLOW_MCP_WRITE === 'true' && process.env.GHCP_MEM_READONLY !== 'true';
+
+/**
+ * Redact every user-supplied string in an MCP write before it touches disk.
+ * Mirrors what MemoryStoreTool.invoke() does for the in-process VS Code surface;
+ * before v1.10.2 the MCP path stored client-supplied text verbatim, so any
+ * external client (Claude Desktop, Cursor, ...) handing this tool a secret
+ * persisted it in cleartext.
+ *
+ * Returns redacted strings + total redaction count so the stored session row
+ * carries an accurate counter for the health score and audit log.
+ */
+export function redactPersistedStrings<T extends Record<string, unknown>>(
+  fields: T,
+): { redacted: T; count: number } {
+  let count = 0;
+  const out = { ...fields } as Record<string, unknown>;
+  for (const [k, v] of Object.entries(fields)) {
+    if (typeof v === 'string') {
+      const r = redact(v, { redactSecrets: true, honorPrivateTags: true });
+      out[k] = r.text;
+      count += r.redactionCount;
+    } else if (Array.isArray(v)) {
+      const arr: string[] = [];
+      for (const item of v) {
+        if (typeof item !== 'string') continue;
+        const r = redact(item, { redactSecrets: true, honorPrivateTags: true });
+        arr.push(r.text);
+        count += r.redactionCount;
+      }
+      out[k] = arr;
+    }
+  }
+  return { redacted: out as T, count };
+}
 // Read the package version at module load so we never drift from package.json.
 // Falls back to 'unknown' if the bundled package.json can't be located
 // (e.g. when this file is imported from out-test/ during the test compile).
@@ -529,14 +570,12 @@ async function handleCall(name: string, args: any): Promise<any> {
     case 'ghcpMem_store': {
       if (!MCP_WRITE_ENABLED) throw new Error('MCP write tools are disabled by policy');
       const now = Date.now();
-      const session: StoredSession = {
-        id: randomUUID(),
-        workspaceId: 'mcp',
-        workspaceName: 'mcp-client',
-        startTime: now,
-        endTime: now,
+      // Redact every user-supplied string BEFORE construction (v1.10.2). Previously
+      // the MCP path bypassed redact() entirely, so any external client handing
+      // the tool a secret persisted it in cleartext. The redactionCount is fed
+      // into the session row so the health score and audit log stay accurate.
+      const { redacted, count: redactionCount } = redactPersistedStrings({
         summary: String(args?.summary ?? '').substring(0, 2000),
-        observationType: (args?.observationType ?? 'research') as StoredSession['observationType'],
         keyFiles: (Array.isArray(args?.keyFiles) ? args.keyFiles : []).slice(0, 10).map(String),
         keyTopics: (Array.isArray(args?.keyTopics) ? args.keyTopics : []).slice(0, 10).map(String),
         decisions: (Array.isArray(args?.decisions) ? args.decisions : []).slice(0, 20).map(String),
@@ -544,12 +583,28 @@ async function handleCall(name: string, args: any): Promise<any> {
           .slice(0, 20)
           .map(String),
         userTags: (Array.isArray(args?.tags) ? args.tags : []).slice(0, 10).map(String),
+      });
+      const session: StoredSession = {
+        id: randomUUID(),
+        workspaceId: 'mcp',
+        workspaceName: 'mcp-client',
+        startTime: now,
+        endTime: now,
+        summary: redacted.summary,
+        observationType: (args?.observationType ?? 'research') as StoredSession['observationType'],
+        keyFiles: redacted.keyFiles,
+        keyTopics: redacted.keyTopics,
+        decisions: redacted.decisions,
+        problemsSolved: redacted.problemsSolved,
+        userTags: redacted.userTags,
         rawEventCount: 0,
-        redactionCount: 0,
+        redactionCount,
       };
-      const storeDb = await loadDatabase();
-      storeDb.sessions.push(session);
-      await saveDatabase(storeDb);
+      // Use the outer `db` reference loaded at the top of handleCall — the prior
+      // double `loadDatabase()` opened a clobber window for any concurrent
+      // tools/call mutation that completed between the two reads.
+      db.sessions.push(session);
+      await saveDatabase(db);
       return textContent({ stored: true, id: session.id, shortId: session.id.substring(0, 8) });
     }
     case 'ghcpMem_delete': {

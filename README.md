@@ -65,7 +65,7 @@ We built GHCP-MEM because we hit the same wall: a Copilot that forgot everything
 
 **Why it's worth your trust:**
 
-- **386 tests, zero native dependencies, zero open ports** — `npm install` doesn't compile anything. Source is formatted with Prettier (CI-enforced via `format:check`) so reviewers see real code, not bundle output. Auditable in an afternoon.
+- **394 tests, zero native dependencies, zero open ports** — `npm install` doesn't compile anything. Source is formatted with Prettier (CI-enforced via `format:check`) so reviewers see real code, not bundle output. Auditable in an afternoon.
 - **Nine documented engineering phases**, each with grounded design rationale in the [CHANGELOG](https://github.com/ITcredibl/ghcp-mem/blob/main/CHANGELOG.md). No marketing claims that don't have code behind them.
 - **An evidence-citation gate in the compressor** — the LM cannot emit a decision without pointing at the captured event that produced it. Hallucinated rationale never reaches storage.
 - **An nDCG@K regression gate** runs in CI — if a ranker change regresses retrieval, the build fails.
@@ -754,4 +754,4 @@ MIT — see [LICENSE](https://github.com/ITcredibl/ghcp-mem/blob/main/LICENSE).
 
 [Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/DEMO.md) · [Compare memory tools](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/COMPARISON.md) · [Uninstall guide](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/UNINSTALL.md) · [Configuration reference](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/CONFIGURATION.md) · [Contributing](https://github.com/ITcredibl/ghcp-mem/blob/main/CONTRIBUTING.md) · [Security policy](https://github.com/ITcredibl/ghcp-mem/blob/main/SECURITY.md)
 
-<sub>**v1.10.1** · local-first memory for Copilot</sub>
+<sub>**v1.10.2** · local-first memory for Copilot</sub>

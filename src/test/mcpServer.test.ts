@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { searchSessions, timelineSessions, TOOLS } from '../mcpServer';
+import { searchSessions, timelineSessions, TOOLS, redactPersistedStrings } from '../mcpServer';
 
 function mkSession(o: any = {}) {
   return {
@@ -96,4 +96,60 @@ test('mcpServer — timelineSessions returns most recent first', () => {
   assert.equal(hits.length, 2);
   assert.equal(hits[0].id, 'new');
   assert.equal(hits[1].id, 'mid');
+});
+
+// ---------------------------------------------------------------------------
+// v1.10.2 — MCP write path redaction (ghcpMem_store no longer persists raw).
+// Before v1.10.2 the MCP `ghcpMem_store` handler took external-client input
+// (Cursor / Claude Desktop / Cline) verbatim and pushed it into sessions.json,
+// bypassing every secret rule that the in-process VS Code surface enforces.
+// These tests pin the new behaviour: the same redactor that protects the
+// in-process write surface also gates every MCP write.
+// ---------------------------------------------------------------------------
+
+test('mcpServer.redactPersistedStrings — masks an AWS key in summary', () => {
+  const { redacted, count } = redactPersistedStrings({
+    summary: 'Set AKIAIOSFODNN7EXAMPLE on the build runner',
+    keyFiles: ['ci/setup.sh'],
+  });
+  assert.match(redacted.summary as string, /\[REDACTED:aws-access-key\]/);
+  assert.deepEqual(redacted.keyFiles, ['ci/setup.sh']);
+  assert.ok(count >= 1, 'redactionCount should reflect the AWS hit');
+});
+
+test('mcpServer.redactPersistedStrings — masks secrets inside an array', () => {
+  const { redacted, count } = redactPersistedStrings({
+    summary: 'innocent',
+    decisions: [
+      'use bcrypt cost 12',
+      'rotate ghp_1234567890abcdefghijklmnopqrstuvwxyzAB last sprint',
+    ],
+  });
+  const decs = redacted.decisions as string[];
+  assert.equal(decs[0], 'use bcrypt cost 12');
+  assert.match(decs[1], /\[REDACTED:github-token\]/);
+  assert.ok(count >= 1);
+});
+
+test('mcpServer.redactPersistedStrings — pass-through preserves clean input + 0 count', () => {
+  const { redacted, count } = redactPersistedStrings({
+    summary: 'refactor cart checkout',
+    keyFiles: ['src/cart.ts'],
+    keyTopics: ['cart'],
+    decisions: ['extract usePricing()'],
+    problemsSolved: ['shipping address race'],
+    userTags: ['demo'],
+  });
+  assert.equal(count, 0);
+  assert.equal(redacted.summary, 'refactor cart checkout');
+  assert.deepEqual(redacted.keyTopics, ['cart']);
+});
+
+test('mcpServer.redactPersistedStrings — drops non-string array entries', () => {
+  const { redacted } = redactPersistedStrings({
+    decisions: ['fine', 42, null, undefined, 'also fine'] as unknown as string[],
+  });
+  // Implementation skips non-strings rather than passing them through —
+  // protects against MCP clients sending malformed array items.
+  assert.deepEqual(redacted.decisions, ['fine', 'also fine']);
 });

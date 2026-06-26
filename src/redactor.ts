@@ -211,10 +211,18 @@ const RULES: RedactionRule[] = [
       /(?:\?|&)(?:sv|sig|se|sp|st|spr|srt|ss|skoid|sktid)=[A-Za-z0-9%_\-.=+/]+(?:&(?:sv|sig|se|sp|st|spr|srt|ss|skoid|sktid)=[A-Za-z0-9%_\-.=+/]+){2,}/gi,
     replacement: (m: string) => `${m.startsWith('&') ? '&' : '?'}${hashedTag('azure-sas', m)}`,
   },
-  // Azure Storage account key (88-char base64 ending in ==)
+  // Azure Storage account key (88-char base64 ending in `==`).
+  // Tightened in v1.10.2: the previous `\b[A-Za-z0-9+/]{86}==` matched ANY
+  // 88-char base64 ending in `==`, which fired on multi-line PEM bodies,
+  // base64-encoded images embedded in markdown/JSON, and large lockfile
+  // hashes — heavy false positives on real workspaces. The named rule now
+  // requires the key to be preceded by a recognised Azure context
+  // (`AccountKey=`, query-string `key=`, JSON `"key": "..."`); standalone
+  // base64 strings of this shape that are genuinely secret are still caught
+  // by the high-entropy fallback detector.
   {
     name: 'azure-storage-key',
-    pattern: /\b[A-Za-z0-9+/]{86}==/g,
+    pattern: /(?<=AccountKey=|[;?&]key=|"key"\s*:\s*")[A-Za-z0-9+/]{86}==/gi,
     replacement: (m: string) => hashedTag('azure-storage-key', m),
   },
   // Service-principal client secret (new format: starts with two-char prefix + ~ then base64-ish, 40 chars)

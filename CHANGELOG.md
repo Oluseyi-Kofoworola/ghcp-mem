@@ -6,6 +6,36 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.10.2] — 2026-06-26
+
+Targeted security + correctness patch in response to a thorough code review of v1.10.1. Six surgical fixes, each closing a real attack surface or trust gap. No new product features; no schema migrations; backward-compatible with every store captured under v1.x.
+
+### Fixed — MCP store handler now redacts every write (review item #1)
+**Severity: high.** The in-process VS Code surface (`MemoryStoreTool.invoke`, [src/memoryTool.ts:108-120](src/memoryTool.ts)) ran every user-supplied string through `redact()` before persisting. The MCP server's `ghcpMem_store` handler ([src/mcpServer.ts:540-549](src/mcpServer.ts)) did not. Any external MCP client (Cursor, Cline, Claude Desktop, Copilot CLI, …) handing the tool a secret persisted it in cleartext to `sessions.json`. New behaviour: a single `redactPersistedStrings()` helper now gates every MCP write field (`summary`, `keyFiles`, `keyTopics`, `decisions`, `problemsSolved`, `userTags`) and the resulting `redactionCount` is stored on the session row so the health score and audit log stay accurate. The helper is exported and unit-tested (4 tests covering: AWS key in summary, GitHub PAT in a decision array, clean-input pass-through, non-string array entries dropped).
+
+### Changed — MCP write tools are now opt-in by default (review item #2)
+**Severity: high.** The previous default — `process.env.GHCP_MEM_ALLOW_MCP_WRITE !== 'false'` — meant write tools were ENABLED unless explicitly disabled. External clients (Cursor, Cline, Claude Desktop) spawning the stdio server typically don't set env vars, so the fail-open default contradicted the "MCP read-only default" claim made in the v1.6.2 CHANGELOG. New default: `process.env.GHCP_MEM_ALLOW_MCP_WRITE === 'true'` — writes require explicit opt-in. `GHCP_MEM_READONLY=true` continues to force read-only even if the opt-in is set. **Breaking change** for any setup that relied on writes being on by default; mitigate by adding `GHCP_MEM_ALLOW_MCP_WRITE=true` to the client's MCP server env block.
+
+### Fixed — Project rules now render inside an "untrusted content" fence (review item #3)
+**Severity: high.** `.github/memory/rules.md` is git-committed content — anyone who can land a PR against the repo can land text that appears at the very top of every Copilot session brief. The previous injection wrapper described the block as *"Binding, team-authored rules… Follow them unless they conflict with a higher-priority instruction or a safety/privacy constraint"* — phrasing that elevates user-controlled text to instruction authority, a textbook stored-prompt-injection vector. New wrapper ([src/projectRules.ts:215-254](src/projectRules.ts)) explicitly labels the block as **PROJECT CONFIGURATION authored by repository collaborators** (not "binding"), subordinates it to the user's prompt and to safety/privacy policy, and fences it with explicit `<<< BEGIN UNTRUSTED PROJECT RULES >>>` / `<<< END UNTRUSTED PROJECT RULES >>>` markers so a downstream LM can lexically tell project-provided context from active user instructions. Mirrors the OWASP LLM01 mitigation pattern.
+
+### Fixed — MCP `ghcpMem_store` no longer double-loads the database (review item #4)
+**Severity: medium.** The handler called `loadDatabase()` at the top of `handleCall`, then called it AGAIN inside the `ghcpMem_store` case before writing. Any concurrent `tools/call` mutation that completed between the two reads got clobbered by the second write (last-writer-wins). Now uses the outer `db` reference for the write — eliminates the clobber window.
+
+### Fixed — Async embedding write-back no longer races with eviction (review item #5)
+**Severity: medium.** `addSession` ([src/contextStore.ts:189-196](src/contextStore.ts)) scheduled an async `this.embedder(text).then(vec => { session.embedding = vec; ... })` while the session reference was captured by the closure. If the session was evicted by `enforceSizeCap` or the count clamp between scheduling and resolution, the embedding write went to a dead reference and (worse) raced with concurrent mutations on the row. The closure now captures the id by value and re-resolves the live row from `this.db.sessions` before assigning — so evicted-in-flight sessions are skipped, and surviving sessions get a current, unraced write.
+
+### Fixed — Tightened `azure-storage-key` redactor rule (review item #10)
+**Severity: medium.** The previous pattern `\b[A-Za-z0-9+/]{86}==` matched ANY 88-char base64 ending in `==`, which fired on multi-line PEM bodies, base64-encoded images embedded in markdown/JSON, and large lockfile hashes — heavy false positives on real workspaces. The named rule now requires a recognised Azure context prefix (`AccountKey=`, query-string `key=`, or JSON `"key": "..."`). Standalone base64 strings of this shape that are genuinely secret are still caught by the high-entropy fallback detector (`detectHighEntropy: true`). 3 new positive tests pin the context-prefix paths; 1 new negative test pins the false-positive regression (`looksLikePemLine` no longer matches with the entropy detector disabled).
+
+### Test count
+**394 tests** (was 386 → +8: 4 redactor-context cases, 2 project-rules fence cases, 4 `redactPersistedStrings` cases). All gates green: format, lint (`--max-warnings=0`), typecheck, test, check:release (5/5 doc surfaces), bundle:prod, `npm audit` 0 vulns at every severity.
+
+### Out of scope for this patch
+The same v1.10.1 review surfaced 18 more items — UX self-discovery (`@mem /help`, `/noise` vs `/retract` collapse), perf wins (janitor bulk-persist, lessons incremental, embeddings LRU, conflict-aware dedupe), test coverage for 10 untested modules, and shared-helper refactors. Those ship in **v1.11.0** as a focused feature/cleanup release. The two large file splits (`contextProvider.ts` 3,002 LOC, `extension.ts` 2,024 LOC) ship in **v1.12.0** to keep the diffs reviewable.
+
+---
+
 ## [1.10.1] — 2026-06-26
 
 CI hardening release. The v1.8.2 → v1.10.0 stretch shipped three tags in a row whose Release workflow failed at the `Publish to VS Code Marketplace` step (missing/expired `VSCE_PAT` secret), and because that step was strict-failing, **every subsequent step was skipped** — SHA-256 checksum, CycloneDX SBOM, release manifest, SLSA L3 attestation, and the `gh release create` upload. The trust chain we built in v1.6.x was silently broken for three consecutive releases without anyone noticing, because the workflow's red status looked indistinguishable from the long-fixed PAT/format issues. This patch makes that class of failure impossible.

@@ -4,7 +4,7 @@
 
 ### You're picking a memory tool. Don't pick the wrong one.
 
-[![v1.10.1](https://img.shields.io/badge/version-1.10.1-7c3aed?style=for-the-badge)](../package.json)
+[![v1.10.2](https://img.shields.io/badge/version-1.10.2-7c3aed?style=for-the-badge)](../package.json)
 [![Scope](https://img.shields.io/badge/scope-VS_Code_+_Copilot-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](../README.md)
 
 </div>
@@ -85,7 +85,7 @@ GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, se
 
 GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) as a public preview in 2026 — it's the only other "memory layer for Copilot" with first-party backing. Both projects aim at the same goal but make opposite bets on **where memory lives**. GHCP-MEM v1.8.1 ships a `githubCompatibleMode` setting that mirrors Copilot Memory's contract (28-day retention + repo-scoped retrieval) for users who want the same semantics offline.
 
-| Dimension | **GHCP-MEM v1.10.1** | **GitHub Copilot Memory** (public preview) |
+| Dimension | **GHCP-MEM v1.10.2** | **GitHub Copilot Memory** (public preview) |
 |---|---|---|
 | **Storage location** | 100% local: VS Code `globalState` + atomic mirror to `~/.ghcp-mem/sessions.json` (mode `0600`) | GitHub cloud, repo-scoped |
 | **Where it works** | VS Code (`@mem` chat, agent tools, status bar, sidebar, MCP for Cursor / Cline / Windsurf / Claude Desktop) | Copilot cloud agent · Copilot code review (web) · Copilot CLI |
@@ -117,7 +117,7 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 <details open>
 <summary><b>🔬 Full feature comparison</b></summary>
 
-| Dimension | **GHCP-MEM v1.10.1** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
+| Dimension | **GHCP-MEM v1.10.2** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
 |---|---|---|---|---|---|---|
 | No external service / port | ✅ | ❌ (service by default) | ❌ (needs pipx + Python server) | ✅ | ✅ | ❌ (`:37777` worker) |
 | No native deps | ✅ | 🟡 (better-sqlite3 in legacy) | ❌ | ✅ | ❌ (sql-wasm, Nomic) | ❌ (SQLite, Chroma, Bun) |
@@ -206,6 +206,6 @@ Remaining research-level items:
 
 [← Back to README](../README.md) · [Live demo](DEMO.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
 
-<sub>**Comparison for GHCP-MEM v1.10.1** · last refreshed June 2026</sub>
+<sub>**Comparison for GHCP-MEM v1.10.2** · last refreshed June 2026</sub>
 
 </div>

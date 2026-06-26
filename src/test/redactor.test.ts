@@ -120,10 +120,39 @@ test('redactor — Azure SAS token', () => {
   assert.match(r.text, /\[REDACTED:azure-sas\]/);
 });
 
-test('redactor — Azure storage account key (88-char base64)', () => {
+test('redactor — Azure storage account key with AccountKey= prefix (no surrounding conn-string)', () => {
+  // After v1.10.2 the named rule requires a recognised Azure context prefix.
+  // We test the AccountKey= prefix in isolation (a full connection string is
+  // covered by the broader `azure-storage-conn` rule that fires first).
   const key = 'A'.repeat(86) + '==';
-  const r = redact('key: ' + key + ' end', OPTS);
+  const r = redact(`AccountKey=${key} (truncated)`, OPTS);
   assert.match(r.text, /\[REDACTED:azure-storage-key\]/);
+});
+
+test('redactor — Azure storage account key in JSON ("key": "...")', () => {
+  const key = 'B'.repeat(86) + '==';
+  const r = redact(`{ "name": "x", "key": "${key}" }`, OPTS);
+  assert.match(r.text, /\[REDACTED:azure-storage-key\]/);
+});
+
+test('redactor — Azure storage account key in query string (?key=...)', () => {
+  const key = 'C'.repeat(86) + '==';
+  const r = redact(`https://example.com/api?key=${key}`, OPTS);
+  assert.match(r.text, /\[REDACTED:azure-storage-key\]/);
+});
+
+test('redactor — standalone 88-char base64 NOT caught by named azure-storage-key rule (v1.10.2 false-positive fix)', () => {
+  // Common false-positive sources for the prior `\b[A-Za-z0-9+/]{86}==` rule:
+  // PEM bodies, base64-encoded images embedded in markdown/JSON, large
+  // lockfile hashes. Standalone 88-char base64 without any Azure-context
+  // prefix must NOT be flagged as `azure-storage-key`. (Real secrets with
+  // high entropy are still caught by the entropy detector if it's enabled.)
+  const looksLikePemLine = 'M' + 'A'.repeat(85) + '==';
+  const r = redact(
+    `Here is a PEM body fragment: ${looksLikePemLine} and an image: ${looksLikePemLine}`,
+    { ...OPTS, detectHighEntropy: false },
+  );
+  assert.doesNotMatch(r.text, /\[REDACTED:azure-storage-key\]/);
 });
 
 test('redactor — Azure service principal secret', () => {
