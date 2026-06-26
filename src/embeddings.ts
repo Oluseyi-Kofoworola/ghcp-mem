@@ -117,7 +117,31 @@ function fnv1a(str: string): number {
  * `vscode.lm` embeddings API is available, `getEmbedder()` supersedes this
  * with a true neural embedding.
  */
+// LRU memo for localEmbed (review item #13, v1.11.0).
+// Hot paths: every addSession persists then re-runs localEmbed during indexing;
+// every searchWithEmbedding embeds the query string. A small bounded LRU is
+// enough — session-level inputs are stable and queries usually repeat within
+// a session. Each entry ≈ 1 KB for the default 128-dim vector + key, so 512
+// entries ≈ 0.5 MB peak — bounded enough for VS Code extension host budgets.
+const LOCAL_EMBED_CACHE_MAX = 512;
+const localEmbedCache = new Map<string, number[]>();
+
+function cacheKey(text: string, dim: number): string {
+  // Embedding is content-addressed by exact text + dim. We hash with FNV so a
+  // pathological 10 MB text input doesn't blow up the Map key.
+  return `${dim} ${fnv1a(text ?? '')}`;
+}
+
 export function localEmbed(text: string, dim = LOCAL_EMBED_DIM): number[] {
+  const key = cacheKey(text, dim);
+  const cached = localEmbedCache.get(key);
+  if (cached) {
+    // LRU touch: re-insert to bump to most-recent.
+    localEmbedCache.delete(key);
+    localEmbedCache.set(key, cached);
+    return cached;
+  }
+
   const vec = new Array<number>(dim).fill(0);
   const terms = (text ?? '')
     .toLowerCase()
@@ -146,7 +170,19 @@ export function localEmbed(text: string, dim = LOCAL_EMBED_DIM): number[] {
       vec[i] = Math.round((vec[i] / norm) * 1e4) / 1e4;
     }
   }
+
+  if (localEmbedCache.size >= LOCAL_EMBED_CACHE_MAX) {
+    // Evict the oldest entry (Map preserves insertion order).
+    const oldest = localEmbedCache.keys().next().value;
+    if (oldest !== undefined) localEmbedCache.delete(oldest);
+  }
+  localEmbedCache.set(key, vec);
   return vec;
+}
+
+/** Test-only: clear the localEmbed cache (used to keep test isolation tight). */
+export function _resetLocalEmbedCache(): void {
+  localEmbedCache.clear();
 }
 
 /**

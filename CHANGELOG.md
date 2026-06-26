@@ -6,6 +6,54 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.11.0] — 2026-06-26
+
+Companion feature/cleanup release to v1.10.2's security patch. Addresses the **next-priority cluster** of items from the v1.10.1 code review — the UX self-discovery gap, two hot-path perf wins, the shared-helper refactor that the review flagged as copy-pasted across four sites, and a near-doubling of unit-test coverage across previously-untested modules.
+
+### Added — `@mem /help` self-discovery (review item #6)
+The chat surface grew to **42 slash commands** without an in-chat catalog; new users had to grep the README or scroll the followup chips (which only cover ~15 of them). `@mem /help` (alias: `@mem /?`) now renders a grouped markdown table of every command, split by intent: 🔍 retrieval · ✅ trust + correction · ✍️ authoring · ✏️ generation · 🛡 admin + insight. Each row shows the command's argument shape and a one-line description. Adds zero token cost to existing flows — only renders when explicitly requested.
+
+### Changed — `/commit` and `/precommit` now use `execFile` (review item #9)
+The `/pr` command in this file was hardened to `execFileAsync` (no shell) at the v1.6.x security pass, but `/commit` and `/precommit` were missed and kept shelling out via `execAsync`. No user input flows into the argv arrays today, so the risk was latent — but the inconsistency would have inherited a shell-injection footgun the next time someone added a user-supplied git flag. Both commands now match `/pr`'s posture. Pre-existing graceful "no staged changes" behaviour preserved via per-call try/catch.
+
+### Added — `matchFilePath()` shared helper (review item #22)
+The same four-condition fuzzy-match comparison (exact / suffix / reverse-suffix / basename) was copy-pasted across **four sites**: `src/contextProvider.ts` (3 sites) and `src/extension.ts` (1 site). The review flagged this as a divergence risk — each copy was free to drift its case-handling or `null`/empty guards. Consolidated into `src/pathMatch.ts` with one definitive implementation and 7 unit tests pinning the documented contract (empty inputs reject; basename match works after a file move; case-insensitive on macOS/Windows-style paths). Net: −16 LOC across the four call sites, +35 LOC of helper + tests.
+
+### Changed — Janitor bulk-persists `qualityScore` mutations (review item #11)
+`runJanitor` ([src/janitor.ts:46](src/janitor.ts)) mutates `session.qualityScore` in place during its weekly re-scoring pass. Before v1.11.0 the comment honestly admitted "persisted on next mutation or prune" — meaning a session whose score drifted within the floor (still below, still flagged) never persisted, and every weekly run rescored from scratch. Now: the loop tracks whether *any* score actually drifted (compared to its prior value) and calls a new `ContextStore.flush()` once at the end IFF (a) no prune happened (which would have persisted anyway) AND (b) at least one score moved. Steady-state cost: zero extra disk writes when nothing changed; one write per janitor run when scores drift.
+
+### Changed — `localEmbed()` now memoises via a 512-entry LRU (review item #13)
+[src/embeddings.ts:120](src/embeddings.ts) is on two hot paths: every `addSession` runs it during indexing, and every `searchWithEmbedding` embeds the query string. Both call patterns re-tokenise + re-hash strings the cache could have served. New behaviour: deterministic content-addressed key (FNV hash of input + dim), Map-order-preserving LRU eviction at 512 entries, ~0.5 MB peak memory budget. Test-only `_resetLocalEmbedCache()` export keeps test isolation tight. Memo hit returns the exact same `number[]` reference, so the perf win is visible AND verifiable (the new tests assert `===` identity, not value equality).
+
+### Added — Test coverage for 10 previously-untested modules (review item #19)
+The v1.10.1 review called out 10 pure modules with zero direct test files — most of them drive retrieval/ranking outputs, so silent behaviour changes there would degrade results without anyone noticing. New test files:
+
+- `src/test/compliance.test.ts`
+- `src/test/causalGraph.test.ts`
+- `src/test/explain.test.ts`
+- `src/test/router.test.ts`
+- `src/test/decay.test.ts`
+- `src/test/entity.test.ts`
+- `src/test/snippets.test.ts`
+- `src/test/queryIntent.test.ts`
+- `src/test/queryExpansion.test.ts`
+- `src/test/adaptiveWeights.test.ts`
+- `src/test/pathMatch.test.ts` (review item #22's companion)
+
+Plus targeted extensions to three existing test files:
+
+- `src/test/embeddings.test.ts` — LRU memo behaviour (review item #13)
+- `src/test/janitor.test.ts` — lessons consolidation path + bulk-persist (review items #11, #18)
+- `src/test/redactor.entropy.test.ts` — adversarial corpus: PEM body lines, JWT non-double-redaction, Stripe live vs test keys, 32-char hex git-SHA spare (review item #17)
+
+### Test count
+**498 tests** (was 401 → +97 in this release; 394 was the v1.10.2 count and the test suite has grown 27 % in one release). All gates green: format, lint (`--max-warnings=0`), typecheck, test, check:release (5/5 doc surfaces), bundle:prod, `npm audit` 0 vulns at every severity.
+
+### Deferred to v1.12.0
+Two refactor items from the same review intentionally postponed: splitting `contextProvider.ts` (3,002 LOC, 47 private methods) into command-group modules `src/commands/{retrieval,trust,authoring,generation,admin}.ts`, and splitting `extension.ts` (2,024 LOC, 32 `registerCommand`s) into `src/extensionCommands/*.ts`. These are mechanical but produce ~4,000-line diffs; bundling them with the substantive fixes above would have made the v1.11.0 commit unreviewable. v1.12.0 is reserved for those splits and their unit-test-runner consolidation.
+
+---
+
 ## [1.10.2] — 2026-06-26
 
 Targeted security + correctness patch in response to a thorough code review of v1.10.1. Six surgical fixes, each closing a real attack surface or trust gap. No new product features; no schema migrations; backward-compatible with every store captured under v1.x.

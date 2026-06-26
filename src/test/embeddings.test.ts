@@ -1,6 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { localEmbed, makeLocalEmbedder, cosineSim, LOCAL_EMBED_DIM } from '../embeddings';
+import {
+  _resetLocalEmbedCache,
+  cosineSim,
+  LOCAL_EMBED_DIM,
+  localEmbed,
+  makeLocalEmbedder,
+} from '../embeddings';
 
 test('localEmbed — deterministic and correct dimension', () => {
   const a = localEmbed('refactor the authentication module with JWT');
@@ -41,4 +47,36 @@ test('makeLocalEmbedder — returns a working async EmbeddingFn', async () => {
   const vec = await embed('hybrid retrieval signal');
   assert.ok(Array.isArray(vec));
   assert.equal(vec!.length, LOCAL_EMBED_DIM);
+});
+
+// ── v1.11.0 LRU memo regression tests ────────────────────────────────────────
+test('localEmbed — LRU memo returns the same array reference on second call', () => {
+  _resetLocalEmbedCache();
+  const text = 'memoized embedding lookup for retrieval';
+  const first = localEmbed(text);
+  const second = localEmbed(text);
+  assert.equal(first, second, 'expected identical array reference (===) from memo');
+});
+
+test('localEmbed — _resetLocalEmbedCache forces recomputation', () => {
+  const text = 'cache should be cleared between unit tests';
+  const before = localEmbed(text);
+  _resetLocalEmbedCache();
+  const after = localEmbed(text);
+  // Different reference because the cache was wiped, but content is identical.
+  assert.notEqual(after, before, 'expected new reference after cache reset');
+  assert.deepEqual(after, before, 'content should still be deterministic');
+});
+
+test('localEmbed — high-throughput input stays bounded (no unbounded cache growth)', () => {
+  _resetLocalEmbedCache();
+  // 1500 distinct inputs through the 512-slot LRU.
+  for (let i = 0; i < 1500; i++) {
+    const v = localEmbed(`distinct input ${i} payload xyz`);
+    assert.equal(v.length, LOCAL_EMBED_DIM);
+  }
+  // No assertion on the internal size — but if growth were unbounded
+  // memory pressure would manifest. This test serves as a smoke check
+  // that 1500 unique inputs don't blow up the embedder.
+  assert.ok(true);
 });

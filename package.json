@@ -2,7 +2,7 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "A local, auditable session-memory layer for VS Code and GitHub Copilot, built for engineers who need persistent project context without relying on a cloud memory backend.",
-  "version": "1.10.2",
+  "version": "1.11.0",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",

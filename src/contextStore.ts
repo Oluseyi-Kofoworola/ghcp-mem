@@ -1430,6 +1430,23 @@ export class ContextStore implements vscode.Disposable {
   }
 
   /**
+   * Public flush — for callers that have mutated session fields in place and
+   * need those mutations persisted without triggering every other write-side
+   * effect on the hot path.
+   *
+   * Added in v1.11.0 for the weekly janitor. Before v1.11.0 the janitor wrote
+   * `session.qualityScore = q.score` in a loop and the comment honestly said
+   * "persisted on next mutation or prune" — but if a session's score drifted
+   * within the floor (still below, still flagged) no flag flip happened and
+   * the assignment was lost on next reload. Every weekly pass therefore
+   * re-scored from scratch. Now the janitor calls `flush()` once after the
+   * loop and the rescored values survive.
+   */
+  async flush(): Promise<void> {
+    await this.persist();
+  }
+
+  /**
    * Mirror the database to `~/.ghcp-mem/sessions.json` for the standalone
    * MCP server. Non-fatal on error (e.g. sandboxed FS, read-only HOME).
    *

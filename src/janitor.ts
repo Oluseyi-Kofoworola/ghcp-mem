@@ -43,6 +43,10 @@ export async function runJanitor(
   const DAY = 86_400_000;
   const toPrune: string[] = [];
 
+  // Track whether any qualityScore actually drifted — only the drifted-but-
+  // flag-unchanged case is missed by setNoise/undoNoise, so we don't want
+  // to write an unnecessary backup snapshot in the steady state.
+  let anyScoreDrift = false;
   for (const s of sessions) {
     const q = scoreSessionQuality(s);
     const wasLow = !!s.lowQuality;
@@ -56,8 +60,16 @@ export async function runJanitor(
         report.unflagged++;
       }
     }
-    // Store qualityScore in-place; persisted on next mutation or prune.
-    s.qualityScore = q.score;
+    // v1.11.0 perf fix (review item #11): persist qualityScore drift.
+    // Before v1.11.0 the in-place assignment relied on "next mutation or
+    // prune" to hit disk — but a session whose score moved from 0.42→0.41
+    // (still below floor, still flagged) never triggered a flag flip, so
+    // the assignment was lost on next reload and the next weekly pass
+    // re-scored from scratch. We now bulk-flush once after the loop.
+    if (s.qualityScore !== q.score) {
+      s.qualityScore = q.score;
+      anyScoreDrift = true;
+    }
     report.rescored++;
 
     // Age the session from whichever happened later — original capture or the
@@ -78,6 +90,12 @@ export async function runJanitor(
 
   if (toPrune.length > 0) {
     report.pruned = await store.deleteSessions(toPrune);
+  } else if (anyScoreDrift) {
+    // No prune (which would have persisted anyway) and no flag flip; flush
+    // the in-place qualityScore mutations explicitly. deleteSessions already
+    // persists, so the else-if avoids a redundant disk write in the common
+    // "things changed" case.
+    await store.flush();
   }
 
   // Consolidation pass: distill recurring decisions/problems from the

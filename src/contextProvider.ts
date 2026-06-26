@@ -1,12 +1,13 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
-import { exec, execFile } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { ContextStore } from './contextStore';
 import { CompressedSession, computeContentHash, getConfig } from './types';
 import { computeHealth } from './health';
 import { exportSessionMarkdown } from './markdownExport';
 import { estimateSessionTokenSavings, estimateTokenSavingsUsd } from './savings';
+import { matchFilePath } from './pathMatch';
 import { validateSession } from './validator';
 import { redact } from './redactor';
 import { getRepoScope } from './repoScope';
@@ -40,7 +41,6 @@ import {
   synthesize,
 } from './contextProviderFormat';
 
-const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 // Re-exported from ./contextProviderFormat to preserve the historical public
@@ -384,11 +384,110 @@ export class ContextProvider implements vscode.Disposable {
         return this.pin(query, stream);
       case 'evict':
         return this.evict(query, stream);
+      case 'help':
+      case '?':
+        return this.help(stream);
       default:
         if (!query || query.toLowerCase() === 'status') return this.status(stream);
         if (query.toLowerCase() === 'recent') return this.recent(stream);
         return this.search(query, stream);
     }
+  }
+
+  /**
+   * Self-discovery command — added in v1.11.0 in response to a review that
+   * called out 41 slash commands with no in-chat catalog and inconsistent
+   * follow-up chip coverage. Groups the surface so users can scan by intent
+   * (retrieval / trust / authoring / generation / admin) instead of scrolling
+   * the entire alphabetical list.
+   */
+  private async help(stream: vscode.ChatResponseStream): Promise<void> {
+    stream.markdown('### `@mem` commands\n\n');
+    stream.markdown(
+      'Type any of these in Copilot Chat. Most take a query; a few take an `<id>` ' +
+        '(use `/recent` or `/search` to find one). Square brackets denote optional args.\n\n',
+    );
+
+    const groups: Array<{ heading: string; rows: Array<[string, string]> }> = [
+      {
+        heading: '🔍 Retrieval',
+        rows: [
+          ['/search <query> [type:X since:Yd tag:Z]', 'fused keyword+recency+embedding search'],
+          ['/recent', 'last N captured sessions, newest first'],
+          ['/timeline [days]', 'chronological view of recent activity'],
+          ['/detail <id|prefix>', 'full structured row for one session'],
+          ['/snippet <query>', 'chunk-level retrieval inside sessions'],
+          ['/entity <path[#symbol]>', 'every session that touched a file/symbol'],
+          ['/lineage <id>', 'predecessor → successor chain for one session'],
+          ['/related', 'sessions that touched the file currently open in the editor'],
+        ],
+      },
+      {
+        heading: '✅ Trust + correction',
+        rows: [
+          ['/verify <id>', 'per-file verified/drifted/missing classification'],
+          ['/correct <id> <text>', 'create a linked correction; supersedes the original'],
+          ['/supersede <newer> <older>', 'mark one session as superseding another'],
+          ['/retract <id> [reason] · /retract undo <id>', 'exclude from retrieval (reversible)'],
+          ['/noise <id> · /noise undo <id>', 'flag as low-quality + feed adaptive ranker'],
+          ['/accept <id> · /reject <id>', 'thumbs-up/down — reinforces ranking weights'],
+          ['/conflicts', 'list contradiction-marker warnings; `dismiss <id>` to clear'],
+          ['/why <query> :: <id>', 'per-signal score breakdown for one ranking decision'],
+        ],
+      },
+      {
+        heading: '✍️ Authoring',
+        rows: [
+          ['/lessons [add|remove|pin|unpin]', 'consolidated semantic + procedural memory'],
+          ['/rules [add|remove|list]', 'team-shared project rules (`.github/memory/rules.md`)'],
+          ['/pin <id> · /unpin <id>', 'force-include in startup brief'],
+          ['/evict <id>', 'remove from working set without deleting the row'],
+        ],
+      },
+      {
+        heading: '✏️ Generation',
+        rows: [
+          ['/whereami', 'one-screen "what was I doing here?" briefing'],
+          ['/standup', 'yesterday/today/blockers shaped from recent sessions'],
+          ['/commit [--check]', 'commit message draft (or `--check` to pre-flight)'],
+          ['/precommit', 'consistency pre-flight against staged diff (alias for /commit --check)'],
+          ['/adr <topic>', 'draft an ADR from related session decisions'],
+          ['/pr [base]', 'pull-request title + body grounded in branch history'],
+          ['/recap [days]', 'narrative recap of recent work'],
+          ['/ask <q> · /decisions', "answer a question / list decisions / `/debt` for what's owed"],
+        ],
+      },
+      {
+        heading: '🛡 Admin + insight',
+        rows: [
+          ['/status', 'session count, last capture, health'],
+          ['/health', 'one-shot health score breakdown'],
+          ['/audit', 'workspace integrity audit (cross-file consistency)'],
+          ['/compliance', 'grounding/trust/conflict/redaction report'],
+          ['/savings', 'estimated token cost saved vs cold prompting'],
+          ['/route <question>', 'show which retrieval path the router would pick'],
+          ['/janitor', 'manual re-score pass over every stored session'],
+          ['/graph', 'mermaid causal graph of related sessions'],
+          ['/export <id>', 'session row as diff-friendly markdown'],
+          ['/azure', 'Azure-context-aware retrieval shortcut'],
+        ],
+      },
+    ];
+
+    for (const g of groups) {
+      stream.markdown(`#### ${g.heading}\n\n`);
+      stream.markdown('| Command | What it does |\n|---|---|\n');
+      for (const [cmd, desc] of g.rows) {
+        // Escape pipes so command syntax doesn't break the markdown table.
+        const cmdEsc = cmd.replace(/\|/g, '\\|');
+        stream.markdown(`| \`${cmdEsc}\` | ${desc} |\n`);
+      }
+      stream.markdown('\n');
+    }
+
+    stream.markdown(
+      '\n_Tip: every command above also has a follow-up chip after typical results — you usually never need to remember the name._\n',
+    );
   }
 
   private async audit(stream: vscode.ChatResponseStream): Promise<void> {
@@ -1707,12 +1806,24 @@ export class ContextProvider implements vscode.Disposable {
     let diffSnippet = '';
 
     try {
-      const { stdout: names } = await execAsync('git diff --cached --name-only', { cwd: wsRoot });
+      // v1.11.0 hardening: switched from execAsync (shell) to execFileAsync
+      // (no shell, args passed individually) to match the existing pattern in
+      // /pr (this file:2574, 2590). No user input flows into these argv arrays
+      // today, but using a shell here was a needless deviation from the
+      // codebase's own security posture and the next maintainer to add a
+      // user-supplied flag would have inherited a shell-injection footgun.
+      const { stdout: names } = await execFileAsync('git', ['diff', '--cached', '--name-only'], {
+        cwd: wsRoot,
+      });
       stagedFiles = names.trim().split('\n').filter(Boolean);
-      const { stdout: stat } = await execAsync('git diff --cached --stat', { cwd: wsRoot });
+      const { stdout: stat } = await execFileAsync('git', ['diff', '--cached', '--stat'], {
+        cwd: wsRoot,
+      });
       diffStat = stat.trim();
       // Grab a short diff snippet (first 3000 chars of actual diff)
-      const { stdout: diff } = await execAsync('git diff --cached --unified=2', { cwd: wsRoot });
+      const { stdout: diff } = await execFileAsync('git', ['diff', '--cached', '--unified=2'], {
+        cwd: wsRoot,
+      });
       diffSnippet = diff.substring(0, 3000);
     } catch {
       stream.markdown('_No staged changes found. Stage your changes with `git add` first._\n');
@@ -2387,18 +2498,7 @@ export class ContextProvider implements vscode.Disposable {
     const matchMap = new Map<string, { session: (typeof all)[0]; matchedFiles: string[] }>();
 
     for (const s of all) {
-      const matched = s.keyFiles.filter((sf) => {
-        const sfl = sf.toLowerCase();
-        return changedFiles.some((cf) => {
-          const cfl = cf.toLowerCase();
-          return (
-            sfl === cfl ||
-            sfl.endsWith('/' + cfl) ||
-            cfl.endsWith('/' + sfl) ||
-            sfl.split('/').pop() === cfl.split('/').pop()
-          );
-        });
-      });
+      const matched = s.keyFiles.filter((sf) => changedFiles.some((cf) => matchFilePath(sf, cf)));
       if (matched.length > 0) {
         matchMap.set(s.id, { session: s, matchedFiles: matched });
       }
@@ -2482,14 +2582,23 @@ export class ContextProvider implements vscode.Disposable {
       const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
       if (!cwd) throw new Error('No workspace open');
 
-      const { stdout: filesOut } = await execAsync(
-        'git diff --cached --name-only 2>/dev/null || echo ""',
-        { cwd },
-      );
-      stagedFiles = filesOut
-        .split('\n')
-        .map((f) => f.trim())
-        .filter(Boolean);
+      // v1.11.0 hardening: same execFile switch as /commit. The shell-piped
+      // `2>/dev/null || echo ""` fallback is preserved in spirit by simply
+      // returning an empty array on caught error — execFile rejects with a
+      // non-zero exit code instead, which the surrounding try/catch handles.
+      try {
+        const { stdout: filesOut } = await execFileAsync(
+          'git',
+          ['diff', '--cached', '--name-only'],
+          { cwd },
+        );
+        stagedFiles = filesOut
+          .split('\n')
+          .map((f) => f.trim())
+          .filter(Boolean);
+      } catch {
+        stagedFiles = [];
+      }
 
       if (stagedFiles.length === 0) {
         stream.markdown(
@@ -2498,11 +2607,14 @@ export class ContextProvider implements vscode.Disposable {
         return;
       }
 
-      const { stdout: diffOut } = await execAsync(
-        'git diff --cached --stat 2>/dev/null || echo ""',
-        { cwd },
-      );
-      stagedDiff = diffOut.substring(0, 2000); // Keep it manageable
+      try {
+        const { stdout: diffOut } = await execFileAsync('git', ['diff', '--cached', '--stat'], {
+          cwd,
+        });
+        stagedDiff = diffOut.substring(0, 2000); // Keep it manageable
+      } catch {
+        stagedDiff = '';
+      }
     } catch {
       stream.markdown(
         '_Could not read staged diff. Ensure you are in a git repository with staged changes._\n',
@@ -2520,20 +2632,7 @@ export class ContextProvider implements vscode.Disposable {
     // Find sessions related to staged files
     const all = this.store.getAllSessions();
     const relatedSessions = all
-      .filter((s) =>
-        s.keyFiles.some((sf) =>
-          stagedFiles.some((pf) => {
-            const sfl = sf.toLowerCase();
-            const pfl = pf.toLowerCase();
-            return (
-              sfl === pfl ||
-              sfl.endsWith('/' + pfl) ||
-              pfl.endsWith('/' + sfl) ||
-              sfl.split('/').pop() === pfl.split('/').pop()
-            );
-          }),
-        ),
-      )
+      .filter((s) => s.keyFiles.some((sf) => stagedFiles.some((pf) => matchFilePath(sf, pf))))
       .sort((a, b) => b.endTime - a.endTime);
 
     // Collect all decisions from related sessions
@@ -2599,24 +2698,12 @@ export class ContextProvider implements vscode.Disposable {
       return;
     }
 
-    const fileName = activeFile.split('/').pop() ?? activeFile;
     const rel = vscode.workspace.asRelativePath(activeFile);
 
     // Match by suffix or basename — sessions store relative paths
     const all = this.store.getAllSessions();
     const matches = all
-      .filter((s) =>
-        s.keyFiles.some((f) => {
-          const fl = f.toLowerCase();
-          const al = rel.toLowerCase();
-          return (
-            fl === al ||
-            al.endsWith('/' + fl) ||
-            fl.endsWith('/' + al) ||
-            fl === fileName.toLowerCase()
-          );
-        }),
-      )
+      .filter((s) => s.keyFiles.some((f) => matchFilePath(f, rel)))
       .sort((a, b) => b.endTime - a.endTime);
 
     if (matches.length === 0) {
@@ -2644,7 +2731,7 @@ export class ContextProvider implements vscode.Disposable {
     }
     if (matches.length > 15) {
       stream.markdown(
-        `_... and ${matches.length - 15} more. Use \`@mem /search ${fileName}\` to see all._\n`,
+        `_... and ${matches.length - 15} more. Use \`@mem /search ${rel.split('/').pop() ?? rel}\` to see all._\n`,
       );
     }
   }
