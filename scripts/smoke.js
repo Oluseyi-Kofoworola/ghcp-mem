@@ -18,7 +18,10 @@ Module._resolveFilename = function (request, ...rest) {
 
 const vscode = require(mockPath);
 const { ContextStore } = require('../out-test/src/contextStore.js');
-const { exportSessionMarkdown, exportSessionsMarkdown } = require('../out-test/src/markdownExport.js');
+const {
+  exportSessionMarkdown,
+  exportSessionsMarkdown,
+} = require('../out-test/src/markdownExport.js');
 const { normalizeRemoteUrl } = require('../out-test/src/repoScope.js');
 const { validateSession } = require('../out-test/src/validator.js');
 const { runEvalSuite, formatEvalReport, buildSelfQueries } = require('../out-test/src/eval.js');
@@ -34,8 +37,14 @@ function assert(cond, msg) {
 
 async function main() {
   console.log('=== smoke: repoScope.normalizeRemoteUrl ===');
-  assert(normalizeRemoteUrl('git@github.com:foo/bar.git') === 'github.com/foo/bar', 'ssh url normalized');
-  assert(normalizeRemoteUrl('https://github.com/foo/bar.git') === 'github.com/foo/bar', 'https url normalized');
+  assert(
+    normalizeRemoteUrl('git@github.com:foo/bar.git') === 'github.com/foo/bar',
+    'ssh url normalized',
+  );
+  assert(
+    normalizeRemoteUrl('https://github.com/foo/bar.git') === 'github.com/foo/bar',
+    'https url normalized',
+  );
   assert(normalizeRemoteUrl('') === '', 'empty handled');
 
   console.log('=== smoke: validator (no workspace -> freshness 1) ===');
@@ -68,7 +77,10 @@ async function main() {
   assert(md1.includes('src/extension.ts'), 'markdown lists keyFile');
 
   const bulk = exportSessionsMarkdown([session, { ...session, id: 'def', summary: 'second' }]);
-  assert(bulk.includes('demo session') && bulk.includes('second'), 'bulk export contains both sessions');
+  assert(
+    bulk.includes('demo session') && bulk.includes('second'),
+    'bulk export contains both sessions',
+  );
 
   console.log('=== smoke: ContextStore + eval suite ===');
   const memento = new vscode.InMemoryMemento();
@@ -99,7 +111,7 @@ async function main() {
   console.log('\nSMOKE OK');
 }
 
-main().catch(e => {
+main().catch((e) => {
   console.error('SMOKE CRASHED:', e);
   process.exit(2);
 });

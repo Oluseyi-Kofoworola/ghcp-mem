@@ -1,0 +1,17 @@
+{
+  "_comment": "Hand-curated gold corpus for Phase 3 nDCG/MRR regression checks. Used by `node scripts/eval-check.js --gold scripts/eval-gold.json`. Each query lists the session IDs that SHOULD appear in the top-K. Add new entries when you discover retrieval edge cases worth pinning. The IDs here align with the synthetic CORPUS seeded inside scripts/eval-check.js (eval-NNNN) so this file works against the same in-memory store the regression gate already builds.",
+  "queries": [
+    { "q": "reciprocal rank fusion", "relevant": ["eval-0000"] },
+    { "q": "azure storage connection string", "relevant": ["eval-0001"] },
+    { "q": "jwt token redaction", "relevant": ["eval-0002"] },
+    { "q": "mcp stdio server", "relevant": ["eval-0003"] },
+    { "q": "session tree pinned", "relevant": ["eval-0004"] },
+    { "q": "walkthrough onboarding", "relevant": ["eval-0005"] },
+    { "q": "github compatible retention", "relevant": ["eval-0006"] },
+    { "q": "repo scope cache invalidation", "relevant": ["eval-0007"] },
+    { "q": "markdown export diff", "relevant": ["eval-0008"] },
+    { "q": "inverted index", "relevant": ["eval-0009"] },
+    { "q": "embedding cosine", "relevant": ["eval-0010"] },
+    { "q": "health score redaction coverage", "relevant": ["eval-0011"] }
+  ]
+}

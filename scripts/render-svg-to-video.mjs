@@ -39,11 +39,18 @@ if (argv.length < 2) {
 
 const [inSvg, outBase, ...rest] = argv;
 const opts = {};
-let skipGif = false, skipMp4 = false;
+let skipGif = false,
+  skipMp4 = false;
 for (let i = 0; i < rest.length; i++) {
   const k = rest[i];
-  if (k === '--skip-gif') { skipGif = true; continue; }
-  if (k === '--skip-mp4') { skipMp4 = true; continue; }
+  if (k === '--skip-gif') {
+    skipGif = true;
+    continue;
+  }
+  if (k === '--skip-mp4') {
+    skipMp4 = true;
+    continue;
+  }
   if (k.startsWith('--')) opts[k.slice(2)] = rest[++i];
 }
 const durationMs = Number(opts['duration-ms'] ?? 45000);
@@ -78,19 +85,29 @@ for (let i = 0; i < numFrames; i++) {
   const t = Math.max(50, Math.round((i * durationMs) / numFrames));
   const out = join(tmp, `frame-${String(i).padStart(5, '0')}.png`);
   try {
-    execFileSync(CHROME, [
-      '--headless',
-      '--disable-gpu',
-      '--no-sandbox',
-      '--hide-scrollbars',
-      `--virtual-time-budget=${t}`,
-      `--window-size=${width},${height}`,
-      `--screenshot=${out}`,
-      `file://${inputPath}`,
-    ], { stdio: ['ignore', 'ignore', 'ignore'], timeout: PER_FRAME_TIMEOUT_MS, killSignal: 'SIGKILL' });
+    execFileSync(
+      CHROME,
+      [
+        '--headless',
+        '--disable-gpu',
+        '--no-sandbox',
+        '--hide-scrollbars',
+        `--virtual-time-budget=${t}`,
+        `--window-size=${width},${height}`,
+        `--screenshot=${out}`,
+        `file://${inputPath}`,
+      ],
+      {
+        stdio: ['ignore', 'ignore', 'ignore'],
+        timeout: PER_FRAME_TIMEOUT_MS,
+        killSignal: 'SIGKILL',
+      },
+    );
   } catch (err) {
     if (err.code === 'ETIMEDOUT' || err.signal === 'SIGKILL' || err.signal === 'SIGTERM') {
-      console.error(`  frame ${i} (t=${t}ms) timed out after ${PER_FRAME_TIMEOUT_MS}ms — likely a filter/animation deadlock. Simplify the SVG (reduce bloom stdDeviation, drop nested filters, fewer concurrent SMIL anims).`);
+      console.error(
+        `  frame ${i} (t=${t}ms) timed out after ${PER_FRAME_TIMEOUT_MS}ms — likely a filter/animation deadlock. Simplify the SVG (reduce bloom stdDeviation, drop nested filters, fewer concurrent SMIL anims).`,
+      );
     } else {
       console.error(`  frame ${i} (t=${t}ms) failed: ${err.message}`);
     }
@@ -110,26 +127,47 @@ for (let i = 0; i < numFrames; i++) {
 if (!skipMp4) {
   const mp4Path = `${outputBase}.mp4`;
   console.log(`encoding MP4 → ${mp4Path}`);
-  execFileSync('ffmpeg', [
-    '-y',
-    '-framerate', String(fps),
-    '-i', join(tmp, 'frame-%05d.png'),
-    '-c:v', 'libx264',
-    '-pix_fmt', 'yuv420p',
-    '-crf', '20',          // visually lossless-ish
-    '-preset', 'medium',
-    '-movflags', '+faststart',
-    mp4Path,
-  ], { stdio: ['ignore', 'ignore', 'inherit'] });
+  execFileSync(
+    'ffmpeg',
+    [
+      '-y',
+      '-framerate',
+      String(fps),
+      '-i',
+      join(tmp, 'frame-%05d.png'),
+      '-c:v',
+      'libx264',
+      '-pix_fmt',
+      'yuv420p',
+      '-crf',
+      '20', // visually lossless-ish
+      '-preset',
+      'medium',
+      '-movflags',
+      '+faststart',
+      mp4Path,
+    ],
+    { stdio: ['ignore', 'ignore', 'inherit'] },
+  );
 }
 
 // 3. Emit GIF via gifski (better palette than ffmpeg's GIF encoder).
 if (!skipGif) {
   const gifPath = `${outputBase}.gif`;
   console.log(`encoding GIF → ${gifPath}`);
-  execFileSync('gifski',
-    ['--fps', String(fps), '--width', String(width), '--quality', '80',
-     '--output', gifPath, ...frames],
+  execFileSync(
+    'gifski',
+    [
+      '--fps',
+      String(fps),
+      '--width',
+      String(width),
+      '--quality',
+      '80',
+      '--output',
+      gifPath,
+      ...frames,
+    ],
     { stdio: 'inherit' },
   );
 }

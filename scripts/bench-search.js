@@ -22,15 +22,38 @@ require('module').Module._initPaths();
 process.env.NODE_PATH = path.resolve(__dirname, '..', 'out-test', 'node_modules');
 require('module').Module._initPaths();
 
-const { ContextStore } = require(path.resolve(__dirname, '..', 'out-test', 'src', 'contextStore.js'));
-const { computeContentHash } = require(path.resolve(__dirname, '..', 'out-test', 'src', 'types.js'));
-const { InMemoryMemento } = require(path.resolve(__dirname, '..', 'out-test', 'src', 'test', '__mocks__', 'vscode.js'));
+const { ContextStore } = require(
+  path.resolve(__dirname, '..', 'out-test', 'src', 'contextStore.js'),
+);
+const { computeContentHash } = require(
+  path.resolve(__dirname, '..', 'out-test', 'src', 'types.js'),
+);
+const { InMemoryMemento } = require(
+  path.resolve(__dirname, '..', 'out-test', 'src', 'test', '__mocks__', 'vscode.js'),
+);
 
-const TOPICS = ['auth', 'azure', 'refactor', 'redis', 'cache', 'mcp', 'embedding', 'rrf', 'sidebar', 'walkthrough', 'redaction', 'health'];
+const TOPICS = [
+  'auth',
+  'azure',
+  'refactor',
+  'redis',
+  'cache',
+  'mcp',
+  'embedding',
+  'rrf',
+  'sidebar',
+  'walkthrough',
+  'redaction',
+  'health',
+];
 const TYPES = ['feature', 'bugfix', 'refactor', 'docs', 'config', 'experiment'];
 
-function randInt(n) { return Math.floor(Math.random() * n); }
-function pick(arr) { return arr[randInt(arr.length)]; }
+function randInt(n) {
+  return Math.floor(Math.random() * n);
+}
+function pick(arr) {
+  return arr[randInt(arr.length)];
+}
 
 function makeSession(i) {
   const topics = [pick(TOPICS), pick(TOPICS)];
@@ -52,7 +75,13 @@ function makeSession(i) {
     rawEventCount: 5,
     userTags: i % 7 === 0 ? ['pinned'] : [],
     redactionCount: 0,
-    contentHash: computeContentHash({ summary, keyFiles, keyTopics: topics, decisions, problemsSolved: [] }),
+    contentHash: computeContentHash({
+      summary,
+      keyFiles,
+      keyTopics: topics,
+      decisions,
+      problemsSolved: [],
+    }),
   };
 }
 
@@ -82,7 +111,8 @@ function makeSession(i) {
     if (!Array.isArray(r)) throw new Error('search must return array');
   }
   latencies.sort((a, b) => a - b);
-  const pct = (p) => latencies[Math.min(latencies.length - 1, Math.floor((p / 100) * latencies.length))];
+  const pct = (p) =>
+    latencies[Math.min(latencies.length - 1, Math.floor((p / 100) * latencies.length))];
   console.log(`  p50: ${pct(50).toFixed(0)} µs`);
   console.log(`  p95: ${pct(95).toFixed(0)} µs`);
   console.log(`  p99: ${pct(99).toFixed(0)} µs`);
@@ -95,4 +125,7 @@ function makeSession(i) {
     process.exit(1);
   }
   console.log('OK');
-})().catch((e) => { console.error(e); process.exit(1); });
+})().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

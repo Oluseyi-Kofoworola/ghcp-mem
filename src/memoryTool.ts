@@ -27,7 +27,7 @@ export class MemorySearchTool implements vscode.LanguageModelTool<SearchToolInpu
 
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<SearchToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
     const input = options.input;
     const filters: SearchFilters = {
@@ -48,10 +48,7 @@ export class MemorySearchTool implements vscode.LanguageModelTool<SearchToolInpu
       ]);
     }
 
-    const lines: string[] = [
-      `Found ${results.length} session(s) for "${input.query}":`,
-      '',
-    ];
+    const lines: string[] = [`Found ${results.length} session(s) for "${input.query}":`, ''];
     for (const s of results) {
       const date = new Date(s.startTime).toISOString().slice(0, 10);
       const tags = s.userTags.length ? ` tags=[${s.userTags.join(',')}]` : '';
@@ -59,17 +56,16 @@ export class MemorySearchTool implements vscode.LanguageModelTool<SearchToolInpu
       lines.push(`  summary: ${s.summary}`);
       if (s.keyFiles.length) lines.push(`  files: ${s.keyFiles.slice(0, 5).join(', ')}`);
       if (s.decisions.length) lines.push(`  decisions: ${s.decisions.slice(0, 3).join('; ')}`);
-      if (s.problemsSolved.length) lines.push(`  solved: ${s.problemsSolved.slice(0, 3).join('; ')}`);
+      if (s.problemsSolved.length)
+        lines.push(`  solved: ${s.problemsSolved.slice(0, 3).join('; ')}`);
     }
 
-    return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(lines.join('\n')),
-    ]);
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(lines.join('\n'))]);
   }
 
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<SearchToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.PreparedToolInvocation> {
     return {
       invocationMessage: `Searching GHCP-MEM for "${options.input.query}"…`,
@@ -97,7 +93,7 @@ export class MemoryStoreTool implements vscode.LanguageModelTool<StoreToolInput>
 
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<StoreToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.LanguageModelToolResult> {
     const input = options.input;
     if (!input.summary || input.summary.trim().length < 4) {
@@ -136,7 +132,7 @@ export class MemoryStoreTool implements vscode.LanguageModelTool<StoreToolInput>
       decisions,
       problemsSolved,
       rawEventCount: 0,
-      userTags: (input.tags ?? []).map(t => t.trim()).filter(Boolean),
+      userTags: (input.tags ?? []).map((t) => t.trim()).filter(Boolean),
       redactionCount: totalRedactions,
       contentHash: computeContentHash({ summary, keyFiles, keyTopics, decisions, problemsSolved }),
     };
@@ -144,14 +140,127 @@ export class MemoryStoreTool implements vscode.LanguageModelTool<StoreToolInput>
     await this.store.addSession(session);
 
     return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(`Stored session ${session.id.substring(0, 8)} (${session.observationType}).`),
+      new vscode.LanguageModelTextPart(
+        `Stored session ${session.id.substring(0, 8)} (${session.observationType}).`,
+      ),
     ]);
   }
 
   async prepareInvocation(
     _options: vscode.LanguageModelToolInvocationPrepareOptions<StoreToolInput>,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<vscode.PreparedToolInvocation> {
     return { invocationMessage: 'Saving a note to GHCP-MEM…' };
+  }
+}
+
+/**
+ * Workspace integrity auditor — lets Copilot agent mode spot-check the
+ * workspace for cross-file inconsistencies (e.g. version drift between
+ * package.json, README, DEMO.md, CHANGELOG.md).
+ *
+ * Companion to the release-consistency gate that runs in CI / vscode:prepublish.
+ * The gate blocks vsce publish; this tool surfaces the same checks any time,
+ * for any agent flow.
+ */
+interface AuditToolInput {
+  /** Future: filter to a subset of rules. Currently ignored — runs all. */
+  rules?: string[];
+}
+
+export class MemoryAuditTool implements vscode.LanguageModelTool<AuditToolInput> {
+  async invoke(
+    _options: vscode.LanguageModelToolInvocationOptions<AuditToolInput>,
+    _token: vscode.CancellationToken,
+  ): Promise<vscode.LanguageModelToolResult> {
+    const { runWorkspaceAudit } = await import('./integrityChecker');
+    const { issues, rulesRun } = await runWorkspaceAudit();
+
+    if (rulesRun.length === 0) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart('No workspace folder open — nothing to audit.'),
+      ]);
+    }
+
+    if (issues.length === 0) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          `Ran ${rulesRun.length} integrity rule(s) (${rulesRun.join(', ')}). No issues found — every checked surface is consistent.`,
+        ),
+      ]);
+    }
+
+    const lines: string[] = [
+      `Ran ${rulesRun.length} integrity rule(s) (${rulesRun.join(', ')}). Found ${issues.length} issue(s):`,
+      '',
+    ];
+    for (const i of issues) {
+      const sev = i.severity === 'error' ? '❌' : i.severity === 'warning' ? '⚠️' : 'ℹ️';
+      const loc = i.line ? `${i.file}:${i.line}` : i.file;
+      lines.push(`${sev} [${i.rule}] ${loc} — ${i.message}`);
+      if (i.fix) lines.push(`     fix: ${i.fix}`);
+    }
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(lines.join('\n'))]);
+  }
+
+  async prepareInvocation(
+    _options: vscode.LanguageModelToolInvocationPrepareOptions<AuditToolInput>,
+    _token: vscode.CancellationToken,
+  ): Promise<vscode.PreparedToolInvocation> {
+    return { invocationMessage: 'Running GHCP-MEM workspace integrity audit…' };
+  }
+}
+
+interface LessonsToolInput {
+  kind?: 'semantic' | 'procedural';
+  limit?: number;
+}
+
+/**
+ * Language Model Tool — exposes the consolidated semantic + procedural
+ * lessons to Copilot agent mode. This is the highest-signal, cheapest memory
+ * surface: durable project facts and how-to sequences distilled from many
+ * sessions, rather than a single episodic log. The agent should reach for it
+ * when the question is "what is true about this project" or "how do we do X".
+ */
+export class MemoryLessonsTool implements vscode.LanguageModelTool<LessonsToolInput> {
+  constructor(private readonly store: ContextStore) {}
+
+  async invoke(
+    options: vscode.LanguageModelToolInvocationOptions<LessonsToolInput>,
+    _token: vscode.CancellationToken,
+  ): Promise<vscode.LanguageModelToolResult> {
+    const { rankLessons } = await import('./lessons');
+    const input = options.input;
+    const limit = Math.max(1, Math.min(100, input.limit ?? 12));
+    let lessons = rankLessons(this.store.getLessons());
+    if (input.kind === 'semantic' || input.kind === 'procedural') {
+      lessons = lessons.filter((l) => l.kind === input.kind);
+    }
+    lessons = lessons.slice(0, limit);
+
+    if (lessons.length === 0) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          'No consolidated lessons yet — they form once a decision or fix recurs across sessions.',
+        ),
+      ]);
+    }
+
+    const lines: string[] = [`${lessons.length} consolidated lesson(s):`, ''];
+    for (const l of lessons) {
+      const tag = l.kind === 'procedural' ? 'how-to' : 'fact';
+      const pin = l.pinned ? ' (pinned)' : ` (seen ×${l.supportCount})`;
+      const scope = l.scopeLabel ? ` [${l.scopeLabel}]` : '';
+      lines.push(`- ${tag}${pin}${scope}: ${l.text}`);
+    }
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(lines.join('\n'))]);
+  }
+
+  async prepareInvocation(
+    _options: vscode.LanguageModelToolInvocationPrepareOptions<LessonsToolInput>,
+    _token: vscode.CancellationToken,
+  ): Promise<vscode.PreparedToolInvocation> {
+    return { invocationMessage: 'Recalling consolidated lessons…' };
   }
 }

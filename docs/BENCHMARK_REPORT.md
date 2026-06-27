@@ -1,7 +1,7 @@
 # GHCP-MEM Benchmark Report
 
 **Run date:** 2026-05-31  
-**Build:** `ghcp-mem@1.4.9`
+**Build:** `ghcp-mem@1.6.0`
 
 ## Repro steps
 

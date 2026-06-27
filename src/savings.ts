@@ -28,19 +28,18 @@ function estimateTokens(chars: number): number {
 
 function sessionChars(session: TokenSavingsSource): { rawChars: number; compactChars: number } {
   const compactChars = (session.summary ?? '').length;
-  const rawChars = [
-    session.summary ?? '',
-    ...(session.keyFiles ?? []),
-    ...(session.keyTopics ?? []),
-    ...(session.decisions ?? []),
-    ...(session.problemsSolved ?? []),
-  ].join(' ').length + DEFAULT_RAW_EVENT_OVERHEAD_CHARS;
+  const rawChars =
+    [
+      session.summary ?? '',
+      ...(session.keyFiles ?? []),
+      ...(session.keyTopics ?? []),
+      ...(session.decisions ?? []),
+      ...(session.problemsSolved ?? []),
+    ].join(' ').length + DEFAULT_RAW_EVENT_OVERHEAD_CHARS;
   return { rawChars, compactChars };
 }
 
-export function estimateSessionTokenSavings(
-  session: TokenSavingsSource
-): TokenSavingsEstimate {
+export function estimateSessionTokenSavings(session: TokenSavingsSource): TokenSavingsEstimate {
   const { rawChars, compactChars } = sessionChars(session);
   const rawTokens = estimateTokens(rawChars);
   const compactTokens = estimateTokens(compactChars);
@@ -55,31 +54,33 @@ export function estimateSessionTokenSavings(
   };
 }
 
-export function aggregateTokenSavings(
-  sessions: TokenSavingsSource[]
-): TokenSavingsAggregate {
-  const totals = sessions.reduce((acc, session) => {
-    const estimate = estimateSessionTokenSavings(session);
-    acc.rawChars += estimate.rawChars;
-    acc.compactChars += estimate.compactChars;
-    acc.rawTokens += estimate.rawTokens;
-    acc.compactTokens += estimate.compactTokens;
-    acc.tokensSaved += estimate.tokensSaved;
-    return acc;
-  }, {
-    rawChars: 0,
-    compactChars: 0,
-    rawTokens: 0,
-    compactTokens: 0,
-    tokensSaved: 0,
-  });
+export function aggregateTokenSavings(sessions: TokenSavingsSource[]): TokenSavingsAggregate {
+  const totals = sessions.reduce(
+    (acc, session) => {
+      const estimate = estimateSessionTokenSavings(session);
+      acc.rawChars += estimate.rawChars;
+      acc.compactChars += estimate.compactChars;
+      acc.rawTokens += estimate.rawTokens;
+      acc.compactTokens += estimate.compactTokens;
+      acc.tokensSaved += estimate.tokensSaved;
+      return acc;
+    },
+    {
+      rawChars: 0,
+      compactChars: 0,
+      rawTokens: 0,
+      compactTokens: 0,
+      tokensSaved: 0,
+    },
+  );
 
   return {
     ...totals,
     sessionCount: sessions.length,
-    compressionRatio: totals.compactTokens > 0
-      ? Math.round((totals.rawTokens / Math.max(totals.compactTokens, 1)) * 10) / 10
-      : 1,
+    compressionRatio:
+      totals.compactTokens > 0
+        ? Math.round((totals.rawTokens / Math.max(totals.compactTokens, 1)) * 10) / 10
+        : 1,
   };
 }
 

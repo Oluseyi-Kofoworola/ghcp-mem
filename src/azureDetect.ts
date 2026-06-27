@@ -27,30 +27,30 @@ export interface AzureClassification {
 
 /** File-path / filename patterns that unambiguously indicate Azure content. */
 const FILE_RULES: Array<{ re: RegExp; subsystem: AzureSubsystem; tag: string }> = [
-  { re: /\.bicep$/i,                                    subsystem: 'iac-bicep',      tag: 'bicep' },
-  { re: /\.bicepparam$/i,                               subsystem: 'iac-bicep',      tag: 'bicep' },
-  { re: /(^|\/)main\.tf$|\.tf$|\.tfvars$/i,             subsystem: 'iac-terraform',  tag: 'terraform' },
-  { re: /(^|\/)azuredeploy\.json$/i,                    subsystem: 'iac-arm',        tag: 'arm' },
-  { re: /(^|\/)azure\.ya?ml$/i,                         subsystem: 'azd',            tag: 'azd' },
-  { re: /(^|\/)\.azure\//i,                             subsystem: 'azd',            tag: 'azd' },
-  { re: /(^|\/)host\.json$/i,                           subsystem: 'functions',      tag: 'functions' },
-  { re: /(^|\/)local\.settings\.json$/i,                subsystem: 'functions',      tag: 'functions' },
-  { re: /(^|\/)function\.json$/i,                       subsystem: 'functions',      tag: 'functions' },
-  { re: /(^|\/)staticwebapp\.config\.json$/i,           subsystem: 'appservice',     tag: 'swa' },
-  { re: /(^|\/)web\.config$/i,                          subsystem: 'appservice',     tag: 'appservice' },
-  { re: /(^|\/)containerapp\.ya?ml$/i,                  subsystem: 'containerapps',  tag: 'containerapps' },
+  { re: /\.bicep$/i, subsystem: 'iac-bicep', tag: 'bicep' },
+  { re: /\.bicepparam$/i, subsystem: 'iac-bicep', tag: 'bicep' },
+  { re: /(^|\/)main\.tf$|\.tf$|\.tfvars$/i, subsystem: 'iac-terraform', tag: 'terraform' },
+  { re: /(^|\/)azuredeploy\.json$/i, subsystem: 'iac-arm', tag: 'arm' },
+  { re: /(^|\/)azure\.ya?ml$/i, subsystem: 'azd', tag: 'azd' },
+  { re: /(^|\/)\.azure\//i, subsystem: 'azd', tag: 'azd' },
+  { re: /(^|\/)host\.json$/i, subsystem: 'functions', tag: 'functions' },
+  { re: /(^|\/)local\.settings\.json$/i, subsystem: 'functions', tag: 'functions' },
+  { re: /(^|\/)function\.json$/i, subsystem: 'functions', tag: 'functions' },
+  { re: /(^|\/)staticwebapp\.config\.json$/i, subsystem: 'appservice', tag: 'swa' },
+  { re: /(^|\/)web\.config$/i, subsystem: 'appservice', tag: 'appservice' },
+  { re: /(^|\/)containerapp\.ya?ml$/i, subsystem: 'containerapps', tag: 'containerapps' },
 ];
 
 /** Terminal command prefixes that indicate Azure activity. */
 const COMMAND_RULES: Array<{ re: RegExp; subsystem: AzureSubsystem; tag: string }> = [
-  { re: /^\s*az\s+(?!webapp\s+log\s+tail\s+devcontainer)/i, subsystem: 'cli',           tag: 'az-cli' },
-  { re: /^\s*azd\s+/i,                                      subsystem: 'azd',           tag: 'azd' },
-  { re: /^\s*func\s+/i,                                     subsystem: 'functions',     tag: 'functions' },
-  { re: /^\s*kubectl\s+/i,                                  subsystem: 'aks',           tag: 'aks' },
-  { re: /^\s*helm\s+/i,                                     subsystem: 'aks',           tag: 'aks' },
-  { re: /^\s*kubelogin\s+/i,                                subsystem: 'aks',           tag: 'aks' },
-  { re: /^\s*terraform\s+/i,                                subsystem: 'iac-terraform', tag: 'terraform' },
-  { re: /^\s*bicep\s+/i,                                    subsystem: 'iac-bicep',     tag: 'bicep' },
+  { re: /^\s*az\s+(?!webapp\s+log\s+tail\s+devcontainer)/i, subsystem: 'cli', tag: 'az-cli' },
+  { re: /^\s*azd\s+/i, subsystem: 'azd', tag: 'azd' },
+  { re: /^\s*func\s+/i, subsystem: 'functions', tag: 'functions' },
+  { re: /^\s*kubectl\s+/i, subsystem: 'aks', tag: 'aks' },
+  { re: /^\s*helm\s+/i, subsystem: 'aks', tag: 'aks' },
+  { re: /^\s*kubelogin\s+/i, subsystem: 'aks', tag: 'aks' },
+  { re: /^\s*terraform\s+/i, subsystem: 'iac-terraform', tag: 'terraform' },
+  { re: /^\s*bicep\s+/i, subsystem: 'iac-bicep', tag: 'bicep' },
 ];
 
 /** Keywords in file content / summaries that hint at Azure (weak signal). */
@@ -98,7 +98,7 @@ export function classifyCommand(cmd: string): AzureClassification {
 export function classifyContent(text: string): AzureClassification {
   if (!text) return { isAzure: false, subsystems: [], tags: [] };
   const lower = text.toLowerCase();
-  const hit = CONTENT_KEYWORDS.some(k => lower.includes(k));
+  const hit = CONTENT_KEYWORDS.some((k) => lower.includes(k));
   return hit
     ? { isAzure: true, subsystems: [], tags: ['azure'] }
     : { isAzure: false, subsystems: [], tags: [] };
@@ -108,11 +108,11 @@ export function classifyContent(text: string): AzureClassification {
  * Map a classification to the best-fit ObservationType for Azure sessions.
  * Returns `undefined` to let the LM classifier pick freely when the signal is weak.
  */
-export function inferAzureObservationType(subsystems: AzureSubsystem[]):
-  | 'deployment'
-  | 'infra'
-  | undefined {
-  if (subsystems.some(s => s === 'azd' || s === 'cli')) return 'deployment';
-  if (subsystems.some(s => s === 'iac-bicep' || s === 'iac-terraform' || s === 'iac-arm')) return 'infra';
+export function inferAzureObservationType(
+  subsystems: AzureSubsystem[],
+): 'deployment' | 'infra' | undefined {
+  if (subsystems.some((s) => s === 'azd' || s === 'cli')) return 'deployment';
+  if (subsystems.some((s) => s === 'iac-bicep' || s === 'iac-terraform' || s === 'iac-arm'))
+    return 'infra';
   return undefined;
 }

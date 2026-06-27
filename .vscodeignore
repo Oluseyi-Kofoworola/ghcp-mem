@@ -32,6 +32,12 @@ secrets/**
 images/demo/*.gif
 images/demo/*.svg
 images/demo/*.mp4
+# Root-level marketing artefacts (these slipped into 1.4.9 because the
+# rules above only matched images/demo/, not the repo root). Belt-and-braces.
+*.mp4
+*.gif
+ghcp_mem_promo.*
+sleek-cinematic-promo.*
 README.md.bak
 # Only the two esbuild bundles are loaded at runtime;
 # every other compiled .js in out/ is stale tsc emit and is dead weight.

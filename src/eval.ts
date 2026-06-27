@@ -32,6 +32,8 @@ export interface EvalRunStats {
   k: number;
   recall: number;
   mrr: number;
+  /** Phase 3: normalised Discounted Cumulative Gain at k. */
+  ndcg: number;
   perQuery: Array<{ q: string; hits: number; rank: number | null }>;
 }
 
@@ -57,7 +59,8 @@ const MAX_QUERIES = 50;
  * Caller can override via `max` (used by tests).
  */
 export function buildSelfQueries(sessions: CompressedSession[], max?: number): EvalQuery[] {
-  const target = max ?? Math.max(MIN_QUERIES, Math.min(MAX_QUERIES, Math.floor(sessions.length / 2)));
+  const target =
+    max ?? Math.max(MIN_QUERIES, Math.min(MAX_QUERIES, Math.floor(sessions.length / 2)));
   const queries: EvalQuery[] = [];
   for (const s of sessions.slice(0, target)) {
     const topic = (s.keyTopics[0] || s.problemsSolved[0] || s.decisions[0] || '').trim();
@@ -83,11 +86,11 @@ function keywordOnlyRun(store: ContextStore, query: string, limit: number): Comp
   const all = store.getAllSessions();
   const avgDocLen = computeAvgDocLen(all);
   return all
-    .map(s => ({ s, score: keywordScore(s, terms, wsId, avgDocLen) }))
-    .filter(e => e.score > 0)
+    .map((s) => ({ s, score: keywordScore(s, terms, wsId, avgDocLen) }))
+    .filter((e) => e.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(e => e.s);
+    .map((e) => e.s);
 }
 
 function recallAtK(top: CompressedSession[], relevant: Set<string>, k: number): number {
@@ -97,11 +100,37 @@ function recallAtK(top: CompressedSession[], relevant: Set<string>, k: number): 
   return hit / Math.min(relevant.size, k);
 }
 
-function reciprocalRank(top: CompressedSession[], relevant: Set<string>): { mrr: number; rank: number | null } {
+function reciprocalRank(
+  top: CompressedSession[],
+  relevant: Set<string>,
+): { mrr: number; rank: number | null } {
   for (let i = 0; i < top.length; i++) {
     if (relevant.has(top[i].id)) return { mrr: 1 / (i + 1), rank: i + 1 };
   }
   return { mrr: 0, rank: null };
+}
+
+/**
+ * Normalised DCG at k. Treats every relevant id as graded-relevance 1 — the
+ * gold corpus shape (`{q, relevant: id[]}`) doesn't carry per-id grades, so
+ * this collapses to the standard binary nDCG: `DCG@k / IDCG@k`.
+ *
+ * Exported so the regression gate (`scripts/eval-check.js`) can call it
+ * directly without re-implementing the math.
+ */
+export function ndcgAtK(top: CompressedSession[], relevant: Set<string>, k: number): number {
+  if (relevant.size === 0) return 0;
+  let dcg = 0;
+  for (let i = 0; i < Math.min(top.length, k); i++) {
+    if (relevant.has(top[i].id)) {
+      // gain = 1 (binary relevance), discount = log2(i+2) — i is 0-based.
+      dcg += 1 / Math.log2(i + 2);
+    }
+  }
+  const idealHits = Math.min(relevant.size, k);
+  let idcg = 0;
+  for (let i = 0; i < idealHits; i++) idcg += 1 / Math.log2(i + 2);
+  return idcg === 0 ? 0 : dcg / idcg;
 }
 
 async function evalRun(
@@ -111,14 +140,17 @@ async function evalRun(
 ): Promise<EvalRunStats> {
   let totalRecall = 0;
   let totalMrr = 0;
+  let totalNdcg = 0;
   const perQuery: EvalRunStats['perQuery'] = [];
   for (const q of queries) {
     const top = await Promise.resolve(run(q.q));
     const relevantSet = new Set(q.relevant);
     const r = recallAtK(top, relevantSet, K);
     const { mrr, rank } = reciprocalRank(top, relevantSet);
+    const n = ndcgAtK(top, relevantSet, K);
     totalRecall += r;
     totalMrr += mrr;
+    totalNdcg += n;
     perQuery.push({ q: q.q, hits: r * Math.min(relevantSet.size, K), rank });
   }
   const n = Math.max(queries.length, 1);
@@ -127,7 +159,41 @@ async function evalRun(
     k: K,
     recall: totalRecall / n,
     mrr: totalMrr / n,
+    ndcg: totalNdcg / n,
     perQuery,
+  };
+}
+
+/**
+ * Run the eval suite against a caller-supplied gold corpus. Unlike
+ * `runEvalSuite`, this never falls back to self-queries — the gold set
+ * is the ground truth and we report metrics straight against it. Used by
+ * `scripts/eval-check.js --gold <path>` to gate regressions in CI.
+ */
+export async function runGoldEval(store: ContextStore, queries: EvalQuery[]): Promise<EvalReport> {
+  const all = store.getAllSessions();
+  const filters: SearchFilters = {};
+  const runs: EvalRunStats[] = [];
+  if (queries.length === 0) {
+    return {
+      totalSessions: all.length,
+      totalQueries: 0,
+      k: K,
+      runs: [],
+      generatedAt: new Date().toISOString(),
+    };
+  }
+  runs.push(await evalRun('keyword-only', queries, (q) => keywordOnlyRun(store, q, 20)));
+  runs.push(await evalRun('hybrid (default)', queries, (q) => store.search(q, filters, 20)));
+  runs.push(
+    await evalRun('hybrid + freshness', queries, (q) => store.searchWithEmbedding(q, filters, 20)),
+  );
+  return {
+    totalSessions: all.length,
+    totalQueries: queries.length,
+    k: K,
+    runs,
+    generatedAt: new Date().toISOString(),
   };
 }
 
@@ -143,9 +209,13 @@ export async function runEvalSuite(store: ContextStore): Promise<EvalReport> {
   const runs: EvalRunStats[] = [];
 
   if (all.length >= 3 && queries.length > 0) {
-    runs.push(await evalRun('keyword-only', queries, q => keywordOnlyRun(store, q, 20)));
-    runs.push(await evalRun('hybrid (default)', queries, q => store.search(q, filters, 20)));
-    runs.push(await evalRun('hybrid + freshness', queries, q => store.searchWithEmbedding(q, filters, 20)));
+    runs.push(await evalRun('keyword-only', queries, (q) => keywordOnlyRun(store, q, 20)));
+    runs.push(await evalRun('hybrid (default)', queries, (q) => store.search(q, filters, 20)));
+    runs.push(
+      await evalRun('hybrid + freshness', queries, (q) =>
+        store.searchWithEmbedding(q, filters, 20),
+      ),
+    );
   }
 
   return {
@@ -168,13 +238,17 @@ export function formatEvalReport(r: EvalReport): string {
   lines.push(`- k: ${r.k}`);
   lines.push('');
   if (r.runs.length === 0) {
-    lines.push('_Not enough sessions or queries to run an evaluation (need ≥3 sessions with topics)._');
+    lines.push(
+      '_Not enough sessions or queries to run an evaluation (need ≥3 sessions with topics)._',
+    );
     return lines.join('\n');
   }
-  lines.push('| Config | Recall@k | MRR |');
-  lines.push('| --- | ---:| ---:|');
+  lines.push('| Config | Recall@k | MRR | nDCG@k |');
+  lines.push('| --- | ---:| ---:| ---:|');
   for (const run of r.runs) {
-    lines.push(`| ${run.label} | ${run.recall.toFixed(3)} | ${run.mrr.toFixed(3)} |`);
+    lines.push(
+      `| ${run.label} | ${run.recall.toFixed(3)} | ${run.mrr.toFixed(3)} | ${run.ndcg.toFixed(3)} |`,
+    );
   }
   lines.push('');
   for (const run of r.runs) {

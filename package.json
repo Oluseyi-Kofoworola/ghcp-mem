@@ -2,7 +2,7 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "A local, auditable session-memory layer for VS Code and GitHub Copilot, built for engineers who need persistent project context without relying on a cloud memory backend.",
-  "version": "1.4.9",
+  "version": "1.11.0",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -57,6 +57,10 @@
       {
         "command": "ghcpMem.showContext",
         "title": "GHCP-MEM: Show Stored Context"
+      },
+      {
+        "command": "ghcpMem.editProjectRules",
+        "title": "GHCP-MEM: Edit Project Memory Rules"
       },
       {
         "command": "ghcpMem.runPrivacyWizard",
@@ -164,6 +168,11 @@
       {
         "command": "ghcpMem.runEval",
         "title": "GHCP-MEM: Run Retrieval Eval"
+      },
+      {
+        "command": "ghcpMem.runIntegrityAudit",
+        "title": "GHCP-MEM: Run Workspace Integrity Audit",
+        "icon": "$(shield)"
       },
       {
         "command": "ghcpMem.openTimeline",
@@ -344,6 +353,90 @@
           {
             "name": "precommit",
             "description": "Pre-commit architectural consistency check — verify staged changes against past decisions before committing"
+          },
+          {
+            "name": "audit",
+            "description": "Workspace integrity audit — catch version drift and cross-file inconsistencies (e.g. README footer vs package.json)"
+          },
+          {
+            "name": "verify",
+            "description": "Re-run grounding validation on a session by ID prefix — shows verified / drifted / missing files"
+          },
+          {
+            "name": "correct",
+            "description": "Correct a session by ID prefix — captures a new corrected note, links it to the original, and supersedes it"
+          },
+          {
+            "name": "supersede",
+            "description": "Mark one session as superseding another (usage: /supersede <newerId> <olderId>)"
+          },
+          {
+            "name": "retract",
+            "description": "Retract a session by ID prefix — excludes it from retrieval and injection (use 'undo' to reverse)"
+          },
+          {
+            "name": "noise",
+            "description": "Mark a session as low-quality noise — excludes it from injection and retrieval (use 'undo' to reverse)"
+          },
+          {
+            "name": "janitor",
+            "description": "Re-score every stored session against the current quality floor and flag/unflag low-quality memories"
+          },
+          {
+            "name": "accept",
+            "description": "Mark a retrieved session as useful — strengthens its retrieval reinforcement signal"
+          },
+          {
+            "name": "reject",
+            "description": "Mark a retrieved session as unhelpful — weakens its retrieval reinforcement signal"
+          },
+          {
+            "name": "entity",
+            "description": "Aggregate every session that touched a file or symbol (usage: /entity <path> or /entity <path>#<symbol>)"
+          },
+          {
+            "name": "snippet",
+            "description": "Chunk-level retrieval — returns matching decisions/problems/summaries/topics across all sessions"
+          },
+          {
+            "name": "conflicts",
+            "description": "List pending conflict warnings — sessions whose new decisions may contradict older ones"
+          },
+          {
+            "name": "lineage",
+            "description": "Show cross-session causal chain (predecessors + successors) for a session by ID prefix"
+          },
+          {
+            "name": "why",
+            "description": "Score-decomposition explainer — break down why a session ranked where it did (usage: /why <query> :: <id>)"
+          },
+          {
+            "name": "graph",
+            "description": "Emit a Mermaid flowchart of the decision graph (supersession + correction + causal edges); optional file: filter"
+          },
+          {
+            "name": "compliance",
+            "description": "Audit-friendly posture report: grounding coverage, trust distribution, conflict counts, redaction stats, custom-entity inventory"
+          },
+          {
+            "name": "route",
+            "description": "Context-acquisition recommender — given a question, returns whether MCP tools or file open is cheaper and estimates token cost for each path"
+          },
+          {
+            "name": "lessons",
+            "description": "List consolidated semantic + procedural lessons; `add <text>` pins one, `forget <id>` removes one"
+          },
+          {
+            "name": "rules",
+            "description": "List team-shared project rules from .github/memory/rules.md; `add [category:]<text>` adds one, `remove <id>` deletes one"
+          },
+          {
+            "name": "pin",
+            "description": "Return a session evicted with /evict back to the injected working set for this VS Code session"
+          },
+          {
+            "name": "evict",
+            "description": "Drop a session from the injected working set for this VS Code session without deleting it from the store"
           }
         ]
       }
@@ -485,6 +578,63 @@
             "summary"
           ]
         }
+      },
+      {
+        "name": "ghcpMem_audit",
+        "displayName": "Audit Workspace Integrity",
+        "modelDescription": "Run GHCP-MEM's workspace integrity audit. Catches cross-file inconsistencies that erode release trust — most importantly, version drift between package.json, README footer, docs/DEMO.md, and CHANGELOG.md. Returns a list of errors and warnings with the offending file, line, and a suggested fix. Read-only — does not modify any file or memory.",
+        "toolReferenceName": "ghcpMemAudit",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(shield)",
+        "tags": [
+          "integrity",
+          "audit",
+          "release",
+          "consistency"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Optional subset of rules to run (e.g. ['version-drift']). Empty/omitted = run all."
+            }
+          }
+        }
+      },
+      {
+        "name": "ghcpMem_lessons",
+        "displayName": "Recall Consolidated Lessons",
+        "modelDescription": "Return GHCP-MEM's consolidated semantic and procedural lessons: durable project facts and how-to sequences distilled from recurring decisions across many past sessions, plus any hand-pinned lessons. This is the cheapest, highest-signal memory surface — prefer it over re-reading source when the question is 'what is true about this project' or 'how do we usually do X'. Read-only. Optionally filter by kind (semantic facts or procedural how-tos).",
+        "toolReferenceName": "ghcpMemLessons",
+        "canBeReferencedInPrompt": true,
+        "icon": "$(mortar-board)",
+        "tags": [
+          "memory",
+          "lessons",
+          "semantic",
+          "procedural"
+        ],
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "semantic",
+                "procedural"
+              ],
+              "description": "Optional filter: 'semantic' for facts, 'procedural' for how-to sequences."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max lessons to return (1-100, default 12)."
+            }
+          }
+        }
       }
     ],
     "configuration": {
@@ -555,8 +705,8 @@
         },
         "ghcpMem.allowMcpWriteAccess": {
           "type": "boolean",
-          "default": true,
-          "markdownDescription": "Allow MCP write tools such as memory-store. Disabled automatically in enterprise mode."
+          "default": false,
+          "markdownDescription": "Allow MCP write tools (memory-store, memory-delete, memory-correct, memory-retract, memory-supersede). **Default `false`** — MCP exposes read-only retrieval (search, recent, timeline, get) until you explicitly opt in. Disabled automatically in enterprise mode."
         },
         "ghcpMem.allowTeamExport": {
           "type": "boolean",
@@ -585,6 +735,16 @@
           "default": true,
           "description": "Exclude content wrapped in <private>...</private> markers"
         },
+        "ghcpMem.detectHighEntropySecrets": {
+          "type": "boolean",
+          "default": true,
+          "description": "Heuristically redact high-entropy tokens (random API keys, base64 credentials, opaque session tokens) that no named redaction rule matched. Lowercase hex digests and git SHAs are spared."
+        },
+        "ghcpMem.localEmbeddings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable dependency-free local (lexical) embeddings for hybrid dense retrieval when the neural vscode.lm embeddings API is unavailable. Runs fully offline with no native dependencies. Disable to use keyword + recency ranking only."
+        },
         "ghcpMem.excludeGlobs": {
           "type": "array",
           "items": {
@@ -610,6 +770,11 @@
           "minimum": 1,
           "maximum": 20,
           "description": "Number of recent sessions to include in the auto-injected instructions file."
+        },
+        "ghcpMem.projectRules": {
+          "type": "boolean",
+          "default": true,
+          "description": "Inject durable, team-shared project rules from .github/memory/rules.md (managed with @mem /rules) at the top of every Copilot/agent session. Commit that file to share rules with your team."
         },
         "ghcpMem.idleTimeoutSeconds": {
           "type": "number",
@@ -648,6 +813,14 @@
           "default": [],
           "description": "User-defined regex redaction rules applied after the built-in 26-rule set (enterprise compliance modes)"
         },
+        "ghcpMem.customSensitiveEntities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Plain-string entity names (organisations, products, codenames, customer aliases) to redact verbatim. Each entry is treated as a case-insensitive, word-boundary-anchored literal — no regex syntax needed. Example: [\"AcmeCorp internal\", \"Project Hydra\", \"Deal-2026-Q3\"]."
+        },
         "ghcpMem.autosave.enabled": {
           "type": "boolean",
           "default": true,
@@ -681,8 +854,44 @@
             "workspace",
             "repo"
           ],
-          "default": "user",
-          "markdownDescription": "Retrieval scope for stored sessions.\n\n- `user`: all sessions across all workspaces and repos.\n- `workspace`: sessions captured in the current VS Code workspace only.\n- `repo`: sessions captured against the same git origin URL (works across machines/clones)."
+          "default": "repo",
+          "markdownDescription": "Retrieval scope for stored sessions.\n\n- `repo` (default): sessions captured against the same git origin URL (works across machines/clones). Prevents memories leaking between projects when you open a new workspace.\n- `workspace`: sessions captured in the current VS Code workspace only.\n- `user`: all sessions across all workspaces and repos.\n\nRegardless of this setting, sessions tagged with any value in `#ghcpMem.globalTags#` are always included."
+        },
+        "ghcpMem.globalTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "global"
+          ],
+          "markdownDescription": "User tags that promote a session to global scope: it is always included in startup context and retrieval regardless of `#ghcpMem.scope#`. Reserve for cross-repo knowledge such as organization coding standards, naming conventions, or Well-Architected Framework guidance. Tag a session with `GHCP-MEM: Tag Session...`."
+        },
+        "ghcpMem.qualityFloor": {
+          "type": "number",
+          "default": 0.3,
+          "minimum": 0,
+          "maximum": 1,
+          "markdownDescription": "Minimum heuristic quality score (0-1) required for a captured session to be injected. Sessions below the floor are flagged `lowQuality`, kept on disk for audit, and excluded from the startup context block. Signals include grounded decisions, summary length, observation type, and event volume. Set to 0 to disable the gate."
+        },
+        "ghcpMem.janitorEnabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Periodically re-score stored sessions against the current `#ghcpMem.qualityFloor#` and flag/unflag `lowQuality` accordingly."
+        },
+        "ghcpMem.janitorIntervalDays": {
+          "type": "number",
+          "default": 7,
+          "minimum": 1,
+          "maximum": 90,
+          "description": "How often (in days) the janitor re-scores stored sessions."
+        },
+        "ghcpMem.janitorPruneAfterDays": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 365,
+          "markdownDescription": "If > 0, the janitor deletes sessions that have been `lowQuality` for at least this many days AND were never `/accept`-ed. `0` disables pruning (the default — flagging only)."
         },
         "ghcpMem.validateAgainstCodebase": {
           "type": "boolean",
@@ -795,17 +1004,25 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run typecheck && npm run bundle:prod",
+    "vscode:prepublish": "npm run check:release:strict && npm run typecheck && npm run bundle:prod",
     "typecheck": "tsc -p ./ --noEmit",
     "compile": "tsc -p ./",
     "bundle": "node esbuild.js",
     "bundle:prod": "node esbuild.js --production",
     "watch": "node esbuild.js --watch",
-    "lint": "eslint src --ext ts",
-    "test": "npm run lint && tsc -p ./tsconfig.test.json && node scripts/setup-test-env.js && node --test \"out-test/src/test/*.test.js\"",
+    "lint": "eslint src --ext ts --max-warnings=0",
+    "format": "prettier --write \"src/**/*.ts\" \"scripts/**/*.{js,mjs}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"scripts/**/*.{js,mjs}\"",
+    "test": "npm run lint && tsc -p ./tsconfig.test.json && node scripts/setup-test-env.js && node scripts/run-tests.mjs",
     "bench": "tsc -p ./tsconfig.test.json && node scripts/setup-test-env.js && node scripts/bench-search.js",
+    "measure:activation": "npm run bundle:prod && tsc -p ./tsconfig.test.json && node scripts/measure-activation.js",
     "eval:check": "tsc -p ./tsconfig.test.json && node scripts/setup-test-env.js && node scripts/eval-check.js",
     "render:diagrams": "node scripts/render-diagrams.mjs",
+    "check:release": "node scripts/check-release-consistency.mjs",
+    "check:release:strict": "node scripts/check-release-consistency.mjs --strict",
+    "verify": "npm run format:check && npm run lint && npm run typecheck && npm test && npm run check:release && npm run eval:check && npm run bench && npm run bundle:prod",
+    "hooks:install": "node scripts/install-hooks.mjs",
+    "bump:version": "node scripts/bump-version.mjs",
     "package": "npm run vscode:prepublish && vsce package --out ghcp-mem.vsix",
     "publish": "vsce publish"
   },
@@ -814,9 +1031,13 @@
     "@types/vscode": "^1.93.0",
     "@typescript-eslint/eslint-plugin": "^8.59.3",
     "@typescript-eslint/parser": "^8.59.3",
-    "@vscode/vsce": "^2.24.0",
-    "esbuild": "^0.25.12",
+    "@vscode/vsce": "^3.9.2",
+    "esbuild": "^0.28.1",
     "eslint": "^8.56.0",
+    "prettier": "^3.8.3",
     "typescript": "^5.3.0"
+  },
+  "overrides": {
+    "undici": "^7.28.0"
   }
 }

@@ -16,11 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Required for the strict release-consistency gate (invoked by
+          # `vscode:prepublish` inside `vsce package` below). The gate
+          # compares HEAD against `origin/main`; the default shallow
+          # checkout puts us in detached-HEAD on the tag with no remote
+          # tracking refs, and the gate fails before we can build.
+          fetch-depth: 0
+      - name: Make origin/main resolvable for the strict release gate
+        run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
@@ -32,6 +42,23 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           test "$version" = "$tag"
       - run: npx --yes @vscode/vsce package --out ghcp-mem.vsix --no-dependencies
+      - name: Publish to VS Code Marketplace
+        id: marketplace_publish
+        # `continue-on-error: true` (added in v1.10.1) decouples the trust
+        # chain — SHA-256, SBOM, manifest, SLSA L3 attestation, GitHub
+        # Release — from Marketplace-publish health. An expired or missing
+        # `VSCE_PAT` previously took down the entire artifact pipeline (this
+        # was the v1.8.2 / v1.9.0 / v1.10.0 silent regression). Now the
+        # workflow logs the failure, marks the step red, and keeps building
+        # the rest of the artifacts so the GitHub Release is always
+        # provenance-attested even when the Marketplace push needs human
+        # intervention. The job's overall status reflects the outcome via
+        # the final "Surface Marketplace publish outcome" step below.
+        if: startsWith(github.ref, 'refs/tags/v')
+        continue-on-error: true
+        run: npx --yes @vscode/vsce publish --packagePath ghcp-mem.vsix --no-dependencies
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
       - run: sha256sum ghcp-mem.vsix > ghcp-mem.vsix.sha256
       - run: npx --yes @cyclonedx/cyclonedx-npm --output-file sbom.json
       - name: Generate release manifest
@@ -80,3 +107,21 @@ jobs:
             sbom.json
             release-manifest.json
             release-manifest.json.sha256
+
+      # Surface the Marketplace publish outcome at the end of the workflow.
+      # Because `Publish to VS Code Marketplace` uses `continue-on-error`, a
+      # failure there no longer fails the job — which would let a broken PAT
+      # silently slip past without being noticed. This step inspects the
+      # publish step's outcome and re-raises a hard failure if it didn't
+      # succeed, so the job status accurately reflects "Marketplace was
+      # updated" without blocking the rest of the artifact chain that
+      # already ran. Output line is also greppable: `MARKETPLACE_PUBLISH=...`
+      - name: Surface Marketplace publish outcome
+        if: startsWith(github.ref, 'refs/tags/v') && always()
+        run: |
+          outcome="${{ steps.marketplace_publish.outcome }}"
+          echo "MARKETPLACE_PUBLISH=${outcome}"
+          if [ "${outcome}" != "success" ]; then
+            echo "::error::Marketplace publish step did not succeed (outcome=${outcome}). The GitHub Release artifact + SLSA attestation were still produced, but the Marketplace was NOT updated. Most likely cause: missing or expired \`VSCE_PAT\` repository secret (Marketplace → Manage scope, https://aka.ms/vscodepat). Re-run this workflow after rotating the secret."
+            exit 1
+          fi

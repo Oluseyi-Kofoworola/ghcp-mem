@@ -9,7 +9,8 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 | Setting | Type | Default | Description |
 |---|---|---|---|
 | `ghcpMem.enabled` | boolean | `true` | Master switch — disable to pause all capture and injection. |
-| `ghcpMem.scope` | `"user"` \| `"workspace"` \| `"repo"` | `"user"` | Retrieval scope. `user` = all sessions; `workspace` = current VS Code workspace only; `repo` = same git origin URL across machines. |
+| `ghcpMem.scope` | `"user"` \| `"workspace"` \| `"repo"` | `"repo"` | Retrieval scope. `repo` (default) = same git origin URL across machines, prevents memories leaking across projects; `workspace` = current VS Code workspace only; `user` = all sessions. Sessions tagged with any value in `globalTags` are always included regardless. |
+| `ghcpMem.globalTags` | string[] | `["global"]` | User tags that promote a session to always-included status regardless of `scope`. Reserve for cross-repo knowledge such as organization coding standards, naming conventions, or Well-Architected Framework guidance. |
 | `ghcpMem.githubCompatibleMode` | boolean | `false` | Mirror GitHub Copilot's agentic-memory contract: forces `retentionDays = 28` and `scope = repo`. Overrides those two settings when enabled. |
 
 ---
@@ -57,6 +58,21 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 
 ---
 
+## Quality gate
+
+The ingestion quality gate scores each compressed session on local heuristics (grounded decisions, summary length, observation type, event volume, LM mode) and drops sessions below `qualityFloor` before they hit the store. Conflict-aware injection also drops the older side of any contradiction-marker pair so the auto-injected brief never carries both sides of a U-turn.
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `ghcpMem.qualityFloor` | number (0–1) | `0.3` | Minimum heuristic quality score required for a captured session to be injected. Sessions below the floor are flagged `lowQuality`, kept on disk for audit, and excluded from the startup block. Set to `0` to disable the gate. |
+| `ghcpMem.janitorEnabled` | boolean | `true` | Periodically re-score stored sessions against the current `qualityFloor` and flag/unflag `lowQuality` accordingly. Runs ~60 s after activation and on the configured cadence. |
+| `ghcpMem.janitorIntervalDays` | number (1–90) | `7` | How often the janitor re-scores stored sessions. |
+| `ghcpMem.janitorPruneAfterDays` | number (0–365) | `0` | If `> 0`, delete sessions that have been `lowQuality` past this threshold AND were never `/accept`-ed. `0` (default) = flagging only. |
+
+Use `/noise <id>` to manually flag a session and `/janitor` to trigger a re-scoring pass on demand.
+
+---
+
 ## Privacy & security
 
 | Setting | Type | Default | Description |
@@ -73,6 +89,7 @@ All settings live under the `ghcpMem` namespace and can be edited in VS Code Set
 |---|---|---|---|
 | `ghcpMem.autoInjectStartupContext` | boolean | `true` | On startup and after each compression, write `.github/instructions/session-memory.instructions.md` (Copilot auto-injection), `CLAUDE.md`, and `.cursor/rules` with recent session context. |
 | `ghcpMem.startupContextSessionCount` | number | `5` | How many recent sessions (1–20) to include in the auto-injected instructions file. |
+| `ghcpMem.projectRules` | boolean | `true` | Inject durable, team-shared project rules from `.github/memory/rules.md` at the top of every Copilot/agent session. Manage with `@mem /rules` or the **GHCP-MEM: Edit Project Memory Rules** command. Commit `rules.md` to share rules with your team; secrets in it are redacted before injection. |
 | `ghcpMem.healthAlertThreshold` | number (0–100) | `30` | Show a warning notification if the memory health score falls below this value. Set to `0` to disable. |
 
 ---

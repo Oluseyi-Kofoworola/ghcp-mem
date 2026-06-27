@@ -54,7 +54,13 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<TreeNode>, 
   }
 
   hasActiveFilter(): boolean {
-    return !!(this.filter.text || this.filter.type || this.filter.tag || this.filter.sinceDays || this.filter.scope);
+    return !!(
+      this.filter.text ||
+      this.filter.type ||
+      this.filter.tag ||
+      this.filter.sinceDays ||
+      this.filter.scope
+    );
   }
 
   getTreeItem(e: TreeNode): vscode.TreeItem {
@@ -83,18 +89,24 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<TreeNode>, 
 
       if (this.hasActiveFilter()) {
         const desc = describeFilter(this.filter);
-        const filterNode = new TreeNode(`🔎 Filter: ${desc}`, vscode.TreeItemCollapsibleState.None, 'filter');
+        const filterNode = new TreeNode(
+          `🔎 Filter: ${desc}`,
+          vscode.TreeItemCollapsibleState.None,
+          'filter',
+        );
         filterNode.tooltip = 'Click to clear filter';
         filterNode.command = { command: 'ghcpMem.clearFilter', title: 'Clear filter' };
         nodes.push(filterNode);
       }
 
       if (filtered.length === 0) {
-        nodes.push(new TreeNode(
-          this.hasActiveFilter() ? 'No sessions match this filter' : 'No sessions yet',
-          vscode.TreeItemCollapsibleState.None,
-          'info',
-        ));
+        nodes.push(
+          new TreeNode(
+            this.hasActiveFilter() ? 'No sessions match this filter' : 'No sessions yet',
+            vscode.TreeItemCollapsibleState.None,
+            'info',
+          ),
+        );
         return nodes;
       }
 
@@ -111,27 +123,43 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<TreeNode>, 
         groups.set(key, arr);
       }
       if (pinned.length) {
-        const n = new TreeNode(`📌 Pinned (${pinned.length})`, vscode.TreeItemCollapsibleState.Expanded, 'pinned-day');
+        const n = new TreeNode(
+          `📌 Pinned (${pinned.length})`,
+          vscode.TreeItemCollapsibleState.Expanded,
+          'pinned-day',
+        );
         n.sessions = pinned;
         nodes.push(n);
       }
       for (const [day, items] of groups.entries()) {
-        const n = new TreeNode(`${day} (${items.length})`, vscode.TreeItemCollapsibleState.Expanded, 'day');
+        const n = new TreeNode(
+          `${day} (${items.length})`,
+          vscode.TreeItemCollapsibleState.Expanded,
+          'day',
+        );
         n.sessions = items;
         nodes.push(n);
       }
       return nodes;
     }
     if ((e.context === 'day' || e.context === 'pinned-day') && e.sessions) {
-      return e.sessions.map(s => {
+      return e.sessions.map((s) => {
         const time = new Date(s.startTime).toLocaleTimeString();
         const pin = s.userTags.includes('pinned') ? '📌 ' : '';
-        const n = new TreeNode(`${pin}[${s.observationType}] ${time} — ${s.summary.substring(0, 60)}`, vscode.TreeItemCollapsibleState.None, 'session');
+        const n = new TreeNode(
+          `${pin}[${s.observationType}] ${time} — ${s.summary.substring(0, 60)}`,
+          vscode.TreeItemCollapsibleState.None,
+          'session',
+        );
         n.session = s;
         const branchLabel = s.branchName ? `  [${s.branchName}]` : '';
         n.tooltip = s.summary + branchLabel;
-        const tagDesc = s.userTags.filter(t => t !== 'pinned').join(', ');
-        n.description = s.branchName ? (tagDesc ? `${s.branchName} · ${tagDesc}` : s.branchName) : tagDesc;
+        const tagDesc = s.userTags.filter((t) => t !== 'pinned').join(', ');
+        n.description = s.branchName
+          ? tagDesc
+            ? `${s.branchName} · ${tagDesc}`
+            : s.branchName
+          : tagDesc;
         n.id = s.id;
         n.command = {
           command: 'ghcpMem.openSession',
@@ -151,7 +179,7 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<TreeNode>, 
     const sinceTs = f.sinceDays ? Date.now() - f.sinceDays * 86_400_000 : 0;
     const text = f.text?.toLowerCase();
     const repoId = f.scope === 'repo' ? getRepoScopeSync().id : undefined;
-    return sessions.filter(s => {
+    return sessions.filter((s) => {
       if (f.type && s.observationType !== f.type) return false;
       if (f.tag && !s.userTags.includes(f.tag)) return false;
       if (sinceTs && s.endTime < sinceTs) return false;
@@ -165,7 +193,9 @@ export class SessionsTreeProvider implements vscode.TreeDataProvider<TreeNode>, 
           ...s.decisions,
           ...s.problemsSolved,
           ...s.userTags,
-        ].join(' ').toLowerCase();
+        ]
+          .join(' ')
+          .toLowerCase();
         if (!hay.includes(text)) return false;
       }
       return true;

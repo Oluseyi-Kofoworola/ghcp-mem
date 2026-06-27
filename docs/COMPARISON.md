@@ -2,21 +2,41 @@
 
 # 🔍 GHCP-MEM — Technical Comparison
 
-### How GHCP-MEM compares to other persistent-memory tools for AI coding assistants
+### You're picking a memory tool. Don't pick the wrong one.
 
-[![v1.4.9](https://img.shields.io/badge/version-1.4.9-7c3aed?style=for-the-badge)](../package.json)
+[![v1.11.0](https://img.shields.io/badge/version-1.11.0-7c3aed?style=for-the-badge)](../package.json)
 [![Scope](https://img.shields.io/badge/scope-VS_Code_+_Copilot-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](../README.md)
 
 </div>
+
+---
+
+## The decision you're staring at
+
+You read about persistent memory for AI coding assistants. Now there are ten projects in your tab strip. Each one claims to fix the same problem. Each one comes with its own stack of trade-offs that aren't obvious from the README.
+
+This page exists because picking wrong costs you real time:
+
+- You install something, wire up the MCP, configure your editor, ask your security team to review native deps, then realise it doesn't fit your environment. A week is gone.
+- You start doubting your tool-evaluation process. "Did I miss something? Should I revisit?" Decision fatigue compounds.
+- Picking infrastructure tools should be a 30-minute job with honest comparisons. Not a research project on Twitter.
+
+---
+
+## Where we stand
+
+We're the maintainers of GHCP-MEM. We're going to tell you when **not** to pick our project — because there are several situations where another tool is the right call, and we'd rather you ship than evaluate.
+
+**The honest reality:**
 
 > [!NOTE]
 > **This is a technical comparison, not a popularity contest.** GHCP-MEM is a young, focused project — most of the tools below have larger communities and longer track records. The point of this page is to help you pick the right tool for **your environment and constraints**, not to claim a winner.
 
 ---
 
-## 🧭 How to read this
+## A 30-second decision tree
 
-Different tools optimize for different things. Pick the column that matches your situation:
+Different tools optimise for different things. Pick the row that matches your situation:
 
 | Your situation | Tool that probably fits best |
 |---|---|
@@ -26,7 +46,23 @@ Different tools optimize for different things. Pick the column that matches your
 | **You want a cloud-hosted MCP service.** | [contextstream](https://github.com/contextstream/mcp-server) or similar. |
 | **You want a transcript-driven memory specifically for Claude Code.** | [`hjertefolger/cortex`](https://github.com/hjertefolger/cortex). |
 
-GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, secret-redacted by default.** If you need any of those things, the trade-offs below are worth it. If you don't, one of the larger projects is probably a better fit.
+GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, secret-redacted by default, evidence-grounded.** If you need any of those things, the trade-offs below are worth it. If you don't, one of the larger projects is probably a better fit.
+
+### What happens if you pick wrong
+
+| Wrong-fit symptom | What it costs |
+|---|---|
+| You install a tool with a native dep (Bun, Python venv, SQLite binary) and your enterprise machine bounces it | Half a day of debugging install scripts, escalation to IT |
+| You install a cloud-based tool and discover your codebase can't leave your network | Reinstall sprint, security incident report |
+| You install a transcript-driven memory and discover it only captures what you typed in chat, not what you actually built | Two weeks of "why is the memory empty?" before you realise the capture model is wrong |
+| You install a tool with no provenance and trust a hallucinated decision | One bad merge, one production incident, one rollback |
+
+### What picking the right fit looks like
+
+- 🟢 Install takes a minute. Auditing the tool takes an afternoon.
+- 🟢 Your security review sails through because there's no native binary and no open port.
+- 🟢 The first new chat after install already has your prior context, with citations.
+- 🟢 Six months in, you can still explain to a new team member *why* a decision was made — and the tool can show them the evidence.
 
 ---
 
@@ -47,9 +83,9 @@ GHCP-MEM is intentionally narrow: **VS Code + Copilot, zero deps, zero ports, se
 
 ## 🆚 GHCP-MEM ↔ GitHub Copilot Memory (the closest cousin)
 
-GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) as a public preview in 2026 — it's the only other "memory layer for Copilot" with first-party backing. Both projects aim at the same goal but make opposite bets on **where memory lives**. GHCP-MEM v1.4.9 ships a `githubCompatibleMode` setting that mirrors Copilot Memory's contract (28-day retention + repo-scoped retrieval) for users who want the same semantics offline.
+GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/agents/copilot-memory) as a public preview in 2026 — it's the only other "memory layer for Copilot" with first-party backing. Both projects aim at the same goal but make opposite bets on **where memory lives**. GHCP-MEM v1.8.1 ships a `githubCompatibleMode` setting that mirrors Copilot Memory's contract (28-day retention + repo-scoped retrieval) for users who want the same semantics offline.
 
-| Dimension | **GHCP-MEM v1.4.9** | **GitHub Copilot Memory** (public preview) |
+| Dimension | **GHCP-MEM v1.11.0** | **GitHub Copilot Memory** (public preview) |
 |---|---|---|
 | **Storage location** | 100% local: VS Code `globalState` + atomic mirror to `~/.ghcp-mem/sessions.json` (mode `0600`) | GitHub cloud, repo-scoped |
 | **Where it works** | VS Code (`@mem` chat, agent tools, status bar, sidebar, MCP for Cursor / Cline / Windsurf / Claude Desktop) | Copilot cloud agent · Copilot code review (web) · Copilot CLI |
@@ -57,7 +93,7 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 | **Scope** | Configurable: `user` / `workspace` / `repo` (auto-detected from `.git/config`) | Repo only |
 | **Trigger** | Active capture: every edit, diagnostic, git op, debug, task, terminal command (debounced, glob-filtered) | Passive inference from PRs / agent sessions / code review actions |
 | **Validation against current code** | ✅ `validateAgainstCodebase` setting drops sessions whose `keyFiles` no longer exist (cached 60s) | ✅ Citations validated against current code before reuse |
-| **Privacy boundary** | Never leaves the laptop; 24-rule dual-pass redactor; `<private>` tag stripping; `.gitignore` auto-guarded | Stays in originating repo on GitHub's infra; standard GitHub data terms |
+| **Privacy boundary** | Never leaves the laptop; 26-rule dual-pass redactor; `<private>` tag stripping; `.gitignore` auto-guarded | Stays in originating repo on GitHub's infra; standard GitHub data terms |
 | **User control** | All settings exposed in `settings.json`; export/import JSON; delete per session | Pro/Pro+ default on (toggle in personal settings); Enterprise default off (org toggle); repo owners can review + delete memories |
 | **Air-gap / offline / locked-down enterprise machines** | ✅ Works — no network, no subprocess, no native binaries | ❌ Cloud-hosted; needs network reachability to github.com |
 | **Cross-machine sync** | Manual via `.ghcpmem-pack.json` exports | Automatic (cloud) within repo permissions |
@@ -81,7 +117,7 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 <details open>
 <summary><b>🔬 Full feature comparison</b></summary>
 
-| Dimension | **GHCP-MEM v1.4.9** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
+| Dimension | **GHCP-MEM v1.11.0** | PluresLM | Remember-MCP | Cortex-Memory | Cortex (Claude) | claude-mem v13.x |
 |---|---|---|---|---|---|---|
 | No external service / port | ✅ | ❌ (service by default) | ❌ (needs pipx + Python server) | ✅ | ✅ | ❌ (`:37777` worker) |
 | No native deps | ✅ | 🟡 (better-sqlite3 in legacy) | ❌ | ✅ | ❌ (sql-wasm, Nomic) | ❌ (SQLite, Chroma, Bun) |
@@ -103,7 +139,7 @@ GitHub announced [Copilot Memory](https://docs.github.com/en/copilot/concepts/ag
 | Content-hash dedup | ✅ (SHA-256) | 🟡 | ❌ | ❌ | ✅ | 🟡 |
 | Backups / recovery | ✅ (rolling 5, restore command) | 🟡 | n/a | ❌ | ✅ | ❌ |
 | Context-pressure autosave | ✅ (event count + wall-clock) | ❌ | ❌ | 🟡 | ✅ | ✅ |
-| Multi-AI interop (MCP) | ✅ (stdio MCP, 6 tools, workspace-scoped, JSON-RPC 2.0) | 🟡 (LM tool) | ✅ (MCP) | ✅ (MCP + CLAUDE.md) | ❌ | ✅ (3-layer MCP) |
+| Multi-AI interop (MCP) | ✅ (stdio MCP, 14 tools, workspace-scoped, JSON-RPC 2.0) | 🟡 (LM tool) | ✅ (MCP) | ✅ (MCP + CLAUDE.md) | ❌ | ✅ (3-layer MCP) |
 | Azure-aware capture | ✅ (12-subsystem classifier + `az` snapshot) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Health score alerting | ✅ (0–100, configurable threshold notification) | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Auto-gitignore injected files | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -170,6 +206,6 @@ Remaining research-level items:
 
 [← Back to README](../README.md) · [Live demo](DEMO.md) · [Report an issue](https://github.com/ITcredibl/ghcp-mem/issues)
 
-<sub>**Comparison for GHCP-MEM v1.4.9** · last refreshed May 2026</sub>
+<sub>**Comparison for GHCP-MEM v1.11.0** · last refreshed June 2026</sub>
 
 </div>

@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import { InMemoryMemento } from './__mocks__/vscode';
 import { ContextStore } from '../contextStore';
 import { CompressedSession, computeContentHash } from '../types';
-import { buildPack, parsePack, importPack, uninstallPack, listInstalledPacks, PACK_TAG_PREFIX } from '../packs';
+import {
+  buildPack,
+  parsePack,
+  importPack,
+  uninstallPack,
+  listInstalledPacks,
+  PACK_TAG_PREFIX,
+} from '../packs';
 
 function mk(o: Partial<CompressedSession> = {}): CompressedSession {
   const summary = o.summary ?? 's-' + Math.random();
@@ -46,7 +53,7 @@ test('packs — buildPack tags every session with pack:<name>', async () => {
 test('packs — buildPack respects filterTypes', async () => {
   const store = new ContextStore(new InMemoryMemento() as any);
   await store.addSession(mk({ summary: 'feat', observationType: 'feature' }));
-  await store.addSession(mk({ summary: 'bug',  observationType: 'bugfix' }));
+  await store.addSession(mk({ summary: 'bug', observationType: 'bugfix' }));
   const pack = buildPack(store, { name: 'feats-only', filterTypes: ['feature'] });
   assert.equal(pack.sessions.length, 1);
   assert.equal(pack.sessions[0].observationType, 'feature');
@@ -81,7 +88,7 @@ test('packs — importPack adds sessions with pack tag, skips existing ids', asy
   assert.equal(res.imported, 2);
   assert.equal(res.skipped, 1);
   const all = store.getAllSessions();
-  const tagged = all.filter(s => s.userTags.includes(`${PACK_TAG_PREFIX}bravo`));
+  const tagged = all.filter((s) => s.userTags.includes(`${PACK_TAG_PREFIX}bravo`));
   assert.equal(tagged.length, 2);
 });
 
@@ -92,10 +99,7 @@ test('packs — uninstallPack removes only pack-tagged sessions', async () => {
     schemaVersion: 1,
     name: 'gamma',
     createdAt: Date.now(),
-    sessions: [
-      mk({ id: 'g1', summary: 'g-one' }),
-      mk({ id: 'g2', summary: 'g-two' }),
-    ],
+    sessions: [mk({ id: 'g1', summary: 'g-one' }), mk({ id: 'g2', summary: 'g-two' })],
   };
   await importPack(store, pack);
   assert.equal(store.getAllSessions().length, 3);
@@ -107,16 +111,25 @@ test('packs — uninstallPack removes only pack-tagged sessions', async () => {
 test('packs — listInstalledPacks groups by name with counts', async () => {
   const store = new ContextStore(new InMemoryMemento() as any);
   await importPack(store, {
-    schemaVersion: 1, name: 'one', createdAt: Date.now(),
+    schemaVersion: 1,
+    name: 'one',
+    createdAt: Date.now(),
     sessions: [mk({ id: 'a' }), mk({ id: 'b' })],
   });
   await importPack(store, {
-    schemaVersion: 1, name: 'two', createdAt: Date.now(),
+    schemaVersion: 1,
+    name: 'two',
+    createdAt: Date.now(),
     sessions: [mk({ id: 'c' })],
   });
   const installed = listInstalledPacks(store);
   assert.deepEqual(
-    installed.map(p => ({ name: p.name, count: p.count })).sort((a, b) => a.name.localeCompare(b.name)),
-    [{ name: 'one', count: 2 }, { name: 'two', count: 1 }],
+    installed
+      .map((p) => ({ name: p.name, count: p.count }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    [
+      { name: 'one', count: 2 },
+      { name: 'two', count: 1 },
+    ],
   );
 });

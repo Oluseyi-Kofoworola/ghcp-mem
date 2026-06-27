@@ -27,6 +27,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Required by the strict release-consistency gate below, which
+          # resolves `origin/main` to verify HEAD is pushed. The default
+          # shallow checkout doesn't carry that ref on a tag build, so
+          # the gate fails before lint/test/bundle can run.
+          fetch-depth: 0
+
+      - name: Make origin/main resolvable for the strict release gate
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
 
       - name: Set up Node ${{ matrix.node }}
         uses: actions/setup-node@v4
@@ -36,6 +47,22 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Release-consistency gate (doc-only on PRs, strict on tags)
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            npm run check:release:strict
+          else
+            npm run check:release
+          fi
+        shell: bash
+
+      - name: Format check (Prettier)
+        # Closes the auditability gap from the v1.6.1 review: the README claimed
+        # "CI-enforced" Prettier but no CI step actually ran it. New files were
+        # landing unformatted (4 of them by v1.7.0) and the claim went stale.
+        # This gate fails the build if any source/script file isn't Prettier-clean.
+        run: npm run format:check
 
       - name: Lint
         run: npm run lint

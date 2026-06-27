@@ -4,9 +4,10 @@
 
 | Version | Supported |
 |---|---|
-| 1.4.x (current) | ✅ |
-| 1.3.x | Security fixes only |
-| < 1.3.0 | ❌ |
+| 1.6.x (current) | ✅ |
+| 1.5.x | Security fixes only |
+| 1.4.x | Security fixes only |
+| < 1.4.0 | ❌ |
 
 ## Reporting a vulnerability
 

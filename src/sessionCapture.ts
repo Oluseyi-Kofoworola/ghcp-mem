@@ -29,7 +29,20 @@ export class SessionCapture implements vscode.Disposable {
   private volatileBytes = 0;
   private disposables: vscode.Disposable[] = [];
   private sessionStartTime: number;
-  private editBatch = new Map<string, { added: number; removed: number; count: number; lastSnippet: string; lang: string }>();
+  private editBatch = new Map<
+    string,
+    {
+      added: number;
+      removed: number;
+      count: number;
+      lastSnippet: string;
+      lang: string;
+      contentHash?: string;
+      /** Last edit's range — used to resolve a stable LSP symbol at flush time. */
+      lastRange?: vscode.Range;
+      uri?: vscode.Uri;
+    }
+  >();
   private editFlushTimer: NodeJS.Timeout | undefined;
   private totalRedactions = 0;
   private azureSubsystems = new Set<AzureSubsystem>();
@@ -60,7 +73,12 @@ export class SessionCapture implements vscode.Disposable {
     this.registerTaskCapture();
   }
 
-  drain(): { events: SessionEvent[]; redactionCount: number; azureSubsystems: AzureSubsystem[]; azureTags: string[] } {
+  drain(): {
+    events: SessionEvent[];
+    redactionCount: number;
+    azureSubsystems: AzureSubsystem[];
+    azureTags: string[];
+  } {
     this.flushEditBatch();
     const drained = [...this.events];
     const redactionCount = this.totalRedactions;
@@ -118,12 +136,19 @@ export class SessionCapture implements vscode.Disposable {
 
         const az = classifyFile(filePath);
         if (az.isAzure) {
-          az.subsystems.forEach(s => this.azureSubsystems.add(s));
-          az.tags.forEach(t => this.azureTags.add(t));
+          az.subsystems.forEach((s) => this.azureSubsystems.add(s));
+          az.tags.forEach((t) => this.azureTags.add(t));
         }
 
         const existing = this.editBatch.get(filePath) ?? {
-          added: 0, removed: 0, count: 0, lastSnippet: '', lang: e.document.languageId,
+          added: 0,
+          removed: 0,
+          count: 0,
+          lastSnippet: '',
+          lang: e.document.languageId,
+          contentHash: undefined as string | undefined,
+          lastRange: undefined as vscode.Range | undefined,
+          uri: undefined as vscode.Uri | undefined,
         };
 
         for (const change of e.contentChanges) {
@@ -132,23 +157,33 @@ export class SessionCapture implements vscode.Disposable {
           existing.added += addedLines;
           existing.removed += removedLines;
           existing.count++;
+          existing.lastRange = change.range;
+          existing.uri = e.document.uri;
 
           if (change.text.length > 0 && change.text.length < 500) {
             // Redact before storing
             const result = redact(change.text.substring(0, 200), {
               redactSecrets: config.redactSecrets,
               honorPrivateTags: config.honorPrivateTags,
+              detectHighEntropy: config.detectHighEntropySecrets,
             });
             this.totalRedactions += result.redactionCount;
-            existing.lastSnippet = config.captureCodeSnippets ? result.text : '[REDACTED:snippet-disabled]';
+            existing.lastSnippet = config.captureCodeSnippets
+              ? result.text
+              : '[REDACTED:snippet-disabled]';
           }
         }
+
+        // Stamp the post-edit content hash so the grounding validator can
+        // detect drift later. We reuse the semantic signature we already
+        // computed for change-skipping above — no extra hash call.
+        existing.contentHash = nextSignature;
 
         this.editBatch.set(filePath, existing);
 
         if (this.editFlushTimer) clearTimeout(this.editFlushTimer);
         this.editFlushTimer = setTimeout(() => this.flushEditBatch(), 5000);
-      })
+      }),
     );
   }
 
@@ -166,10 +201,46 @@ export class SessionCapture implements vscode.Disposable {
         linesAdded: batch.added,
         linesRemoved: batch.removed,
         snippet: batch.lastSnippet,
+        contentHash: batch.contentHash,
       };
       this.pushEvent('file_edit', data);
+
+      // Best-effort LSP symbol resolution. Runs async after the event has
+      // been pushed; if it succeeds before drain(), the symbolId is set on
+      // the (still-buffered) event. If drain happens first, symbolId stays
+      // undefined and the validator/compressor degrade gracefully.
+      if (batch.uri && batch.lastRange) {
+        void this.resolveAndAttachSymbol(data, batch.uri, batch.lastRange);
+      }
     }
     this.editBatch.clear();
+  }
+
+  /**
+   * Resolve the dominant symbol at the given range using VS Code's built-in
+   * document symbol provider. Updates `data.symbolId` in place on success.
+   *
+   * Deliberately non-blocking — VS Code's DocumentSymbolProvider can take
+   * 50–500 ms to warm up for large files and we never want to delay event
+   * persistence behind it. Failures are swallowed: a missing symbolId is
+   * always preferable to a stalled flush.
+   */
+  private async resolveAndAttachSymbol(
+    data: FileEditData,
+    uri: vscode.Uri,
+    range: vscode.Range,
+  ): Promise<void> {
+    try {
+      const symbols = await vscode.commands.executeCommand<
+        Array<vscode.DocumentSymbol | vscode.SymbolInformation>
+      >('vscode.executeDocumentSymbolProvider', uri);
+      if (!symbols || symbols.length === 0) return;
+      const found = findEnclosingSymbol(symbols, range);
+      if (found) data.symbolId = `${data.filePath}#${found}`;
+    } catch {
+      // LSP unavailable, language without symbol provider, doc closed —
+      // any of these are fine, the field just stays undefined.
+    }
   }
 
   // ── File Lifecycle Capture ─────────────────────────────────
@@ -186,7 +257,10 @@ export class SessionCapture implements vscode.Disposable {
         if (doc.uri.scheme !== 'file' || shouldSkip(doc.uri)) return;
         // Ignore the startup re-open flood (VS Code restores all prior editors).
         if (Date.now() < this.fileOpenAllowedAt) return;
-        this.semanticSignatures.set(vscode.workspace.asRelativePath(doc.uri), semanticTextSignature(doc.getText()));
+        this.semanticSignatures.set(
+          vscode.workspace.asRelativePath(doc.uri),
+          semanticTextSignature(doc.getText()),
+        );
         this.pushEvent('file_open', {
           filePath: vscode.workspace.asRelativePath(doc.uri),
           languageId: doc.languageId,
@@ -234,7 +308,7 @@ export class SessionCapture implements vscode.Disposable {
             oldPath,
           } as FileLifecycleData);
         }
-      })
+      }),
     );
   }
 
@@ -256,8 +330,12 @@ export class SessionCapture implements vscode.Disposable {
           if (isPathExcluded(filePath, config.excludeGlobs)) continue;
 
           const diags = vscode.languages.getDiagnostics(uri);
-          const errorCount = diags.filter(d => d.severity === vscode.DiagnosticSeverity.Error).length;
-          const warningCount = diags.filter(d => d.severity === vscode.DiagnosticSeverity.Warning).length;
+          const errorCount = diags.filter(
+            (d) => d.severity === vscode.DiagnosticSeverity.Error,
+          ).length;
+          const warningCount = diags.filter(
+            (d) => d.severity === vscode.DiagnosticSeverity.Warning,
+          ).length;
           const total = errorCount + warningCount;
 
           const prev = lastDiagState.get(filePath) ?? 0;
@@ -274,18 +352,25 @@ export class SessionCapture implements vscode.Disposable {
 
           // Redact diagnostic messages (paths sometimes contain usernames / tokens in URLs)
           const topMessages = diags
-            .filter(d => d.severity <= vscode.DiagnosticSeverity.Warning)
+            .filter((d) => d.severity <= vscode.DiagnosticSeverity.Warning)
             .slice(0, 3)
-            .map(d => {
+            .map((d) => {
               const msg = `[${d.severity === 0 ? 'E' : 'W'}] ${d.message.substring(0, 120)}`;
-              return redact(msg, { redactSecrets: config.redactSecrets, honorPrivateTags: false }).text;
+              return redact(msg, {
+                redactSecrets: config.redactSecrets,
+                honorPrivateTags: false,
+                detectHighEntropy: config.detectHighEntropySecrets,
+              }).text;
             });
 
           this.pushEvent('diagnostic_change', {
-            filePath, errorCount, warningCount, topMessages,
+            filePath,
+            errorCount,
+            warningCount,
+            topMessages,
           } as DiagnosticData);
         }
-      })
+      }),
     );
   }
 
@@ -311,7 +396,7 @@ export class SessionCapture implements vscode.Disposable {
                   detail: `Branch: ${head.name ?? 'detached'}, commit: ${head.commit?.substring(0, 8) ?? 'none'}`,
                 } as GitOperationData);
               }
-            })
+            }),
           );
         }
       } catch {
@@ -325,11 +410,19 @@ export class SessionCapture implements vscode.Disposable {
   private registerDebugCapture(): void {
     this.disposables.push(
       vscode.debug.onDidStartDebugSession((s) => {
-        this.pushEvent('debug_session', { name: s.name, type: s.type, action: 'start' } as DebugSessionData);
+        this.pushEvent('debug_session', {
+          name: s.name,
+          type: s.type,
+          action: 'start',
+        } as DebugSessionData);
       }),
       vscode.debug.onDidTerminateDebugSession((s) => {
-        this.pushEvent('debug_session', { name: s.name, type: s.type, action: 'stop' } as DebugSessionData);
-      })
+        this.pushEvent('debug_session', {
+          name: s.name,
+          type: s.type,
+          action: 'stop',
+        } as DebugSessionData);
+      }),
     );
   }
 
@@ -343,7 +436,7 @@ export class SessionCapture implements vscode.Disposable {
           source: e.execution.task.source,
           exitCode: e.exitCode,
         } as TaskRunData);
-      })
+      }),
     );
   }
 
@@ -358,16 +451,19 @@ export class SessionCapture implements vscode.Disposable {
    */
   private registerTerminalCapture(): void {
     const w = vscode.window as unknown as {
-      onDidStartTerminalShellExecution?: (cb: (e: { execution: { commandLine?: { value?: string } | string } }) => void) => vscode.Disposable;
+      onDidStartTerminalShellExecution?: (
+        cb: (e: { execution: { commandLine?: { value?: string } | string } }) => void,
+      ) => vscode.Disposable;
     };
     if (typeof w.onDidStartTerminalShellExecution !== 'function') return;
 
     try {
       this.disposables.push(
         w.onDidStartTerminalShellExecution((e) => {
-          const raw = typeof e.execution.commandLine === 'string'
-            ? e.execution.commandLine
-            : e.execution.commandLine?.value;
+          const raw =
+            typeof e.execution.commandLine === 'string'
+              ? e.execution.commandLine
+              : e.execution.commandLine?.value;
           if (!raw || typeof raw !== 'string') return;
           const trimmed = raw.trim();
           if (!trimmed) return;
@@ -376,19 +472,20 @@ export class SessionCapture implements vscode.Disposable {
           const redacted = redact(trimmed.substring(0, 400), {
             redactSecrets: config.redactSecrets,
             honorPrivateTags: false,
+            detectHighEntropy: config.detectHighEntropySecrets,
           });
           this.totalRedactions += redacted.redactionCount;
 
           const az = classifyCommand(trimmed);
           if (az.isAzure) {
-            az.subsystems.forEach(s => this.azureSubsystems.add(s));
-            az.tags.forEach(t => this.azureTags.add(t));
+            az.subsystems.forEach((s) => this.azureSubsystems.add(s));
+            az.tags.forEach((t) => this.azureTags.add(t));
           }
 
           this.pushEvent('terminal_command', {
             command: config.enterpriseMode ? '[REDACTED:enterprise-terminal]' : redacted.text,
           } as TerminalData);
-        })
+        }),
       );
     } catch {
       // API not yet finalized in this build — ignore.
@@ -409,7 +506,8 @@ export class SessionCapture implements vscode.Disposable {
     let removeCount = 0;
     let bytes = this.volatileBytes;
     while (
-      (this.events.length - removeCount > SessionCapture.MAX_EVENTS || bytes > SessionCapture.MAX_VOLATILE_BYTES) &&
+      (this.events.length - removeCount > SessionCapture.MAX_EVENTS ||
+        bytes > SessionCapture.MAX_VOLATILE_BYTES) &&
       removeCount < this.eventSizes.length
     ) {
       bytes -= this.eventSizes[removeCount];
@@ -452,8 +550,38 @@ export class SessionCapture implements vscode.Disposable {
 export function semanticTextSignature(text: string): string {
   const normalized = text
     .split(/\r?\n/)
-    .map(line => line.trimEnd())
-    .filter(line => line.length > 0)
+    .map((line) => line.trimEnd())
+    .filter((line) => line.length > 0)
     .join('\n');
   return createHash('sha256').update(normalized).digest('hex');
+}
+
+/**
+ * Walk a DocumentSymbol tree (or flat SymbolInformation array) and return
+ * the name of the deepest symbol whose range contains `target`. Used by
+ * sessionCapture to anchor an edit to its enclosing class/function so the
+ * Evidence layer can survive line-number drift.
+ *
+ * Returns `undefined` when the range falls outside every symbol — typically
+ * top-of-file edits (imports, comments) which have no enclosing scope.
+ */
+export function findEnclosingSymbol(
+  symbols: Array<vscode.DocumentSymbol | vscode.SymbolInformation>,
+  target: vscode.Range,
+): string | undefined {
+  let best: { name: string; depth: number } | undefined;
+  const visit = (s: vscode.DocumentSymbol | vscode.SymbolInformation, depth: number) => {
+    const range =
+      (s as vscode.DocumentSymbol).range ?? (s as vscode.SymbolInformation).location?.range;
+    if (!range) return;
+    // Cheap containment check: target.start.line within [range.start.line, range.end.line].
+    if (target.start.line < range.start.line || target.start.line > range.end.line) return;
+    if (!best || depth > best.depth) best = { name: s.name, depth };
+    const children = (s as vscode.DocumentSymbol).children;
+    if (Array.isArray(children)) {
+      for (const c of children) visit(c, depth + 1);
+    }
+  };
+  for (const s of symbols) visit(s, 0);
+  return best?.name;
 }

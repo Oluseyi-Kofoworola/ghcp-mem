@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyFile, classifyCommand, classifyContent, inferAzureObservationType } from '../azureDetect';
+import {
+  classifyFile,
+  classifyCommand,
+  classifyContent,
+  inferAzureObservationType,
+} from '../azureDetect';
 
 test('azureDetect — classifyFile bicep main', () => {
   const r = classifyFile('infra/main.bicep');

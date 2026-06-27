@@ -1,0 +1,23 @@
+# gitleaks configuration for GHCP-MEM.
+#
+# We run the open-source gitleaks CLI directly (see .github/workflows/security.yml)
+# rather than gitleaks-action@v2, which requires a paid GITLEAKS_LICENSE for
+# organization-owned repos. The CLI needs no license and keeps the secret scan
+# as a blocking CI gate.
+#
+# The only findings in this repo are intentional fake secrets inside the
+# redaction test fixtures — they exist precisely to exercise redactor.ts and
+# must not fail the scan. They are allowlisted by filename below (covering both
+# the TypeScript sources and their compiled out/ + out-test/ copies).
+
+title = "GHCP-MEM gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Intentional secret fixtures used to test the redaction engine"
+regexTarget = "match"
+paths = [
+  '''(^|/)redactor\.[^/]*test\.(ts|js)$''',
+]

@@ -35,14 +35,18 @@ test('getRepoScope: no workspace → no-workspace sentinel', async () => {
 
 test('getRepoScope: falls back to workspace hash when no .git/config', async () => {
   _clearRepoScopeCache();
-  (vscode.workspace as any).workspaceFolders = [{
-    uri: { toString: () => 'file:///ws', fsPath: '/ws', path: '/ws' },
-    name: 'demo-ws',
-    index: 0,
-  }];
+  (vscode.workspace as any).workspaceFolders = [
+    {
+      uri: { toString: () => 'file:///ws', fsPath: '/ws', path: '/ws' },
+      name: 'demo-ws',
+      index: 0,
+    },
+  ];
   // Force the .git/config read to fail.
   const orig = (vscode.workspace.fs as any).readFile;
-  (vscode.workspace.fs as any).readFile = async () => { throw new Error('ENOENT'); };
+  (vscode.workspace.fs as any).readFile = async () => {
+    throw new Error('ENOENT');
+  };
   try {
     const info = await getRepoScope();
     assert.equal(info.fromGitRemote, false);
@@ -55,11 +59,13 @@ test('getRepoScope: falls back to workspace hash when no .git/config', async () 
 
 test('getRepoScope: parses git remote origin', async () => {
   _clearRepoScopeCache();
-  (vscode.workspace as any).workspaceFolders = [{
-    uri: { toString: () => 'file:///ws', fsPath: '/ws', path: '/ws' },
-    name: 'demo-ws',
-    index: 0,
-  }];
+  (vscode.workspace as any).workspaceFolders = [
+    {
+      uri: { toString: () => 'file:///ws', fsPath: '/ws', path: '/ws' },
+      name: 'demo-ws',
+      index: 0,
+    },
+  ];
   const config = `[core]
 \tbare = false
 [remote "origin"]
@@ -79,13 +85,17 @@ test('getRepoScope: parses git remote origin', async () => {
 
 test('getRepoScopeSync: returns cached value after async resolution', async () => {
   _clearRepoScopeCache();
-  (vscode.workspace as any).workspaceFolders = [{
-    uri: { toString: () => 'file:///ws2', fsPath: '/ws2', path: '/ws2' },
-    name: 'cached-ws',
-    index: 0,
-  }];
+  (vscode.workspace as any).workspaceFolders = [
+    {
+      uri: { toString: () => 'file:///ws2', fsPath: '/ws2', path: '/ws2' },
+      name: 'cached-ws',
+      index: 0,
+    },
+  ];
   const orig = (vscode.workspace.fs as any).readFile;
-  (vscode.workspace.fs as any).readFile = async () => { throw new Error('no .git'); };
+  (vscode.workspace.fs as any).readFile = async () => {
+    throw new Error('no .git');
+  };
   try {
     const asyncInfo = await getRepoScope();
     const syncInfo = getRepoScopeSync();

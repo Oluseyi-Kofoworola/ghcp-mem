@@ -13,7 +13,9 @@ import { InMemoryMemento } from './__mocks__/vscode';
 // Minimal vscode mock for pipeline tests (no LM — exercises fallback path).
 const vscodeMock = {
   workspace: {
-    workspaceFolders: [{ name: 'integration-ws', uri: { toString: () => 'file:///integration-ws' } }],
+    workspaceFolders: [
+      { name: 'integration-ws', uri: { toString: () => 'file:///integration-ws' } },
+    ],
     getConfiguration: () => ({ get: (_k: string, d: any) => d }),
     fs: {
       createDirectory: async () => {},
@@ -52,13 +54,20 @@ const vscodeMock = {
   LanguageModelChatMessage: { User: (t: string) => ({ role: 'user', content: t }) },
   CancellationTokenSource: class {
     token = { isCancellationRequested: false };
-    cancel() { this.token.isCancellationRequested = true; }
+    cancel() {
+      this.token.isCancellationRequested = true;
+    }
     dispose() {}
   },
   EventEmitter: class {
     private listeners: Function[] = [];
-    event = (l: Function) => { this.listeners.push(l); return { dispose: () => {} }; };
-    fire(d: any) { this.listeners.forEach(l => l(d)); }
+    event = (l: Function) => {
+      this.listeners.push(l);
+      return { dispose: () => {} };
+    };
+    fire(d: any) {
+      this.listeners.forEach((l) => l(d));
+    }
     dispose() {}
   },
   Uri: {
@@ -72,8 +81,13 @@ const vscodeMock = {
 };
 
 require.cache[require.resolve('vscode')] = {
-  id: 'vscode', filename: 'vscode', loaded: true,
-  exports: vscodeMock, paths: [], children: [], parent: null,
+  id: 'vscode',
+  filename: 'vscode',
+  loaded: true,
+  exports: vscodeMock,
+  paths: [],
+  children: [],
+  parent: null,
 } as any;
 
 import { ContextCompressor } from '../contextCompressor';
@@ -152,7 +166,7 @@ test('Pipeline — search finds stored session by keyword', async () => {
 
   const hits = store.search('payment', {}, 5);
   assert.ok(hits.length >= 1);
-  assert.ok(hits.some(s => s.id === session!.id));
+  assert.ok(hits.some((s) => s.id === session!.id));
 });
 
 test('Pipeline — retention removes old sessions', async () => {
@@ -180,7 +194,11 @@ test('Pipeline — retention removes old sessions', async () => {
   assert.equal(store.getAllSessions().length, 1);
   // enforceRetention is called at startup; call it again explicitly.
   await store.enforceRetention();
-  assert.equal(store.getAllSessions().length, 0, 'Session older than retentionDays should be removed');
+  assert.equal(
+    store.getAllSessions().length,
+    0,
+    'Session older than retentionDays should be removed',
+  );
 });
 
 test('Pipeline — import redacts secrets in incoming sessions', async () => {
@@ -189,30 +207,38 @@ test('Pipeline — import redacts secrets in incoming sessions', async () => {
 
   const maliciousExport = JSON.stringify({
     version: 2,
-    sessions: [{
-      id: 'a1b2c3d4-0000-0000-0000-000000000001',
-      workspaceId: 'file:///other',
-      workspaceName: 'other',
-      startTime: Date.now() - 1000,
-      endTime: Date.now(),
-      summary: 'Used AWS key AKIAIOSFODNN7EXAMPLE in deployment.',
-      observationType: 'deployment',
-      keyFiles: [],
-      keyTopics: [],
-      decisions: ['password=SuperSecret123'],
-      problemsSolved: [],
-      rawEventCount: 1,
-      userTags: [],
-      redactionCount: 0,
-    }],
+    sessions: [
+      {
+        id: 'a1b2c3d4-0000-0000-0000-000000000001',
+        workspaceId: 'file:///other',
+        workspaceName: 'other',
+        startTime: Date.now() - 1000,
+        endTime: Date.now(),
+        summary: 'Used AWS key AKIAIOSFODNN7EXAMPLE in deployment.',
+        observationType: 'deployment',
+        keyFiles: [],
+        keyTopics: [],
+        decisions: ['password=SuperSecret123'],
+        problemsSolved: [],
+        rawEventCount: 1,
+        userTags: [],
+        redactionCount: 0,
+      },
+    ],
     lastUpdated: Date.now(),
   });
 
   await store.importFromJson(maliciousExport, true);
   const sessions = store.getAllSessions();
   assert.equal(sessions.length, 1);
-  assert.ok(!sessions[0].summary.includes('AKIAIOSFODNN7EXAMPLE'), 'AWS key must be redacted on import');
-  assert.ok(!sessions[0].decisions[0].includes('SuperSecret123'), 'Password must be redacted on import');
+  assert.ok(
+    !sessions[0].summary.includes('AKIAIOSFODNN7EXAMPLE'),
+    'AWS key must be redacted on import',
+  );
+  assert.ok(
+    !sessions[0].decisions[0].includes('SuperSecret123'),
+    'Password must be redacted on import',
+  );
 });
 
 test('Pipeline — import skips sessions with invalid IDs', async () => {
@@ -221,17 +247,24 @@ test('Pipeline — import skips sessions with invalid IDs', async () => {
 
   const badExport = JSON.stringify({
     version: 2,
-    sessions: [{
-      id: 'not-a-uuid',
-      workspaceId: 'file:///other',
-      workspaceName: 'other',
-      startTime: Date.now() - 1000,
-      endTime: Date.now(),
-      summary: 'Session with malformed ID.',
-      observationType: 'chore',
-      keyFiles: [], keyTopics: [], decisions: [], problemsSolved: [],
-      rawEventCount: 1, userTags: [], redactionCount: 0,
-    }],
+    sessions: [
+      {
+        id: 'not-a-uuid',
+        workspaceId: 'file:///other',
+        workspaceName: 'other',
+        startTime: Date.now() - 1000,
+        endTime: Date.now(),
+        summary: 'Session with malformed ID.',
+        observationType: 'chore',
+        keyFiles: [],
+        keyTopics: [],
+        decisions: [],
+        problemsSolved: [],
+        rawEventCount: 1,
+        userTags: [],
+        redactionCount: 0,
+      },
+    ],
     lastUpdated: Date.now(),
   });
 

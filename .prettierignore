@@ -1,0 +1,14 @@
+# Auto-generated outputs
+out/
+out-test/
+dist/
+*.vsix
+*.tsbuildinfo
+
+# Vendored / generated assets
+images/
+node_modules/
+
+# Reviewer note: the file the v1.6.0 review flagged as "minified" was actually
+# `out/extension.js`, which is the esbuild bundle. Source under `src/` is
+# formatted via `npm run format` (Prettier) and checked by CI.
