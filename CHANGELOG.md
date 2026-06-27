@@ -6,6 +6,24 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.12.0] — 2026-06-27
+
+Internal-quality release: decomposes the `contextProvider.ts` god-file into a declarative command registry plus per-group handler modules, and clears the low-risk dependency backlog. **No behaviour change** beyond one small UX addition (`/help` now marks experimental commands).
+
+### Added — single source of truth for the `@mem` command surface
+The 40+ slash commands were defined in **three** places inside `contextProvider.ts` — the dispatch switch, the `/help` catalogue, and the follow-up-chip switch — which had to be kept in sync by hand. That triplication was a real drift-bug class: a command could be dispatchable but missing from `/help`, or a follow-up chip could point at a command that no longer existed. New `src/commandRegistry.ts` is now the one declarative table (name, aliases, group, tier, signature, description, follow-up chips); `/help` and the follow-up provider both render from it, so those two surfaces can no longer drift. A new drift-guard test (`src/test/commandRegistry.test.ts`) asserts the dispatch switch and the registry stay in sync.
+
+### Added — `core` vs `experimental` command tiering
+Each command now carries a maturity tier so polish/test budget can concentrate on the daily-driver commands. `/help` surfaces experimental commands with a ⚗️ marker and legend — the only user-visible change in this release.
+
+### Changed — decomposed `contextProvider.ts` (3,089 → 816 lines, −74%)
+The ~50 command handlers moved out of the 3k-line god-class into focused, directly-testable modules: `src/commands/{generation,retrieval,trust,admin}.ts` (free functions over a small `CommandContext`), plus `src/sessionRender.ts` for the pure render/format helpers. `ContextProvider` now `implements CommandContext` and dispatches with `this`. The rules cluster, `pin`/`evict`, and the public API stay on the class because they own instance state. Pure structural refactor — all 505 tests, the retrieval eval gate, and the search bench (p99 < 50ms) are unchanged.
+
+### Changed — dependency hygiene (Dependabot sweep)
+Merged the low-risk dependency backlog after re-validating each on current `main`: `@typescript-eslint/parser` and `@typescript-eslint/eslint-plugin` 8.59.3 → 8.62.0, and the GitHub Actions bumps `actions/checkout` v4 → v7, `actions/download-artifact` v4 → v8, `actions/attest-build-provenance` v1 → v4, and `softprops/action-gh-release` v2 → v3. TypeScript 6, `@types/node` 26, and `@types/vscode` 1.125 were deliberately held (see PRs #11/#13/#15 and issue #18) — type packages should not run ahead of the supported VS Code engine / Node runtime, and TS 6 needs a dedicated test-config migration.
+
+---
+
 ## [1.11.0] — 2026-06-26
 
 Companion feature/cleanup release to v1.10.2's security patch. Addresses the **next-priority cluster** of items from the v1.10.1 code review — the UX self-discovery gap, two hot-path perf wins, the shared-helper refactor that the review flagged as copy-pasted across four sites, and a near-doubling of unit-test coverage across previously-untested modules.
