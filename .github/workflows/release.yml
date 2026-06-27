@@ -15,7 +15,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Required for the strict release-consistency gate (invoked by
           # `vscode:prepublish` inside `vsce package` below). The gate
@@ -84,10 +84,10 @@ jobs:
           NODE
           sha256sum release-manifest.json > release-manifest.json.sha256
       - name: Attest release manifest
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: release-manifest.json
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/v')
         with:
           generate_release_notes: true

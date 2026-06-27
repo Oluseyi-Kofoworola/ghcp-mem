@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Required by the strict release-consistency gate below, which
           # resolves `origin/main` to verify HEAD is pushed. The default
@@ -104,12 +104,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ghcp-mem-ubuntu-latest.vsix
           path: ./dist
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ./dist/ghcp-mem.vsix
           generate_release_notes: true
