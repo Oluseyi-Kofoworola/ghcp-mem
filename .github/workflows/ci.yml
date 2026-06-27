@@ -109,7 +109,7 @@ jobs:
           name: ghcp-mem-ubuntu-latest.vsix
           path: ./dist
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ./dist/ghcp-mem.vsix
           generate_release_notes: true
