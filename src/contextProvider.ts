@@ -264,8 +264,9 @@ export class ContextProvider implements vscode.Disposable, CommandContext {
       stream.markdown(`#### ${GROUP_HEADINGS[group]}\n\n`);
       stream.markdown('| Command | What it does |\n|---|---|\n');
       for (const spec of specs) {
-        // Escape pipes so command syntax doesn't break the markdown table.
-        const cmdEsc = spec.signature.replace(/\|/g, '\\|');
+        // Escape backslashes first, then pipes, so command syntax doesn't
+        // break the markdown table (matches the escaping in eval.ts).
+        const cmdEsc = spec.signature.replace(/\\/g, '\\\\').replace(/\|/g, '\\|');
         const desc = spec.tier === 'experimental' ? `⚗️ ${spec.description}` : spec.description;
         stream.markdown(`| \`${cmdEsc}\` | ${desc} |\n`);
       }
