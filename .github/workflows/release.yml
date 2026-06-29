@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 0
       - name: Make origin/main resolvable for the strict release gate
         run: git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
