@@ -239,6 +239,49 @@ const RULES: RedactionRule[] = [
     replacement: (_m: string, key: string, guid: string) =>
       `${key}=[REDACTED:azure-guid]#${secretHash('azure-guid', String(guid))}`,
   },
+  // Azure ARM resource ID path (v1.13.0). Redacts subscriptionId in the path
+  // and the resourceGroup name segment, preserving the rest of the path so
+  // the LM can still summarise (e.g. "edited a Storage account in /subscriptions/[REDACTED]/resourceGroups/[REDACTED]/.../accounts/foo").
+  {
+    name: 'azure-resource-path',
+    pattern:
+      /\/subscriptions\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/resourceGroups\/([^\s/?#"']+))?/gi,
+    replacement: (_m: string, sub: string, rg?: string) => {
+      const subTag = `[REDACTED:azure-subscription-id]#${secretHash('azure-subscription-id', String(sub))}`;
+      if (!rg) return `/subscriptions/${subTag}`;
+      const rgTag = `[REDACTED:azure-resource-group]#${secretHash('azure-resource-group', String(rg))}`;
+      return `/subscriptions/${subTag}/resourceGroups/${rgTag}`;
+    },
+  },
+  // AWS account ID — 12-digit number in account-id context. v1.13.0.
+  // Account-id alone is sensitive (lets attackers craft cross-account roles);
+  // contextual gate keeps random 12-digit numbers (timestamps, etc) from
+  // being falsely flagged.
+  {
+    name: 'aws-account-id',
+    pattern:
+      /\b(aws[-_ ]?account[-_ ]?id|account[-_ ]?id|accountId|aws[-_ ]?account)\s*[:=]\s*["']?(\d{12})["']?/gi,
+    replacement: (_m: string, key: string, id: string) =>
+      `${key}=[REDACTED:aws-account-id]#${secretHash('aws-account-id', String(id))}`,
+  },
+  // AWS ARN — has the form `arn:aws:<service>:<region>:<account-id>:<resource>`.
+  // The account-id segment is the sensitive part. v1.13.0.
+  {
+    name: 'aws-arn-account',
+    pattern: /(arn:aws[a-z-]*:[a-z0-9-]*:[a-z0-9-]*:)(\d{12}):/gi,
+    replacement: (_m: string, prefix: string, id: string) =>
+      `${prefix}[REDACTED:aws-account-id]#${secretHash('aws-account-id', String(id))}:`,
+  },
+  // GCP project ID in contextual position. Project IDs are
+  // lowercase letters / digits / hyphens, 6–30 chars, must start with a letter.
+  // v1.13.0.
+  {
+    name: 'gcp-project-id',
+    pattern:
+      /\b(gcp[-_ ]?project(?:[-_ ]?id)?|google[-_ ]?cloud[-_ ]?project|GOOGLE_CLOUD_PROJECT|project[-_ ]?id)\s*[:=]\s*["']?([a-z][a-z0-9-]{4,28}[a-z0-9])["']?/gi,
+    replacement: (_m: string, key: string, id: string) =>
+      `${key}=[REDACTED:gcp-project-id]#${secretHash('gcp-project-id', String(id))}`,
+  },
 
   {
     name: 'password-assign',

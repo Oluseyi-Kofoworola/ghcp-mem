@@ -346,7 +346,15 @@ export interface PluginConfig {
   maxStoreSizeMB: number;
   retentionDays: number;
   captureFileEdits: boolean;
-  captureTerminalCommands: boolean;
+  /**
+   * Terminal-capture policy (v1.13.0+ enum).
+   *  - 'off': don't capture terminal commands at all.
+   *  - 'metadata-only': capture only the command verb (e.g. `az ...`, `git ...`,
+   *    `npm ...`) with all arguments stripped. Enterprise-safe default.
+   *  - 'full': capture the entire command line (pre-v1.13 behavior).
+   * Booleans accepted for back-compat: true → 'full', false → 'off'.
+   */
+  captureTerminalCommands: 'off' | 'metadata-only' | 'full';
   captureDiagnostics: boolean;
   captureGitOps: boolean;
   contextRetrievalCount: number;
@@ -402,6 +410,25 @@ export interface PluginConfig {
    * customer codenames, deal IDs).
    */
   customSensitiveEntities: string[];
+  /**
+   * Redact cloud identifiers (Azure subscriptionId / tenantId / resourceGroup
+   * paths, AWS account IDs, GCP project IDs) anywhere they appear in captured
+   * text. v1.13.0+. Default true — these aren't passwords, but they ARE
+   * sensitive operational data for enterprise users.
+   */
+  redactCloudIdentifiers: boolean;
+  /**
+   * How much of the auto-captured Azure control-plane context to preserve.
+   * v1.13.0+. Default 'summary-only'. See package.json schema for full
+   * semantics; honored at capture time by `src/azureContext.ts`.
+   */
+  preserveCloudContextLevel: 'full' | 'summary-only' | 'none';
+  /**
+   * Pre-persist quality gate. Captured sessions with score < this floor are
+   * dropped BEFORE they hit disk — distinct from the injection-time
+   * `qualityFloor` which only excludes from injection. v1.13.0+. Default 0.
+   */
+  qualityPersistFloor: number;
 }
 
 /** A user-defined redaction rule injected via `ghcpMem.customRedactionRules`. */
@@ -437,8 +464,10 @@ export function getConfig(): PluginConfig {
     // GitHub-compatible mode pins retention to 28 days like Copilot agentic memory.
     retentionDays: githubCompatibleMode ? 28 : cfg.get('retentionDays', 90),
     captureFileEdits: cfg.get('captureFileEdits', true),
-    captureTerminalCommands:
-      cfg.get('captureTerminalCommands', true) && !cfg.get('enterpriseMode', false),
+    captureTerminalCommands: resolveCaptureTerminalMode(
+      cfg.get<unknown>('captureTerminalCommands', 'metadata-only'),
+      cfg.get('enterpriseMode', false),
+    ),
     captureDiagnostics: cfg.get('captureDiagnostics', true),
     captureGitOps: cfg.get('captureGitOps', true),
     contextRetrievalCount: cfg.get('contextRetrievalCount', 5),
@@ -471,7 +500,52 @@ export function getConfig(): PluginConfig {
     idleTimeoutSeconds: clampNum(cfg.get('idleTimeoutSeconds', 30), 0, 300, 30),
     customRedactionRules: cfg.get<CustomRedactionRule[]>('customRedactionRules', []),
     customSensitiveEntities: cfg.get<string[]>('customSensitiveEntities', []),
+    // v1.13.0: cloud-identifier redaction is on by default. Enterprise mode
+    // forces it on regardless of user setting (defense in depth).
+    redactCloudIdentifiers:
+      cfg.get('redactCloudIdentifiers', true) || cfg.get('enterpriseMode', false),
+    // v1.13.0: 'summary-only' default redacts subscription/tenant/RG/resource-IDs
+    // from the captured Azure context but preserves subsystems + notes. Enterprise
+    // mode forces 'none' (don't capture Azure context at all).
+    preserveCloudContextLevel: cfg.get('enterpriseMode', false)
+      ? 'none'
+      : normalizeCloudContextLevel(cfg.get<string>('preserveCloudContextLevel', 'summary-only')),
+    // v1.13.0: pre-persist quality floor, default 0 (write everything). Clamped
+    // to [0,1] regardless of what's in settings.json — a value > 1 would
+    // accidentally drop every capture.
+    qualityPersistFloor: clampNum(cfg.get('qualityPersistFloor', 0), 0, 1, 0),
   };
+}
+
+/**
+ * Back-compat resolver for `ghcpMem.captureTerminalCommands`. v1.13.0 turned
+ * the boolean into a 3-state enum; older settings.json files still pass true /
+ * false / undefined and must keep working without breaking on upgrade.
+ *
+ *   true        → 'full'           (pre-v1.13 default; matches prior capture)
+ *   false       → 'off'
+ *   'off'       → 'off'
+ *   'metadata-only' → 'metadata-only'
+ *   'full'      → 'full'
+ *   undefined   → 'metadata-only'  (v1.13+ default)
+ *   anything else → 'metadata-only' (defensive — schema enforces enum)
+ *
+ * Enterprise mode forces 'off' regardless of user setting.
+ */
+export function resolveCaptureTerminalMode(
+  raw: unknown,
+  enterpriseMode: boolean,
+): 'off' | 'metadata-only' | 'full' {
+  if (enterpriseMode) return 'off';
+  if (raw === true) return 'full';
+  if (raw === false) return 'off';
+  if (raw === 'off' || raw === 'metadata-only' || raw === 'full') return raw;
+  return 'metadata-only';
+}
+
+function normalizeCloudContextLevel(raw: unknown): 'full' | 'summary-only' | 'none' {
+  if (raw === 'full' || raw === 'summary-only' || raw === 'none') return raw;
+  return 'summary-only';
 }
 
 function normalizeOptionalString(raw: string | undefined): string | undefined {

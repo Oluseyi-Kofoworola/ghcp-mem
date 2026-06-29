@@ -18,7 +18,7 @@ import {
   MemoryLessonsTool,
 } from './memoryTool';
 import { getEmbedder, makeLocalEmbedder } from './embeddings';
-import { captureAzureContext } from './azureContext';
+import { captureAzureContext, applyPreserveLevel } from './azureContext';
 import { AzureSubsystem } from './azureDetect';
 import { getConfig, CompressedSession, AzureContextMeta, SessionEvent } from './types';
 import { scoreSessionQuality } from './quality';
@@ -29,6 +29,7 @@ import { AutosaveTrigger } from './autosave';
 import { MemoryTimelinePanel } from './timelinePanel';
 import { SessionCodeLensProvider } from './sessionCodeLens';
 import { refreshPolicyRedactionRules } from './policySource';
+import { getRepoScope } from './repoScope';
 
 let capture: SessionCapture;
 let compressor: ContextCompressor;
@@ -607,14 +608,31 @@ export async function activate(context: vscode.ExtensionContext) {
             );
             return;
           }
-          const meta: AzureContextMeta = { ...ctx, subsystems: ['cli'] };
+          // v1.13.0: respect preserveCloudContextLevel on the manual snapshot
+          // path too. If the user has the setting at 'none', the manual
+          // command becomes a no-op with an informational message rather than
+          // silently writing the full snapshot.
+          const cloudCfg = getConfig();
+          const gated = applyPreserveLevel(ctx, cloudCfg.preserveCloudContextLevel);
+          if (!gated) {
+            vscode.window.showInformationMessage(
+              "GHCP-MEM: Azure context capture is disabled (ghcpMem.preserveCloudContextLevel = 'none').",
+            );
+            return;
+          }
+          const meta: AzureContextMeta = { ...gated, subsystems: ['cli'] };
+          // v1.13.0: build the summary from the GATED snapshot so the
+          // free-text doesn't leak the very identifiers the redaction policy
+          // just suppressed. subscriptionName is preserved by the redactor
+          // for human readability; subscriptionId / resourceGroup come out
+          // as opaque tags when level=summary-only.
           const summaryParts = [
             `Manual Azure context snapshot.`,
-            `Subscription: ${ctx.subscriptionName ?? ctx.subscriptionId ?? 'unknown'}.`,
+            `Subscription: ${gated.subscriptionName ?? gated.subscriptionId ?? 'unknown'}.`,
           ];
-          if (ctx.resourceGroup) summaryParts.push(`Resource group: ${ctx.resourceGroup}.`);
-          if (ctx.resourceIds?.length)
-            summaryParts.push(`${ctx.resourceIds.length} resource(s) inventoried.`);
+          if (gated.resourceGroup) summaryParts.push(`Resource group: ${gated.resourceGroup}.`);
+          if (gated.resourceIds?.length)
+            summaryParts.push(`${gated.resourceIds.length} resource(s) inventoried.`);
           const wsF = vscode.workspace.workspaceFolders?.[0];
           const session: CompressedSession = {
             id: crypto.randomUUID(),
@@ -977,6 +995,149 @@ export async function activate(context: vscode.ExtensionContext) {
       } catch (err) {
         vscode.window.showErrorMessage(
           `GHCP-MEM: Failed to write team memory: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }),
+  );
+
+  // ── v1.13.0: Per-repo memory controls + sensitive-data audit ──
+  // Surfaces repoScope (which already partitions storage internally) as
+  // three explicit palette commands so enterprise users can answer
+  // "what does this extension know about THIS repo right now?" without
+  // having to learn the scope config setting.
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ghcpMem.showCurrentRepoMemory', async () => {
+      const sessions = await getCurrentRepoSessions(store);
+      if (sessions === null) {
+        vscode.window.showInformationMessage(
+          'GHCP-MEM: No git repo detected for the current workspace.',
+        );
+        return;
+      }
+      if (sessions.length === 0) {
+        vscode.window.showInformationMessage(
+          'GHCP-MEM: No memory for the current repo yet — open Copilot Chat and let GHCP-MEM capture a session.',
+        );
+        return;
+      }
+      const sorted = [...sessions].sort((a, b) => b.endTime - a.endTime);
+      const doc = await vscode.workspace.openTextDocument({
+        language: 'markdown',
+        content: renderCurrentRepoMemoryReport(sorted),
+      });
+      await vscode.window.showTextDocument(doc, { preview: true });
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ghcpMem.deleteCurrentRepoMemory', async () => {
+      const sessions = await getCurrentRepoSessions(store);
+      if (sessions === null) {
+        vscode.window.showInformationMessage(
+          'GHCP-MEM: No git repo detected for the current workspace.',
+        );
+        return;
+      }
+      if (sessions.length === 0) {
+        vscode.window.showInformationMessage('GHCP-MEM: Current repo has no memory to delete.');
+        return;
+      }
+      // Modal so users can't fat-finger a destructive deletion in a quick-pick.
+      // We name the scope label explicitly — typo-protective and self-documents
+      // what's about to disappear.
+      const scope = await getRepoScope();
+      const label = scope.label || scope.id;
+      const confirm = await vscode.window.showWarningMessage(
+        `Delete ${sessions.length} session(s) for repo "${label}"? This cannot be undone (a rolling backup is kept; use "GHCP-MEM: Restore From Backup..." if you need to recover).`,
+        { modal: true, detail: 'Sessions outside this repo are untouched.' },
+        'Delete',
+      );
+      if (confirm !== 'Delete') return;
+      const ids = sessions.map((s) => s.id);
+      const deleted = await store.deleteSessions(ids);
+      updateStatusBar();
+      vscode.window.showInformationMessage(
+        `GHCP-MEM: Deleted ${deleted} session(s) for repo "${label}".`,
+      );
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ghcpMem.exportCurrentRepoMemory', async () => {
+      const sessions = await getCurrentRepoSessions(store);
+      if (sessions === null) {
+        vscode.window.showInformationMessage(
+          'GHCP-MEM: No git repo detected for the current workspace.',
+        );
+        return;
+      }
+      if (sessions.length === 0) {
+        vscode.window.showInformationMessage('GHCP-MEM: Current repo has no memory to export.');
+        return;
+      }
+      const scope = await getRepoScope();
+      const wsF = vscode.workspace.workspaceFolders?.[0];
+      const defaultName = `${(scope.label || scope.id).replace(/[^a-zA-Z0-9.-]/g, '_')}-memory.json`;
+      const target = await vscode.window.showSaveDialog({
+        defaultUri: wsF ? vscode.Uri.joinPath(wsF.uri, defaultName) : undefined,
+        filters: { JSON: ['json'] },
+        saveLabel: 'Export Repo Memory',
+      });
+      if (!target) return;
+      const payload = {
+        kind: 'ghcp-mem.repo-memory-export',
+        schemaVersion: 1,
+        exportedAt: new Date().toISOString(),
+        repoScope: scope.id,
+        repoScopeLabel: scope.label,
+        sessionCount: sessions.length,
+        sessions,
+      };
+      await vscode.workspace.fs.writeFile(
+        target,
+        Buffer.from(JSON.stringify(payload, null, 2), 'utf-8'),
+      );
+      vscode.window.showInformationMessage(
+        `GHCP-MEM: Exported ${sessions.length} session(s) for repo "${scope.label || scope.id}" to ${target.fsPath}`,
+      );
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('ghcpMem.auditSensitiveData', async () => {
+      const { runWorkspaceAudit, formatAuditReport, sensitiveDataRule } =
+        await import('./integrityChecker');
+      const { issues, rulesRun } = await runWorkspaceAudit([sensitiveDataRule]);
+      if (rulesRun.length === 0) {
+        vscode.window.showInformationMessage('GHCP-MEM: No workspace open to scan.');
+        return;
+      }
+      const sensitiveIssues = issues.filter((i) => i.severity === 'error');
+      if (sensitiveIssues.length === 0) {
+        vscode.window.showInformationMessage(
+          'GHCP-MEM: Sensitive-data scan — every generated memory file is clean under the current redaction policy.',
+        );
+        return;
+      }
+      const action = await vscode.window.showWarningMessage(
+        `GHCP-MEM: Sensitive-data scan found ${sensitiveIssues.length} file(s) with credential shapes that the current redactor would strip but didn't strip at capture time.`,
+        { modal: true, detail: 'Open the audit report to see the breakdown by file/class.' },
+        'Open Report',
+        'Redact Now',
+        'Cancel',
+      );
+      if (action === 'Open Report') {
+        const md = formatAuditReport(issues, rulesRun);
+        const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: md });
+        await vscode.window.showTextDocument(doc, { preview: true });
+      } else if (action === 'Redact Now') {
+        // Trigger a regeneration of the auto-injected context file (which is
+        // the file most commonly flagged). The user can also re-run /rules add
+        // for any flagged project-rules content.
+        await vscode.commands.executeCommand('ghcpMem.compressNow');
+        vscode.window.showInformationMessage(
+          'GHCP-MEM: Compressed current session — the auto-injected context file will be re-redacted on the next write.',
         );
       }
     }),
@@ -2011,4 +2172,73 @@ function buildAzureDemoSessions(): CompressedSession[] {
       ['storage', 'security'],
     ),
   ];
+}
+
+// ── v1.13.0 helpers: per-repo memory commands ─────────────────────────────
+
+/**
+ * Return every session whose repoScope matches the current workspace's repo.
+ * Returns `null` (not `[]`) if the current workspace isn't a git repo — lets
+ * callers distinguish "no repo here" from "this repo has no memory yet".
+ *
+ * Legacy sessions captured before `repoScope` was stamped fall back to a
+ * `workspaceId` match so they aren't silently hidden — same heuristic the
+ * search path uses.
+ */
+async function getCurrentRepoSessions(store: ContextStore): Promise<CompressedSession[] | null> {
+  const wsF = vscode.workspace.workspaceFolders?.[0];
+  if (!wsF) return null;
+  const scope = await getRepoScope();
+  if (!scope.id || scope.id === 'no-workspace') return null;
+  const wsUri = wsF.uri.toString();
+  const all = store.getAllSessions();
+  return all.filter((s) => {
+    if (s.repoScope) return s.repoScope === scope.id;
+    // Legacy fallback: pre-repoScope sessions match by workspaceId.
+    return s.workspaceId === wsUri;
+  });
+}
+
+/** Render a compact markdown summary for `Show Current Repo Memory`. */
+function renderCurrentRepoMemoryReport(sessions: CompressedSession[]): string {
+  if (sessions.length === 0) return '# No memory for this repo yet.';
+  const counts = { feature: 0, bugfix: 0, refactor: 0, docs: 0, infra: 0, other: 0 };
+  for (const s of sessions) {
+    const k = s.observationType as keyof typeof counts;
+    if (k in counts) counts[k]++;
+    else counts.other++;
+  }
+  const recent = sessions.slice(0, 8);
+  const out: string[] = [
+    `# Repo memory — ${sessions[0].repoScopeLabel || sessions[0].workspaceName}`,
+    '',
+    `**${sessions.length}** sessions captured for this repo`,
+    '',
+    '## Type breakdown',
+    '',
+    ...Object.entries(counts)
+      .filter(([, n]) => n > 0)
+      .map(([k, n]) => `- **${k}**: ${n}`),
+    '',
+    '## Most recent 8',
+    '',
+  ];
+  for (const s of recent) {
+    const when = new Date(s.endTime).toISOString().slice(0, 10);
+    out.push(`### ${when} · ${s.observationType} · \`${s.id.slice(0, 8)}\``);
+    out.push('');
+    out.push(s.summary || '_(no summary)_');
+    if (s.decisions?.length) {
+      out.push('');
+      out.push('**Decisions:**');
+      for (const d of s.decisions.slice(0, 3)) out.push(`- ${d}`);
+    }
+    out.push('');
+  }
+  out.push('---');
+  out.push(
+    '_Use_ `GHCP-MEM: Delete Current Repo Memory...` _to wipe this repo only;_ ' +
+      '`GHCP-MEM: Export Current Repo Memory...` _to share it as a JSON pack._',
+  );
+  return out.join('\n');
 }

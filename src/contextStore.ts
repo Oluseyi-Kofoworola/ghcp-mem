@@ -149,6 +149,34 @@ export class ContextStore implements vscode.Disposable {
   async addSession(session: CompressedSession): Promise<void> {
     const config = getConfig();
 
+    // v1.13.0: pre-persist quality gate. If qualityPersistFloor > 0 and the
+    // session's quality score is below the floor, drop it BEFORE it hits disk.
+    // Distinct from `qualityFloor` (which only excludes from injection but
+    // keeps the row on disk for janitor review). Pinned (`userTags` has
+    // 'pinned') and correction sessions are never gated — they're user-asserted
+    // intent. The score uses the same heuristic as the janitor (see
+    // src/quality.ts).
+    const isUserPinned = session.userTags?.includes('pinned') ?? false;
+    if (config.qualityPersistFloor > 0 && !isUserPinned && !session.correctionOf) {
+      try {
+        const { scoreSessionQuality } = await import('./quality');
+        const q = scoreSessionQuality(session);
+        if (q.score < config.qualityPersistFloor) {
+          console.log(
+            `[GHCP-MEM] dropped low-quality capture before persist ` +
+              `(score=${q.score.toFixed(2)} < floor=${config.qualityPersistFloor}; ` +
+              `id=${session.id.slice(0, 8)})`,
+          );
+          return;
+        }
+      } catch (err) {
+        console.warn(
+          '[GHCP-MEM] pre-persist quality gate failed (non-fatal, persisting anyway):',
+          err,
+        );
+      }
+    }
+
     // Content-hash dedup — if an identical-content session already exists,
     // merge tags + bump endTime instead of creating a new row.
     if (session.contentHash) {

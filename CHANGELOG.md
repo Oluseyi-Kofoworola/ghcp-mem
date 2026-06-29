@@ -6,6 +6,72 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.13.0] — 2026-06-28
+
+Enterprise-trust hardening. Seven independent items from a thorough external review of v1.12.0 — each item closes a real disclosure surface, lowers default capture noise, or makes operational state visible to security reviewers. **Breaking** for two defaults (terminal capture mode + Azure context preservation); both shift toward the safer posture and have explicit opt-out flags. All 532 tests pass.
+
+### Added — `ghcpMem.redactCloudIdentifiers` + new cloud-ID redactor rules (review item #1)
+Cloud identifiers aren't passwords, but for enterprise users they're sensitive operational data: a leaked Azure subscriptionId enables targeted reconnaissance, a leaked AWS account ID lets an attacker craft cross-account roles, a leaked GCP project ID exposes billing/audit visibility. The redactor now catches all three classes by default, anywhere they appear in captured text:
+- **`azure-resource-path`** — `/subscriptions/<guid>/resourceGroups/<name>/...` ARM paths get the subscriptionId AND the resource-group name redacted; the path structure stays so the LM can still summarise ("edited a Storage account in /subscriptions/[REDACTED]/resourceGroups/[REDACTED]/.../accounts/foo").
+- **`aws-account-id`** — 12-digit account IDs in `AccountId=` / `accountId:` / `AWS_ACCOUNT_ID=` context. Bare 12-digit numbers (timestamps, order IDs) are NOT flagged — only ones in account-id context.
+- **`aws-arn-account`** — the account-id segment of an ARN (`arn:aws:s3:us-east-1:123456789012:bucket/foo`).
+- **`gcp-project-id`** — `GOOGLE_CLOUD_PROJECT=…` / `project-id: …` / `gcpProject: …` patterns.
+
+Settings: `ghcpMem.redactCloudIdentifiers` (default `true`). Enterprise mode forces it on regardless of the user setting.
+
+### Added — `ghcpMem.preserveCloudContextLevel` enum (review item #1, default flip)
+Three-mode policy for the auto-captured Azure control-plane snapshot (`AzureContextMeta` on every session that touches an Azure file/command):
+- **`full`** — pre-v1.13 behavior, snapshot stored verbatim.
+- **`summary-only` (default)** — subscriptionId, tenantId, resourceGroup, and resourceIds replaced with opaque `[REDACTED:azure-…]#xxxxxxxx` tags; subscriptionName, defaultLocation, subsystems, and notes preserved. Same-input → same-hash-suffix so cross-session correlation is still possible locally, but the suffix is one-way.
+- **`none`** — Azure context not captured at all.
+
+Resource IDs (full ARM paths) are summarised to type — `Microsoft.Storage/storageAccounts (redacted)`, `Microsoft.KeyVault/vaults (redacted)` — so the LM can still tell what KIND of resource was touched without being able to address it. **Breaking** for stores captured under v1.10-1.12 that contain real subscription IDs; the new "GHCP-MEM: Audit Memory for Sensitive Data" command (below) reports exactly which sessions need to be re-redacted or deleted.
+
+### Changed — `ghcpMem.captureTerminalCommands` is now a 3-mode enum (review item #4, default flip)
+Boolean replaced with `"off" | "metadata-only" | "full"`; default flipped from `true` (legacy `full`) to `"metadata-only"`. The new mode captures only the command verb (`az ...`, `git ...`, `npm ...`) with all arguments stripped — preserving enough signal for the LM to summarise activity while scrubbing the credential leak vectors that lurk in args (`--password`, `--token`, `--api-key`, `--set-env-vars`, connection strings). Pipelines keep only the leftmost verb (so `cat secret.txt | curl -d @-` doesn't leak the cat target). Common wrappers stripped (`sudo`, `env VAR=…`, `time`, `nohup`). Booleans accepted for back-compat: `true` → `"full"`, `false` → `"off"`.
+
+### Added — Pre-persist quality gate `ghcpMem.qualityPersistFloor` (review item #2)
+The existing `qualityFloor` only excludes low-quality sessions from injection but keeps them on disk for janitor review. The new `qualityPersistFloor` drops them BEFORE they hit disk. Distinct setting (default `0`, write-everything, opt-in to drop) so existing users don't lose history on upgrade; set to `0.3`–`0.5` for an aggressive drop policy. Pinned sessions (`userTags` has `pinned`) and correction sessions are never gated — those are user-asserted intent.
+
+### Added — Per-repo memory commands (review item #5)
+Three new palette commands surface the existing `repoScope` partition explicitly so enterprise users can answer "what does this extension know about THIS repo?" without learning the scope config setting:
+- **`GHCP-MEM: Show Current Repo Memory`** — markdown report with session count, type breakdown, and the 8 most recent sessions (decisions inline).
+- **`GHCP-MEM: Delete Current Repo Memory...`** — modal-confirmed delete of every session matching the current workspace's repoScope. Rolling backup still kept; restorable via the existing `Restore From Backup` command. Sessions outside this repo are untouched.
+- **`GHCP-MEM: Export Current Repo Memory...`** — save-dialog → versioned JSON pack with the repoScope id+label and every matching session. Legacy sessions captured before repoScope was stamped fall back to a `workspaceId` match so existing data isn't silently hidden.
+
+### Added — Sensitive-data audit + remediation (review item #3)
+- New **`GHCP-MEM: Audit Memory for Sensitive Data`** palette command runs a focused sub-set of the integrity auditor (`sensitiveDataRule`) that scans every file the extension may have generated (`.github/instructions/session-memory.instructions.md`, `.github/memory/rules.md`, `CLAUDE.md`, `.cursor/rules/ghcp-mem.mdc`) by re-running the current redactor over each. Findings are grouped by file and by sensitive-token class (`azure-subscription-id×2, aws-account-id×1, ...`) so reviewers can act without seeing the actual values.
+- Remediation actions surfaced inline: **Open Report** (full markdown breakdown), **Redact Now** (triggers `compressNow` which regenerates the auto-injected context file with the current redactor), or Cancel.
+- A clean scan returns `"every generated memory file is clean under the current redaction policy"` — gives the security reviewer an explicit assertion to take back to their team.
+
+### Added — Extended default `ghcpMem.excludeGlobs` (review item #7)
+The default exclude list grew from 5 patterns to 24 to cover the credential/secret/build-output classes most teams hit on day one:
+- **Credentials / secrets:** `**/.env*`, `**/*.pem`, `**/*.key`, `**/*.p12`, `**/*.pfx`, `**/secrets/**`, `**/SECRETS.md`, `**/secrets.json`, `**/.vscode/mcp.json`, `**/.vscode/settings.json`
+- **IDE / agent state:** `**/.claude/**`, `**/.cursor/rules/**`
+- **Build outputs (high noise):** `**/.next/**`, `**/.nuxt/**`, `**/.svelte-kit/**`, `**/.turbo/**`, `**/.cache/**`, `**/.parcel-cache/**`, `**/coverage/**`, `**/dist/**`, `**/build/**`, `**/out/**`, `**/node_modules/**`
+
+User-supplied patterns are still honored — this list defines the floor, not the ceiling.
+
+### Changed — README lead paragraph (review item #9)
+Replaced the "AI memory" framing (the space is now crowded with first-party offerings — see GitHub Copilot Memory). The new lead emphasises what makes GHCP-MEM specifically defensible: **local**, **auditable**, **engineering**-focused (decisions/fixes/repo context/deployment history), and **no third-party memory backend**. Reads as a positioning statement, not a category claim.
+
+### Test count
+**532 tests** (was 505 → +27 new v1.13 hardening tests in `src/test/v1_13_hardening.test.ts` covering: `terminalVerbOnly` across 8 command-shape classes, `resolveCaptureTerminalMode` back-compat + enterprise override, `applyPreserveLevel` for all 3 modes incl. deterministic-correlation assertion, and the 5 new cloud-identifier redactor rules with explicit negative cases against false-positive sources).
+
+### Out of scope for v1.13 (deferred to v1.14 / v1.15)
+- **Refuse low-info LM summaries with retry** (review item #6) — needs a real corpus of past summaries to set the "low-info" threshold without false positives.
+- **Visual trust dashboard** (review item #8) — committing to a webview means committing to its maintenance lifecycle; deserves a focused sprint. The existing markdown-based `Show Memory Health Score` already covers ~60% of the asked content.
+
+### Verification before push
+- `npm run format:check` — clean
+- `npm run lint --max-warnings=0` — clean
+- `npm run typecheck` — clean
+- `npm test` — 532/532 pass
+- `npm run check:release` — 5/5 doc surfaces consistent
+- `npm audit` — 0 vulnerabilities at every severity
+
+---
+
 ## [1.12.0] — 2026-06-27
 
 Internal-quality release: decomposes the `contextProvider.ts` god-file into a declarative command registry plus per-group handler modules, and clears the low-risk dependency backlog. **No behaviour change** beyond one small UX addition (`/help` now marks experimental commands).

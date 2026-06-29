@@ -68,7 +68,12 @@ export class SessionCapture implements vscode.Disposable {
     this.registerFileLifecycleCapture();
     if (config.captureDiagnostics) this.registerDiagnosticsCapture();
     if (config.captureGitOps) this.registerGitCapture();
-    if (config.captureTerminalCommands && !config.enterpriseMode) this.registerTerminalCapture();
+    // v1.13.0: captureTerminalCommands is now an enum. 'off' skips registration
+    // entirely; 'metadata-only' and 'full' both register but apply different
+    // sanitisation in pushEvent (see registerTerminalCapture below).
+    if (config.captureTerminalCommands !== 'off' && !config.enterpriseMode) {
+      this.registerTerminalCapture();
+    }
     this.registerDebugCapture();
     this.registerTaskCapture();
   }
@@ -482,9 +487,26 @@ export class SessionCapture implements vscode.Disposable {
             az.tags.forEach((t) => this.azureTags.add(t));
           }
 
-          this.pushEvent('terminal_command', {
-            command: config.enterpriseMode ? '[REDACTED:enterprise-terminal]' : redacted.text,
-          } as TerminalData);
+          // v1.13.0: terminal capture is now a 3-mode policy. The Azure
+          // subsystem/tag classification above runs in EVERY mode (it doesn't
+          // store raw command text — only labels). What changes is what we
+          // persist as the event payload:
+          //   - enterpriseMode  → '[REDACTED:enterprise-terminal]' (legacy)
+          //   - 'metadata-only' → just the command verb (`az`, `git`, `npm`, …)
+          //     with all arguments dropped. Catches the common credential leak
+          //     class (--password / --token / --api-key / connection strings)
+          //     while preserving enough signal for the LM to summarise activity.
+          //   - 'full'          → the previously-redacted full command line
+          let commandText: string;
+          if (config.enterpriseMode) {
+            commandText = '[REDACTED:enterprise-terminal]';
+          } else if (config.captureTerminalCommands === 'metadata-only') {
+            commandText = terminalVerbOnly(trimmed);
+          } else {
+            commandText = redacted.text;
+          }
+
+          this.pushEvent('terminal_command', { command: commandText } as TerminalData);
         }),
       );
     } catch {
@@ -584,4 +606,62 @@ export function findEnclosingSymbol(
   };
   for (const s of symbols) visit(s, 0);
   return best?.name;
+}
+
+/**
+ * Extract just the command verb from a terminal command line, dropping every
+ * argument. Used by `captureTerminalCommands: 'metadata-only'` (v1.13.0+) to
+ * preserve enough signal for the LM ("an `az` deploy command ran") while
+ * scrubbing the credential leak vectors that lurk in arguments
+ * (`--password`, `--token`, `--api-key`, connection strings, `--set-env-vars`).
+ *
+ * Heuristics:
+ *  - Pipelines / multi-command lines: keep only the first sub-command verb.
+ *  - Common command prefixes (`sudo`, `time`, `env VAR=…`) are passed through
+ *    so the verb of the actual command is what's recorded.
+ *  - `npx <pkg> …` → `npx <pkg>` (the package name is usually the verb of interest).
+ *  - For everything else, the verb is the first whitespace-bounded token.
+ *
+ * Returns the verb appended with `…` so a human reader can tell that arguments
+ * were elided rather than absent. Capped at 80 chars defensively.
+ */
+export function terminalVerbOnly(commandLine: string): string {
+  const cleaned = commandLine.trim();
+  if (!cleaned) return '';
+  // Split on pipeline / sequencing operators; take the leftmost segment.
+  const leftSegment = cleaned.split(/\s*(?:&&|\|\||\||;)\s*/)[0]?.trim() ?? cleaned;
+  // Strip leading wrappers (sudo / time / env A=B / nice / nohup).
+  let segment = leftSegment;
+  for (let i = 0; i < 3; i++) {
+    const m = segment.match(/^(sudo|time|nice|nohup|env\s+[A-Z_][A-Z0-9_]*=\S+)\s+(.+)$/i);
+    if (!m) break;
+    segment = m[2];
+  }
+  const tokens = segment.split(/\s+/);
+  let verb = tokens[0] ?? '';
+  // For runner-style verbs (npx, pnpx) capture the first non-flag argument
+  // so `npx --yes @vscode/vsce …` resolves to `npx @vscode/vsce …` rather
+  // than the uninformative `npx …`. Plain yarn/pnpm aren't included because
+  // their first arg is often a script alias (`yarn dev`) which we'd want to
+  // preserve verbatim — and that already happens via the bare `tokens[0]`.
+  if (verb === 'npx' || verb === 'pnpx') {
+    for (let i = 1; i < tokens.length; i++) {
+      const t = tokens[i];
+      if (!t) continue;
+      if (t.startsWith('-')) continue; // skip flags like --yes
+      verb = `${verb} ${t}`;
+      break;
+    }
+  }
+  // Truncate ABSOLUTE-PATH verbs (`/usr/local/bin/python3 …`) to the basename
+  // for compact storage. Don't touch scoped npm packages (`@vscode/vsce`) or
+  // sub-commands containing slashes — they're meaningful, not path noise.
+  if (verb.startsWith('/')) {
+    const base = verb.split('/').pop() || verb;
+    verb = base;
+  }
+  const trimmed = verb.slice(0, 76);
+  return tokens.length > 1 || segment !== leftSegment || leftSegment !== cleaned
+    ? `${trimmed} …`
+    : trimmed;
 }

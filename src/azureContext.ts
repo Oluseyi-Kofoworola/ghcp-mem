@@ -127,3 +127,80 @@ export async function captureAzureContext(opts?: {
 export function _resetAzureContextCache(): void {
   cache.clear();
 }
+
+/**
+ * Apply `ghcpMem.preserveCloudContextLevel` to a snapshot before it gets
+ * persisted on a `CompressedSession.azureContext` field. v1.13.0+.
+ *
+ *   level === 'full'         → return the snapshot unchanged (pre-v1.13 behavior).
+ *   level === 'summary-only' → return a snapshot where every cloud identifier
+ *     (subscriptionId, tenantId, resourceGroup, resourceIds) is replaced with
+ *     a deterministic opaque tag. `subscriptionName`, `defaultLocation`, and
+ *     `notes` are preserved because they help the LM contextualise without
+ *     leaking IDs that can be cross-referenced with billing/audit logs.
+ *   level === 'none'         → return `undefined` so the caller skips
+ *     persisting any Azure context at all.
+ *
+ * The opaque tags share a stable hash suffix so two captures from the same
+ * subscription still hash-match — preserving the "this is the same env"
+ * signal — without disclosing the value.
+ */
+export function applyPreserveLevel(
+  snapshot: AzureContextSnapshot,
+  level: 'full' | 'summary-only' | 'none',
+): AzureContextSnapshot | undefined {
+  if (level === 'none') return undefined;
+  if (level === 'full') return snapshot;
+  // summary-only: redact every identifier but keep the human-readable
+  // breadcrumbs (subscription name, location, notes).
+  const out: AzureContextSnapshot = {
+    capturedAt: snapshot.capturedAt,
+    subscriptionName: snapshot.subscriptionName,
+    defaultLocation: snapshot.defaultLocation,
+    notes: snapshot.notes,
+  };
+  if (snapshot.subscriptionId) {
+    out.subscriptionId = `[REDACTED:azure-subscription-id]#${stableHashSuffix(snapshot.subscriptionId)}`;
+  }
+  if (snapshot.tenantId) {
+    out.tenantId = `[REDACTED:azure-tenant-id]#${stableHashSuffix(snapshot.tenantId)}`;
+  }
+  if (snapshot.resourceGroup) {
+    out.resourceGroup = `[REDACTED:azure-resource-group]#${stableHashSuffix(snapshot.resourceGroup)}`;
+  }
+  if (snapshot.resourceIds?.length) {
+    // Each resource ID is a full ARM path containing the (already-redacted) subscriptionId
+    // and resourceGroup as substrings. We keep the resource TYPE segment so the LM can
+    // still tell "an azure storage account was touched" without leaking the path.
+    out.resourceIds = snapshot.resourceIds.map((id) => summariseResourceId(id));
+  }
+  return out;
+}
+
+/**
+ * Reduce an ARM resource ID like
+ *   "/subscriptions/<guid>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/foo"
+ * to a typed summary like "Microsoft.Storage/storageAccounts (redacted)" so
+ * downstream consumers can tell what KIND of resource was touched without
+ * being able to address it.
+ */
+function summariseResourceId(id: string): string {
+  const m = id.match(/\/providers\/([^/]+)\/([^/]+)(?:\/[^/]+)*$/i);
+  if (!m) return '[REDACTED:azure-resource-id]';
+  return `${m[1]}/${m[2]} (redacted)`;
+}
+
+/**
+ * Truncated, deterministic hash of a cloud identifier for the [REDACTED:..]#xxxxxxxx
+ * suffix. Same value → same suffix so cross-session correlation is possible
+ * locally, but the suffix isn't reversible to the original ID.
+ */
+function stableHashSuffix(value: string): string {
+  // Tiny FNV-1a so we don't pull crypto for what's an obfuscation suffix.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < value.length; i++) {
+    h ^= value.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0').slice(0, 8);
+}

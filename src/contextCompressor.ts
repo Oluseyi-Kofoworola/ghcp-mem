@@ -14,7 +14,7 @@ import {
 } from './types';
 import { redact } from './redactor';
 import { AzureSubsystem, inferAzureObservationType } from './azureDetect';
-import { captureAzureContext } from './azureContext';
+import { captureAzureContext, applyPreserveLevel } from './azureContext';
 import { classifyByRules } from './ruleClassifier';
 import { getRepoScope } from './repoScope';
 
@@ -137,8 +137,16 @@ ${eventLog}`;
         if (azureSubsystems.length) {
           try {
             const az = await captureAzureContext();
-            const meta: AzureContextMeta = { ...az, subsystems: azureSubsystems };
-            session.azureContext = meta;
+            // v1.13.0: gate the persisted snapshot through preserveCloudContextLevel.
+            // 'summary-only' (default) redacts subscription/tenant/RG/resourceIds;
+            // 'none' skips persisting Azure context entirely; 'full' keeps the
+            // pre-v1.13 verbatim behavior.
+            const cloudCfg = getConfig();
+            const gated = applyPreserveLevel(az, cloudCfg.preserveCloudContextLevel);
+            if (gated) {
+              const meta: AzureContextMeta = { ...gated, subsystems: azureSubsystems };
+              session.azureContext = meta;
+            }
           } catch {
             /* ignore */
           }

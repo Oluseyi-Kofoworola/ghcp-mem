@@ -4,7 +4,7 @@
 
 ### You're picking a memory tool. Don't pick the wrong one.
 
-[![v1.12.0](https://img.shields.io/badge/version-1.12.0-7c3aed?style=for-the-badge)](../package.json)
+[![v1.13.0](https://img.shields.io/badge/version-1.13.0-7c3aed?style=for-the-badge)](../package.json)
 [![Scope](https://img.shields.io/badge/scope-VS_Code_+_Copilot-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white)](../README.md)
 
 </div>

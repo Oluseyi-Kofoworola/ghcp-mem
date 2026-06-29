@@ -2,15 +2,17 @@
 
 ### You ship features. Your AI shouldn't have to relearn your project every morning.
 
-> **You're an engineer. You build. You ship. The last thing you want is to spend
-> the first 10 minutes of every Copilot chat re-explaining what your project does,
-> what you've already decided, and why.**
+> **GHCP-MEM is a local, auditable engineering memory layer for GitHub Copilot
+> in VS Code.** It captures the decisions you made, the fixes you shipped, the
+> repo context you've already explained, and the deployment history you'd
+> otherwise have to recite to a fresh chat — **without sending any of it to a
+> third-party memory backend.**
 >
-> GHCP-MEM gives Copilot a local memory that **remembers what you built**, **proves
-> what it remembers** (every stored decision cites the captured events that produced it),
-> and **routes most "what / why / how" questions to a millisecond-latency local lookup**
-> instead of a fresh Copilot completion — so your token budget goes to shipping, not
-> catching up.
+> Every stored claim cites the events that produced it. Cloud identifiers are
+> redacted before they hit disk. Terminal commands are captured as metadata,
+> not full arguments. Routes most "what / why / how" questions to a
+> millisecond local lookup instead of a fresh Copilot completion — so your
+> token budget goes to shipping, not catching up.
 
 **Local-first · Copilot chat participant · MCP stdio · Redaction-first**
 
@@ -65,7 +67,7 @@ We built GHCP-MEM because we hit the same wall: a Copilot that forgot everything
 
 **Why it's worth your trust:**
 
-- **498 tests, zero native dependencies, zero open ports** — `npm install` doesn't compile anything. Source is formatted with Prettier (CI-enforced via `format:check`) so reviewers see real code, not bundle output. Auditable in an afternoon.
+- **532 tests, zero native dependencies, zero open ports** — `npm install` doesn't compile anything. Source is formatted with Prettier (CI-enforced via `format:check`) so reviewers see real code, not bundle output. Auditable in an afternoon.
 - **Nine documented engineering phases**, each with grounded design rationale in the [CHANGELOG](https://github.com/ITcredibl/ghcp-mem/blob/main/CHANGELOG.md). No marketing claims that don't have code behind them.
 - **An evidence-citation gate in the compressor** — the LM cannot emit a decision without pointing at the captured event that produced it. Hallucinated rationale never reaches storage.
 - **An nDCG@K regression gate** runs in CI — if a ranker change regresses retrieval, the build fails.
@@ -754,4 +756,4 @@ MIT — see [LICENSE](https://github.com/ITcredibl/ghcp-mem/blob/main/LICENSE).
 
 [Report a bug](https://github.com/ITcredibl/ghcp-mem/issues) · [Request a feature](https://github.com/ITcredibl/ghcp-mem/issues) · [Live demo](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/DEMO.md) · [Compare memory tools](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/COMPARISON.md) · [Uninstall guide](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/UNINSTALL.md) · [Configuration reference](https://github.com/ITcredibl/ghcp-mem/blob/main/docs/CONFIGURATION.md) · [Contributing](https://github.com/ITcredibl/ghcp-mem/blob/main/CONTRIBUTING.md) · [Security policy](https://github.com/ITcredibl/ghcp-mem/blob/main/SECURITY.md)
 
-<sub>**v1.12.0** · local-first memory for Copilot</sub>
+<sub>**v1.13.0** · local-first memory for Copilot</sub>

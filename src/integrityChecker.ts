@@ -201,10 +201,115 @@ export const versionDriftRule: IntegrityRule = {
   },
 };
 
+// ── Built-in rule: sensitive-data audit (v1.13.0) ────────────────────
+//
+// Scans every file the extension may have generated (the auto-injected
+// `.github/instructions/session-memory.instructions.md`, the project rules
+// `.github/memory/rules.md`) for credential shapes that should have been
+// redacted but weren't. Reports counts grouped by class; an enterprise admin
+// can use this to verify that an existing store is clean BEFORE rolling
+// GHCP-MEM out org-wide.
+//
+// We deliberately re-use the same redactor used at capture time so a
+// "clean" report here means "the same redactor that ran at capture time
+// would not change anything if it ran again now" — i.e. the store is fully
+// covered. Mismatches usually mean: (a) the user pulled in a memory pack
+// that was redacted with an older rule set, or (b) a rule was tightened
+// post-capture, or (c) a custom-redaction-rule misconfiguration left holes.
+
+interface SensitiveScanFile {
+  /** Workspace-relative path to scan. */
+  path: string;
+  /** Human-readable label shown in the issue message. */
+  label: string;
+}
+
+const SENSITIVE_SCAN_TARGETS: SensitiveScanFile[] = [
+  { path: '.github/instructions/session-memory.instructions.md', label: 'auto-injected context' },
+  { path: '.github/memory/rules.md', label: 'project rules' },
+  { path: 'CLAUDE.md', label: 'Claude Code memory' },
+  { path: '.cursor/rules/ghcp-mem.mdc', label: 'Cursor rules' },
+];
+
+export const sensitiveDataRule: IntegrityRule = {
+  name: 'sensitive-data',
+  description:
+    'Scan generated memory files for credentials / cloud identifiers the redactor should have caught',
+  async check(ws): Promise<IntegrityIssue[]> {
+    const issues: IntegrityIssue[] = [];
+    let redactFn: typeof import('./redactor').redact;
+    try {
+      // Dynamic import keeps the integrity checker test-able in isolation;
+      // production code paths get the full redactor with no extra cost.
+      ({ redact: redactFn } = await import('./redactor'));
+    } catch (err) {
+      issues.push({
+        rule: 'sensitive-data',
+        severity: 'warning',
+        file: '(redactor)',
+        message: `unable to load redactor for sensitive-data scan: ${(err as Error).message}`,
+      });
+      return issues;
+    }
+
+    for (const target of SENSITIVE_SCAN_TARGETS) {
+      const content = await readFileFromWorkspace(ws, target.path);
+      if (content === null) continue; // not generated yet — nothing to scan, not an issue.
+      const before = content;
+      const after = redactFn(content, {
+        redactSecrets: true,
+        honorPrivateTags: false,
+        detectHighEntropy: true,
+      });
+      if (after.redactionCount === 0) continue; // clean.
+      // The redactor doesn't tell us WHICH rules fired, only the total count.
+      // We re-derive a per-class breakdown by inspecting the post-redaction
+      // text for [REDACTED:<class>] markers — gives the enterprise user a
+      // breakdown they can act on without leaking the actual secret values.
+      const classCounts = new Map<string, number>();
+      for (const m of after.text.matchAll(/\[REDACTED:([a-z][a-z0-9-]*)\]/gi)) {
+        classCounts.set(m[1], (classCounts.get(m[1]) ?? 0) + 1);
+      }
+      const breakdown = [...classCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([cls, n]) => `${cls}×${n}`)
+        .join(', ');
+      issues.push({
+        rule: 'sensitive-data',
+        severity: 'error',
+        file: target.path,
+        message:
+          `${target.label}: ${after.redactionCount} sensitive token(s) would be redacted ` +
+          `if captured today (${breakdown || 'unknown classes'}). The file was generated ` +
+          `before the current redaction policy was tightened, or a memory pack with weaker ` +
+          `redaction was imported.`,
+        fix:
+          `run: GHCP-MEM: Audit Memory for Sensitive Data → Redact now (rewrites this file ` +
+          `with the current ruleset). Or delete the file and let it regenerate from the store.`,
+      });
+      // Cross-reference: confirm the unredacted content isn't still hiding
+      // some non-tagged sensitive shape (e.g. an Azure subscription path the
+      // older rules didn't catch). Compare lengths as a rough delta.
+      if (before.length !== after.text.length) {
+        const delta = before.length - after.text.length;
+        issues.push({
+          rule: 'sensitive-data',
+          severity: 'info',
+          file: target.path,
+          message:
+            `${target.label}: ${delta} char(s) would be removed by the current redactor — ` +
+            `larger than a single-token redaction suggests multiple findings`,
+        });
+      }
+    }
+    return issues;
+  },
+};
+
 // ── Auditor ─────────────────────────────────────────────────────────
 
 /** Rules registered with the auditor. Add more here as we build them. */
-const BUILTIN_RULES: IntegrityRule[] = [versionDriftRule];
+const BUILTIN_RULES: IntegrityRule[] = [versionDriftRule, sensitiveDataRule];
 
 /** Run every registered rule against the first workspace folder. */
 export async function runWorkspaceAudit(

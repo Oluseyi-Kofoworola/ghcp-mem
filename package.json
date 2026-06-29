@@ -2,7 +2,7 @@
   "name": "ghcp-mem",
   "displayName": "GHCP-MEM",
   "description": "A local, auditable session-memory layer for VS Code and GitHub Copilot, built for engineers who need persistent project context without relying on a cloud memory backend.",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "publisher": "itcredibl",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -188,6 +188,23 @@
         "command": "ghcpMem.exportTeamMemory",
         "title": "GHCP-MEM: Export Team Memory Snapshot",
         "icon": "$(organization)"
+      },
+      {
+        "command": "ghcpMem.showCurrentRepoMemory",
+        "title": "GHCP-MEM: Show Current Repo Memory"
+      },
+      {
+        "command": "ghcpMem.deleteCurrentRepoMemory",
+        "title": "GHCP-MEM: Delete Current Repo Memory..."
+      },
+      {
+        "command": "ghcpMem.exportCurrentRepoMemory",
+        "title": "GHCP-MEM: Export Current Repo Memory..."
+      },
+      {
+        "command": "ghcpMem.auditSensitiveData",
+        "title": "GHCP-MEM: Audit Memory for Sensitive Data",
+        "icon": "$(lock)"
       }
     ],
     "viewsContainers": {
@@ -679,9 +696,19 @@
           "description": "Capture file edit events"
         },
         "ghcpMem.captureTerminalCommands": {
-          "type": "boolean",
-          "default": true,
-          "description": "Capture terminal activity"
+          "type": "string",
+          "enum": [
+            "off",
+            "metadata-only",
+            "full"
+          ],
+          "enumDescriptions": [
+            "Don't capture terminal commands at all.",
+            "Capture only the command verb (az, git, npm, …) — arguments stripped. Enterprise-safe default; protects against --password, --token, connection strings, etc.",
+            "Capture the full command line (legacy v1.x behavior). Use only on personal machines where the redactor is trusted to catch every secret class."
+          ],
+          "default": "metadata-only",
+          "markdownDescription": "Terminal-capture policy. **`metadata-only` (default since v1.13.0)** stores only the verb (e.g. `az ...`, `git ...`). Use **`full`** to restore pre-v1.13 behavior; use **`off`** to disable terminal capture entirely. Booleans accepted for back-compat: `true` → `full`, `false` → `off`."
         },
         "ghcpMem.captureDiagnostics": {
           "type": "boolean",
@@ -697,6 +724,33 @@
           "type": "boolean",
           "default": false,
           "markdownDescription": "Strict mode for regulated environments. Disables terminal capture, raw snippets, team export, and MCP write tools, and stores only redacted summaries."
+        },
+        "ghcpMem.redactCloudIdentifiers": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Redact cloud identifiers (Azure subscriptionId / tenantId / resourceGroup paths, AWS account IDs, GCP project IDs) anywhere they appear in captured text. These aren't passwords, but they ARE sensitive operational data for enterprise users. Disable only if you understand the disclosure risk."
+        },
+        "ghcpMem.preserveCloudContextLevel": {
+          "type": "string",
+          "enum": [
+            "full",
+            "summary-only",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Preserve the full Azure control-plane snapshot (subscriptionId, tenantId, resourceGroup, resourceIds) verbatim. Pre-v1.13 behavior.",
+            "Preserve only a redacted summary: keep subsystems + notes; replace subscriptionId/tenantId/resourceGroup/resourceIds with opaque [REDACTED:...] tags. Enterprise-safe default.",
+            "Don't capture Azure context at all."
+          ],
+          "default": "summary-only",
+          "markdownDescription": "How much of the auto-captured Azure control-plane context to preserve on disk. **Default `summary-only` (since v1.13.0)**: subscriptionId/tenantId/RG/resource IDs are stored as opaque tags, but the human-readable subsystems list + notes stay. Use **`full`** to restore pre-v1.13 capture (audit risk for regulated teams); use **`none`** to skip Azure context entirely."
+        },
+        "ghcpMem.qualityPersistFloor": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 1,
+          "markdownDescription": "Pre-persist quality gate (v1.13.0+). Captured sessions below this score are dropped BEFORE they hit disk — distinct from `qualityFloor`, which only excludes low-quality sessions from injection but keeps them on disk. Default `0` (write-everything; the janitor will sweep later). Set to `0.3`–`0.5` for an aggressive drop policy. The score is the same 0–1 metric the janitor uses (see `src/quality.ts`)."
         },
         "ghcpMem.captureCodeSnippets": {
           "type": "boolean",
@@ -754,10 +808,28 @@
             "**/.env*",
             "**/*.pem",
             "**/*.key",
+            "**/*.p12",
+            "**/*.pfx",
             "**/secrets/**",
+            "**/SECRETS.md",
+            "**/secrets.json",
+            "**/.vscode/mcp.json",
+            "**/.vscode/settings.json",
+            "**/.claude/**",
+            "**/.cursor/rules/**",
+            "**/.next/**",
+            "**/.nuxt/**",
+            "**/.svelte-kit/**",
+            "**/.turbo/**",
+            "**/.cache/**",
+            "**/.parcel-cache/**",
+            "**/coverage/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/out/**",
             "**/node_modules/**"
           ],
-          "description": "Glob patterns whose file events will be skipped"
+          "markdownDescription": "Glob patterns whose file events are skipped. **Defaults expanded in v1.13.0** to cover the most common credential/secret classes (`.env*`, PEM/key/PFX, `SECRETS.md`, `secrets.json`, MCP config), IDE/agent state (`.vscode/mcp.json`, `.vscode/settings.json`, `.claude/`, `.cursor/rules/`), and high-noise build outputs (`.next`, `.nuxt`, `.svelte-kit`, `.turbo`, `coverage`, `dist`, `build`, `out`, `node_modules`). User-supplied patterns are still honored — this list defines the floor."
         },
         "ghcpMem.autoInjectStartupContext": {
           "type": "boolean",
