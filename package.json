@@ -1134,7 +1134,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^8.56.0",
     "prettier": "^3.8.3",
-    "typescript": "^6.0.3"
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "undici": "^7.28.0"
